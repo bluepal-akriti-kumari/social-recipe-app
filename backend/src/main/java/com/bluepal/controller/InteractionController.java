@@ -97,6 +97,12 @@ public class InteractionController {
                 .recipe(recipe)
                 .build();
         
+        if (request.getParentId() != null) {
+            Comment parent = commentRepository.findById(request.getParentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", request.getParentId()));
+            comment.setParent(parent);
+        }
+        
         Comment saved = commentRepository.save(comment);
         recipe.setCommentCount(recipe.getCommentCount() + 1);
         recipeRepository.save(recipe);
@@ -124,6 +130,7 @@ public class InteractionController {
                 .content(comment.getContent())
                 .username(comment.getUser().getUsername())
                 .userProfilePictureUrl(comment.getUser().getProfilePictureUrl())
+                .parentId(comment.getParent() != null ? comment.getParent().getId() : null)
                 .createdAt(comment.getCreatedAt())
                 .build();
     }

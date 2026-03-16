@@ -38,7 +38,7 @@ const ProfilePage = () => {
         const data = activeTab === 0 
           ? await recipeService.getUserRecipes(username)
           : await recipeService.getUserLikedRecipes(username);
-        setRecipes(data.content);
+        setRecipes(data);
       } catch (err) {
         console.error('Failed to fetch recipes', err);
       } finally {
