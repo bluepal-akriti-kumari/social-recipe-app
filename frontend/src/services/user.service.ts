@@ -6,6 +6,7 @@ export interface UserProfile {
   email: string;
   bio: string;
   profilePictureUrl: string;
+  coverPictureUrl: string;
   followerCount: number;
   followingCount: number;
   isFollowing: boolean;
@@ -21,6 +22,6 @@ export const userService = {
   unfollowUser: (username: string) => 
     api.delete(`/users/${username}/unfollow`).then(r => r.data),
   
-  updateProfile: (data: { bio?: string; profilePictureUrl?: string }) => 
+  updateProfile: (data: { bio?: string; profilePictureUrl?: string; coverPictureUrl?: string }) => 
     api.put<UserProfile>('/users/me', data).then(r => r.data),
 };

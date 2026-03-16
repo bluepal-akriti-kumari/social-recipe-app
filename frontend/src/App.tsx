@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Box } from '@mui/material';
 import Navbar from './components/layout/Navbar';
+import MobileBottomNav from './components/layout/MobileBottomNav';
 import { useAuth } from './hooks/useAuth';
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
@@ -18,7 +19,7 @@ const App = () => {
   return (
     <BrowserRouter>
       <Navbar />
-      <Box sx={{ mt: 8 }}>
+      <Box sx={{ mt: { xs: 7, sm: 8 }, pb: { xs: 8, sm: 0 }, minHeight: '100vh' }}>
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
@@ -36,6 +37,7 @@ const App = () => {
           <Route path="*" element={<Navigate to="/feed" replace />} />
         </Routes>
       </Box>
+      <MobileBottomNav />
     </BrowserRouter>
   );
 };
