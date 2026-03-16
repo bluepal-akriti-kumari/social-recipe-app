@@ -49,9 +49,9 @@ export const getCommentsThunk = (recipeId: number) => async (dispatch: AppDispat
   }
 };
 
-export const addCommentThunk = (recipeId: number, content: string) => async (dispatch: AppDispatch) => {
+export const addCommentThunk = (recipeId: number, content: string, parentId?: number) => async (dispatch: AppDispatch) => {
   try {
-    const data = await recipeService.addComment(recipeId, content);
+    const data = await recipeService.addComment(recipeId, content, parentId);
     dispatch(addCommentSuccess(data));
   } catch (err: any) {
     console.error('Failed to add comment', err);

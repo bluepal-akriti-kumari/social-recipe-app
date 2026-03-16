@@ -13,11 +13,11 @@ export interface UserProfile {
 
 export const userService = {
   getProfile: (username: string) => 
-    api.get<UserProfile>(`/${username}`).then(r => r.data),
+    api.get<UserProfile>(`/users/${username}`).then(r => r.data),
   
   followUser: (username: string) => 
-    api.post(`/${username}/follow`).then(r => r.data),
+    api.post(`/users/${username}/follow`).then(r => r.data),
   
   unfollowUser: (username: string) => 
-    api.delete(`/${username}/unfollow`).then(r => r.data),
+    api.delete(`/users/${username}/unfollow`).then(r => r.data),
 };

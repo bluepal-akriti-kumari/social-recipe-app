@@ -32,6 +32,10 @@ public class Comment {
     @JoinColumn(name = "recipe_id", nullable = false)
     private Recipe recipe;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private Comment parent;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

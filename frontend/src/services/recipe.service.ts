@@ -79,8 +79,8 @@ export const recipeService = {
   getComments: (recipeId: number, page = 0, size = 20) =>
     api.get(`/recipes/${recipeId}/comments`, { params: { page, size } }).then(r => r.data),
 
-  addComment: (recipeId: number, content: string) =>
-    api.post(`/recipes/${recipeId}/comments`, { content }).then(r => r.data),
+  addComment: (recipeId: number, content: string, parentId?: number) =>
+    api.post(`/recipes/${recipeId}/comments`, { content, parentId }).then(r => r.data),
 
   deleteComment: (commentId: number) =>
     api.delete(`/comments/${commentId}`),

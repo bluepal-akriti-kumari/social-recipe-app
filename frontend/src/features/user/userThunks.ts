@@ -11,7 +11,8 @@ export const getProfileThunk = (username: string) => async (dispatch: AppDispatc
     const data = await userService.getProfile(username);
     dispatch(fetchProfileSuccess(data));
   } catch (err: any) {
-    dispatch(fetchProfileFailure(err.response?.data || 'Failed to fetch profile'));
+    const message = err.response?.data?.error || err.response?.data || 'Failed to fetch profile';
+    dispatch(fetchProfileFailure(typeof message === 'string' ? message : JSON.stringify(message)));
   }
 };
 
