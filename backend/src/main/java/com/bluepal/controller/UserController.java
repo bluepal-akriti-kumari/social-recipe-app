@@ -27,7 +27,7 @@ public class UserController {
     }
 
     @GetMapping("/{username}")
-    public ResponseEntity<UserProfileResponse> getUserProfile(@PathVariable String username) {
+    public ResponseEntity<UserProfileResponse> getUserProfile(@PathVariable("username") String username) {
         String currentUsername = getCurrentUsername();
         UserProfileResponse response = userService.getUserProfile(username, currentUsername);
         return ResponseEntity.ok(response);
@@ -47,7 +47,7 @@ public class UserController {
     
 
     @DeleteMapping("/{username}/unfollow")
-    public ResponseEntity<?> unfollowUser(@PathVariable String username) {
+    public ResponseEntity<?> unfollowUser(@PathVariable("username") String username) {
         String currentUsername = getCurrentUsername();
         if (currentUsername == null) {
             return ResponseEntity.status(401).body("Authentication required");

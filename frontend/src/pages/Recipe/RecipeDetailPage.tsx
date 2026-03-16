@@ -25,6 +25,7 @@ const RecipeDetailPage = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { recipeDetail, comments, loading, error } = useSelector((state: RootState) => state.recipes);
   const [commentText, setCommentText] = useState('');
+  const [replyingTo, setReplyingTo] = useState<{ id: number; username: string } | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -41,8 +42,9 @@ const RecipeDetailPage = () => {
   const handleCommentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (commentText.trim() && recipeDetail) {
-      dispatch(addCommentThunk(recipeDetail.id, commentText));
+      dispatch(addCommentThunk(recipeDetail.id, commentText, replyingTo?.id));
       setCommentText('');
+      setReplyingTo(null);
     }
   };
 
@@ -104,12 +106,21 @@ const RecipeDetailPage = () => {
           {/* Social Section */}
           <Box id="comments">
             <Typography variant="h5" fontWeight={700} gutterBottom>Comments ({recipeDetail.commentCount})</Typography>
-            <Box component="form" onSubmit={handleCommentSubmit} sx={{ display: 'flex', gap: 2, mb: 4, mt: 2 }}>
-              <TextField 
-                fullWidth placeholder="Add a comment..." variant="outlined" size="small"
-                value={commentText} onChange={(e) => setCommentText(e.target.value)}
-              />
-              <Button type="submit" variant="contained" endIcon={<SendIcon />}>Post</Button>
+            <Box component="form" onSubmit={handleCommentSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 4, mt: 2 }}>
+              {replyingTo && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#f1f5f9', p: 1, borderRadius: 1 }}>
+                  <Typography variant="caption">Replying to <b>@{replyingTo.username}</b></Typography>
+                  <Button size="small" onClick={() => setReplyingTo(null)}>Cancel</Button>
+                </Box>
+              )}
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField 
+                  fullWidth placeholder={replyingTo ? "Write a reply..." : "Add a comment..."} 
+                  variant="outlined" size="small"
+                  value={commentText} onChange={(e) => setCommentText(e.target.value)}
+                />
+                <Button type="submit" variant="contained" endIcon={<SendIcon />}>Post</Button>
+              </Box>
             </Box>
             
             <List>
@@ -122,13 +133,27 @@ const RecipeDetailPage = () => {
                     <ListItemText
                       primary={
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography fontWeight={700} variant="body2">{comment.username}</Typography>
+                          <Typography fontWeight={700} variant="body2">
+                            {comment.username} {comment.parentId && <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>replied</Box>}
+                          </Typography>
                           <Typography variant="caption" color="text.secondary">
                             {new Date(comment.createdAt).toLocaleDateString()}
                           </Typography>
                         </Box>
                       }
-                      secondary={<Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>{comment.content}</Typography>}
+                      secondary={
+                        <Box>
+                          <Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>{comment.content}</Typography>
+                          <Button 
+                            size="small" 
+                            sx={{ minWidth: 0, p: 0, mt: 0.5, textTransform: 'none' }} 
+                            onClick={() => setReplyingTo({ id: comment.id, username: comment.username })}
+                          >
+                            Reply
+                          </Button>
+                        </Box>
+                      }
+                      sx={{ ml: comment.parentId ? 4 : 0 }}
                     />
                   </ListItem>
                   {index < comments.length - 1 && <Divider variant="inset" component="li" />}
