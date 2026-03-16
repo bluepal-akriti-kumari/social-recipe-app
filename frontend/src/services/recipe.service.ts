@@ -86,7 +86,7 @@ export const recipeService = {
     api.delete(`/comments/${commentId}`),
 
   getCloudinarySignature: (folder = 'recipes') =>
-    api.get<{ signature: string; timestamp: string; apiKey: string; cloudName: string }>(
+    api.get<{ signature: string; timestamp: string; apiKey: string; cloudName: string; folder: string }>(
       `/cloudinary/signature`, { params: { folder } }
     ).then(r => r.data),
 };

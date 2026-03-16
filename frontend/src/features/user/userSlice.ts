@@ -35,9 +35,16 @@ const userSlice = createSlice({
         state.profile.isFollowing = !state.profile.isFollowing;
         state.profile.followerCount += state.profile.isFollowing ? 1 : -1;
       }
+    },
+    updateProfileSuccess(state, action: PayloadAction<UserProfile>) {
+      state.loading = false;
+      state.profile = action.payload;
     }
   },
 });
 
-export const { fetchProfileStart, fetchProfileSuccess, fetchProfileFailure, toggleFollow } = userSlice.actions;
+export const { 
+  fetchProfileStart, fetchProfileSuccess, fetchProfileFailure, 
+  toggleFollow, updateProfileSuccess 
+} = userSlice.actions;
 export default userSlice.reducer;

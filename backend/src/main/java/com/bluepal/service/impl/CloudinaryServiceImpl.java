@@ -29,7 +29,8 @@ public class CloudinaryServiceImpl implements CloudinaryService {
                     "signature", signature,
                     "timestamp", timestamp,
                     "apiKey", cloudinary.config.apiKey,
-                    "cloudName", cloudinary.config.cloudName
+                    "cloudName", cloudinary.config.cloudName,
+                    "folder", folder
             );
         } catch (Exception e) {
             throw new RuntimeException("Could not generate Cloudinary signature", e);

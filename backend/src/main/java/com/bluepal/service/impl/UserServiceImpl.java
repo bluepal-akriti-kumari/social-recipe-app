@@ -140,4 +140,30 @@ public class UserServiceImpl implements UserService {
         userRepository.save(following);
         userRepository.save(follower);
     }
+
+    @Override
+    @Transactional
+    public UserProfileResponse updateProfile(String username, com.bluepal.dto.request.UpdateProfileRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+
+        if (request.getBio() != null) {
+            user.setBio(request.getBio());
+        }
+        if (request.getProfilePictureUrl() != null) {
+            user.setProfilePictureUrl(request.getProfilePictureUrl());
+        }
+
+        User updatedUser = userRepository.save(user);
+
+        return UserProfileResponse.builder()
+                .id(updatedUser.getId())
+                .username(updatedUser.getUsername())
+                .bio(updatedUser.getBio())
+                .profilePictureUrl(updatedUser.getProfilePictureUrl())
+                .followerCount(updatedUser.getFollowerCount())
+                .followingCount(updatedUser.getFollowingCount())
+                .isFollowing(false) // When updating own profile, isFollowing isn't really applicable or usually false
+                .build();
+    }
 }
