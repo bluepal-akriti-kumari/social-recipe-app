@@ -11,7 +11,8 @@ import type { AppDispatch, RootState } from '../../store/store';
 import { getProfileThunk, followUserThunk, unfollowUserThunk } from '../../features/user/userThunks';
 import { recipeService } from '../../services/recipe.service';
 import type { RecipeSummary } from '../../services/recipe.service';
-import RecipeCard from '../../components/recipes/RecipeCard';
+import RecipeGridItem from '../../components/recipes/RecipeGridItem';
+import EditProfileModal from '../../components/profile/EditProfileModal';
 import { useAuth } from '../../hooks/useAuth';
 
 const ProfilePage = () => {
@@ -23,6 +24,7 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
   const [recipesLoading, setRecipesLoading] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     if (username) {
@@ -103,7 +105,7 @@ const ProfilePage = () => {
                 <Typography variant="caption" color="text.secondary">Following</Typography>
               </Box>
               <Box>
-                <Typography variant="h6" fontWeight={700}>{activeTab === 0 ? recipes.length : '?'}</Typography>
+                <Typography variant="h6" fontWeight={700}>{recipes.length}</Typography>
                 <Typography variant="caption" color="text.secondary">Recipes</Typography>
               </Box>
             </Box>
@@ -111,7 +113,13 @@ const ProfilePage = () => {
 
           <Box sx={{ mb: 1 }}>
             {isOwnProfile ? (
-              <Button variant="outlined" startIcon={<EditIcon />}>Edit Profile</Button>
+              <Button 
+                variant="outlined" 
+                startIcon={<EditIcon />}
+                onClick={() => setIsEditModalOpen(true)}
+              >
+                Edit Profile
+              </Button>
             ) : (
               <Button 
                 variant={profile.isFollowing ? "outlined" : "contained"} 
@@ -139,16 +147,16 @@ const ProfilePage = () => {
           sx={{ 
             display: 'grid', 
             gridTemplateColumns: {
-              xs: '1fr',
-              sm: '1fr 1fr',
-              md: '1fr 1fr 1fr'
+              xs: 'repeat(2, 1fr)',
+              sm: 'repeat(3, 1fr)',
+              md: 'repeat(3, 1fr)'
             },
-            gap: 4 
+            gap: { xs: 1, sm: 2, md: 3 } 
           }}
         >
           {recipes.length > 0 ? (
             recipes.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
+              <RecipeGridItem key={recipe.id} recipe={recipe} />
             ))
           ) : (
             <Box sx={{ gridColumn: '1 / -1', textAlign: 'center', py: 10 }}>
@@ -158,6 +166,14 @@ const ProfilePage = () => {
             </Box>
           )}
         </Box>
+      )}
+
+      {profile && (
+        <EditProfileModal 
+          open={isEditModalOpen} 
+          onClose={() => setIsEditModalOpen(false)} 
+          profile={profile}
+        />
       )}
     </Container>
   );

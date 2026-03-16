@@ -20,4 +20,7 @@ export const userService = {
   
   unfollowUser: (username: string) => 
     api.delete(`/users/${username}/unfollow`).then(r => r.data),
+  
+  updateProfile: (data: { bio?: string; profilePictureUrl?: string }) => 
+    api.put<UserProfile>('/users/me', data).then(r => r.data),
 };
