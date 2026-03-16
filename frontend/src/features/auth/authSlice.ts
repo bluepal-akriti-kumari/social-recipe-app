@@ -5,6 +5,8 @@ interface User {
   id: number;
   username: string;
   email: string;
+  profilePictureUrl?: string;
+  coverPictureUrl?: string;
   roles: string[];
 }
 

@@ -41,6 +41,7 @@ public class UserServiceImpl implements UserService {
                 .username(user.getUsername())
                 .bio(user.getBio())
                 .profilePictureUrl(user.getProfilePictureUrl())
+                .coverPictureUrl(user.getCoverPictureUrl())
                 .followerCount(user.getFollowerCount())
                 .followingCount(user.getFollowingCount())
                 .isFollowing(isFollowing)
@@ -153,6 +154,9 @@ public class UserServiceImpl implements UserService {
         if (request.getProfilePictureUrl() != null) {
             user.setProfilePictureUrl(request.getProfilePictureUrl());
         }
+        if (request.getCoverPictureUrl() != null) {
+            user.setCoverPictureUrl(request.getCoverPictureUrl());
+        }
 
         User updatedUser = userRepository.save(user);
 
@@ -161,6 +165,7 @@ public class UserServiceImpl implements UserService {
                 .username(updatedUser.getUsername())
                 .bio(updatedUser.getBio())
                 .profilePictureUrl(updatedUser.getProfilePictureUrl())
+                .coverPictureUrl(updatedUser.getCoverPictureUrl())
                 .followerCount(updatedUser.getFollowerCount())
                 .followingCount(updatedUser.getFollowingCount())
                 .isFollowing(false) // When updating own profile, isFollowing isn't really applicable or usually false

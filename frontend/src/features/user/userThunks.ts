@@ -36,7 +36,7 @@ export const unfollowUserThunk = (username: string) => async (dispatch: AppDispa
   }
 };
 
-export const updateProfileThunk = (data: { bio?: string; profilePictureUrl?: string }) => async (dispatch: AppDispatch) => {
+export const updateProfileThunk = (data: { bio?: string; profilePictureUrl?: string; coverPictureUrl?: string }) => async (dispatch: AppDispatch) => {
   dispatch(fetchProfileStart());
   try {
     const updatedProfile = await userService.updateProfile(data);

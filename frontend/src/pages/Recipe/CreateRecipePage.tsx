@@ -88,7 +88,8 @@ const CreateRecipePage = () => {
       await recipeService.createRecipe(data);
       navigate('/feed');
     } catch (err: any) {
-      setError(err.response?.data || 'Failed to create recipe');
+      const errorMessage = err.response?.data?.error || err.response?.data || err.message || 'Failed to create recipe';
+      setError(errorMessage);
     }
   };
 
@@ -96,97 +97,158 @@ const CreateRecipePage = () => {
     switch (step) {
       case 0:
         return (
-          <Box sx={{ mt: 3 }}>
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  fullWidth label="Title" 
-                  {...register('title', { required: 'Title is required' })}
-                  error={!!errors.title} helperText={errors.title?.message}
-                />
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  fullWidth multiline rows={3} label="Description"
-                  {...register('description')}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField 
-                  fullWidth type="number" label="Prep Time (min)"
-                  {...register('prepTimeMinutes', { valueAsNumber: true })}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField 
-                  fullWidth type="number" label="Cook Time (min)"
-                  {...register('cookTimeMinutes', { valueAsNumber: true })}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField 
-                  fullWidth type="number" label="Servings"
-                  {...register('servings', { valueAsNumber: true })}
-                />
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <Box sx={{ border: '2px dashed #ccc', p: 3, textAlign: 'center', borderRadius: 2 }}>
-                  {imageUrl ? (
-                    <Box component="img" src={imageUrl} sx={{ width: '100%', maxHeight: 300, objectFit: 'cover', borderRadius: 2 }} />
-                  ) : (
-                    <label htmlFor="image-upload">
-                      <input
-                        accept="image/*" id="image-upload" type="file"
-                        style={{ display: 'none' }} onChange={handleImageUpload}
-                      />
-                      <Button variant="outlined" component="span" startIcon={uploading ? <CircularProgress size={20} /> : <CloudUploadIcon />}>
-                        {uploading ? 'Uploading...' : 'Upload Image'}
-                      </Button>
-                    </label>
-                  )}
-                </Box>
-              </Grid>
+          <Grid container spacing={4}>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth label="Recipe Title" placeholder="Give your masterpiece a name"
+                {...register('title', { required: 'Title is required' })}
+                error={!!errors.title} helperText={errors.title?.message}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+              />
             </Grid>
-          </Box>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth multiline rows={4} label="The Story" placeholder="What's the inspiration behind this recipe?"
+                {...register('description')}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField 
+                fullWidth type="number" label="Prep (min)"
+                {...register('prepTimeMinutes', { valueAsNumber: true })}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField 
+                fullWidth type="number" label="Cook (min)"
+                {...register('cookTimeMinutes', { valueAsNumber: true })}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField 
+                fullWidth type="number" label="Servings"
+                {...register('servings', { valueAsNumber: true })}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+              />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <Box 
+                sx={{ 
+                  border: '2px dashed #e2e8f0', p: 4, textAlign: 'center', borderRadius: 4,
+                  bgcolor: '#f8fafc', transition: 'all 0.3s', '&:hover': { borderColor: 'primary.main', bgcolor: '#fff5f5' }
+                }}
+              >
+                {imageUrl ? (
+                  <Box sx={{ position: 'relative' }}>
+                    <Box component="img" src={imageUrl} sx={{ width: '100%', maxHeight: 400, objectFit: 'cover', borderRadius: 4, boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
+                    <Button 
+                      variant="contained" color="error" size="small"
+                      sx={{ position: 'absolute', top: 16, right: 16, borderRadius: 2 }}
+                      onClick={() => setValue('imageUrl', '')}
+                    >
+                      Remove
+                    </Button>
+                  </Box>
+                ) : (
+                  <label htmlFor="image-upload" style={{ cursor: 'pointer' }}>
+                    <input
+                      accept="image/*" id="image-upload" type="file"
+                      style={{ display: 'none' }} onChange={handleImageUpload}
+                    />
+                    <Box sx={{ py: 4 }}>
+                      <CloudUploadIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                      <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>Upload Cover Photo</Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>High quality photos make recipes look better</Typography>
+                      <Button variant="contained" component="span" disabled={uploading} sx={{ borderRadius: 3, px: 4 }}>
+                        {uploading ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Choose Image'}
+                      </Button>
+                    </Box>
+                  </label>
+                )}
+              </Box>
+            </Grid>
+          </Grid>
         );
       case 1:
         return (
-          <Box sx={{ mt: 3 }}>
-            <Typography variant="h6" gutterBottom>Ingredients</Typography>
-            {ingredientFields.map((field, index) => (
-              <Box key={field.id} sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
-                <TextField size="small" label="Name" sx={{ flex: 2 }} {...register(`ingredients.${index}.name` as const, { required: true })} />
-                <TextField size="small" label="Qty" sx={{ flex: 1 }} {...register(`ingredients.${index}.quantity` as const, { required: true })} />
-                <TextField size="small" label="Unit" sx={{ flex: 1 }} {...register(`ingredients.${index}.unit` as const)} />
-                <IconButton onClick={() => removeIngredient(index)} color="error">
-                  <DeleteIcon />
-                </IconButton>
-              </Box>
-            ))}
-            <Button startIcon={<AddIcon />} onClick={() => appendIngredient({ name: '', quantity: '', unit: '' })}>
-              Add Ingredient
-            </Button>
+          <Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>Ingredients</Typography>
+              <Button 
+                startIcon={<AddIcon />} 
+                variant="outlined"
+                sx={{ borderRadius: 3 }}
+                onClick={() => appendIngredient({ name: '', quantity: '', unit: '' })}
+              >
+                Add Row
+              </Button>
+            </Box>
+            
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+              {ingredientFields.map((field, index) => (
+                <Box key={field.id} className="animate-fade-in" sx={{ display: 'flex', gap: 2, alignItems: 'center', p: 2.5, borderRadius: 4, border: '1px solid #e2e8f0', bgcolor: 'white' }}>
+                  <TextField 
+                    label="Ingredient name" variant="standard"
+                    sx={{ flex: 3 }} 
+                    {...register(`ingredients.${index}.name` as const, { required: true })} 
+                  />
+                  <TextField 
+                    label="Qty" variant="standard"
+                    sx={{ flex: 1 }} 
+                    {...register(`ingredients.${index}.quantity` as const, { required: true })} 
+                  />
+                  <TextField 
+                    label="Unit" variant="standard"
+                    sx={{ flex: 1 }} 
+                    {...register(`ingredients.${index}.unit` as const)} 
+                  />
+                  <IconButton onClick={() => removeIngredient(index)} color="error" size="small" sx={{ bgcolor: '#fff5f5', '&:hover': { bgcolor: '#fee2e2' } }}>
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
+              ))}
+            </Box>
           </Box>
         );
       case 2:
         return (
-          <Box sx={{ mt: 3 }}>
-            <Typography variant="h6" gutterBottom>Cooking Steps</Typography>
-            {stepFields.map((field, index) => (
-              <Box key={field.id} sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'flex-start' }}>
-                <Typography variant="subtitle1" sx={{ mt: 1, fontWeight: 700 }}>{index + 1}.</Typography>
-                <TextField 
-                  fullWidth multiline rows={2} label="Instruction" 
-                  {...register(`steps.${index}.instruction` as const, { required: true })} 
-                />
-                <IconButton onClick={() => removeStep(index)} color="error" sx={{ mt: 1 }}>
-                  <DeleteIcon />
-                </IconButton>
-              </Box>
-            ))}
-            <Button startIcon={<AddIcon />} onClick={() => appendStep({ stepNumber: stepFields.length + 1, instruction: '' })}>
-              Add Step
-            </Button>
+          <Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>Step by Step</Typography>
+              <Button 
+                startIcon={<AddIcon />} 
+                variant="outlined"
+                sx={{ borderRadius: 3 }}
+                onClick={() => appendStep({ stepNumber: stepFields.length + 1, instruction: '' })}
+              >
+                Add Step
+              </Button>
+            </Box>
+
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {stepFields.map((field, index) => (
+                <Box key={field.id} className="animate-fade-in" sx={{ display: 'flex', gap: 3, p: 3, borderRadius: 4, border: '1px solid #e2e8f0', bgcolor: 'white' }}>
+                  <Box sx={{ 
+                    minWidth: 32, height: 32, borderRadius: '50%', 
+                    bgcolor: 'primary.main', color: 'white', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 800, fontSize: '0.9rem', mt: 1, boxShadow: '0 4px 10px rgba(239, 68, 68, 0.2)'
+                  }}>
+                    {index + 1}
+                  </Box>
+                  <TextField 
+                    fullWidth multiline rows={3} label="Describe this step" variant="standard"
+                    {...register(`steps.${index}.instruction` as const, { required: true })} 
+                  />
+                  <IconButton onClick={() => removeStep(index)} color="error" size="small" sx={{ alignSelf: 'center', bgcolor: '#fff5f5', '&:hover': { bgcolor: '#fee2e2' } }}>
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
+              ))}
+            </Box>
           </Box>
         );
       default:
