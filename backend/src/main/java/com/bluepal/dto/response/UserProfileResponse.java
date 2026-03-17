@@ -14,6 +14,7 @@ public class UserProfileResponse {
     private String username;
     private String bio;
     private String profilePictureUrl;
+    private String coverPictureUrl;
     private Integer followerCount;
     private Integer followingCount;
     private Boolean isFollowing; // True if the current requesting user follows this user

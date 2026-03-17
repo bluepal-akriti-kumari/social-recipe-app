@@ -39,6 +39,9 @@ public class User {
     @Column(name = "profile_picture_url")
     private String profilePictureUrl;
 
+    @Column(name = "cover_picture_url")
+    private String coverPictureUrl;
+
     @Builder.Default
     @Column(name = "follower_count", nullable = false)
     private Integer followerCount = 0;

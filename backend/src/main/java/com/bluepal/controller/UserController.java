@@ -56,4 +56,14 @@ public class UserController {
         userService.unfollowUser(currentUsername, username);
         return ResponseEntity.ok("Successfully unfollowed user " + username);
     }
+
+    @PutMapping("/me")
+    public ResponseEntity<UserProfileResponse> updateProfile(@RequestBody com.bluepal.dto.request.UpdateProfileRequest request) {
+        String currentUsername = getCurrentUsername();
+        if (currentUsername == null) {
+            return ResponseEntity.status(401).build();
+        }
+        UserProfileResponse response = userService.updateProfile(currentUsername, request);
+        return ResponseEntity.ok(response);
+    }
 }
