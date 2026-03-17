@@ -18,6 +18,7 @@ export interface RecipeSummary {
   title: string;
   description: string;
   imageUrl: string;
+  additionalImages?: string[];
   prepTimeMinutes: number;
   cookTimeMinutes: number;
   servings: number;

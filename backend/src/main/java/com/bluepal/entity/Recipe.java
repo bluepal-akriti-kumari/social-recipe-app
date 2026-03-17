@@ -54,6 +54,10 @@ public class Recipe {
     private List<Step> steps = new ArrayList<>();
 
     @Builder.Default
+    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RecipeImage> images = new ArrayList<>();
+
+    @Builder.Default
     @Column(name = "like_count", nullable = false)
     private Integer likeCount = 0;
 
@@ -100,5 +104,15 @@ public class Recipe {
     public void removeStep(Step step) {
         steps.remove(step);
         step.setRecipe(null);
+    }
+
+    public void addImage(RecipeImage image) {
+        images.add(image);
+        image.setRecipe(this);
+    }
+
+    public void removeImage(RecipeImage image) {
+        images.remove(image);
+        image.setRecipe(null);
     }
 }

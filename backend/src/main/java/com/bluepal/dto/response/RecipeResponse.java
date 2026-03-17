@@ -17,6 +17,7 @@ public class RecipeResponse {
     private String title;
     private String description;
     private String imageUrl;
+    private List<String> additionalImages;
     private Integer prepTimeMinutes;
     private Integer cookTimeMinutes;
     private Integer servings;

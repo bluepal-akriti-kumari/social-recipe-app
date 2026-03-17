@@ -12,7 +12,9 @@ import ProfilePage from './pages/Profile/ProfilePage';
 import MealPlannerPage from './pages/Planner/MealPlannerPage';
 import ShoppingListPage from './pages/Shopping/ShoppingListPage';
 import { ModalProvider } from './context/ModalContext';
+import { WebSocketProvider } from './hooks/useWebSocket';
 import CreateRecipeModal from './components/recipes/CreateRecipeModal';
+import SettingsPage from './pages/Settings/SettingsPage';
 
 const PrivateRoute = () => {
   const { isAuthenticated } = useAuth();
@@ -23,6 +25,7 @@ const App = () => {
   return (
     <BrowserRouter>
       <ModalProvider>
+        <WebSocketProvider>
         <Navbar />
         <Box sx={{ mt: { xs: 7, sm: 8 }, pb: { xs: 8, sm: 0 }, minHeight: '100vh' }}>
           <Routes>
@@ -37,6 +40,7 @@ const App = () => {
               <Route path="/profile/:username" element={<ProfilePage />} />
               <Route path="/planner" element={<MealPlannerPage />} />
               <Route path="/shopping" element={<ShoppingListPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Route>
 
             {/* Default Redirect */}
@@ -44,8 +48,9 @@ const App = () => {
           </Routes>
         </Box>
         <MobileBottomNav />
-        <NotificationToaster />
-        <CreateRecipeModal />
+          <NotificationToaster />
+          <CreateRecipeModal />
+        </WebSocketProvider>
       </ModalProvider>
     </BrowserRouter>
   );
