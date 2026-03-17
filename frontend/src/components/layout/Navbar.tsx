@@ -370,7 +370,7 @@ const Navbar = () => {
                 >
                   My Profile
                 </MenuItem>
-                {user?.roles?.includes('ROLE_ADMIN') && (
+                {(user?.roles?.includes('ROLE_ADMIN') || user?.roles?.includes('ROLE_MODERATOR')) && (
                   <MenuItem 
                     onClick={() => { navigate('/admin'); handleClose(); }}
                     sx={{ borderRadius: '12px', py: 1.5, fontWeight: 700, color: 'primary.main' }}

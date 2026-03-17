@@ -16,6 +16,9 @@ import { WebSocketProvider } from './hooks/useWebSocket';
 import CreateRecipeModal from './components/recipes/CreateRecipeModal';
 import SettingsPage from './pages/Settings/SettingsPage';
 import AdminDashboard from './pages/Admin/AdminDashboard';
+import CommunitiesPage from './pages/Community/CommunitiesPage';
+import CommunityDetailPage from './pages/Community/CommunityDetailPage';
+import ImporterPage from './pages/Recipe/ImporterPage';
 
 const PrivateRoute = () => {
   const { isAuthenticated } = useAuth();
@@ -39,15 +42,18 @@ const App = () => {
             {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/feed" element={<FeedPage />} />
+            <Route path="/recipes/:id" element={<RecipeDetailPage />} />
+            <Route path="/profile/:username" element={<ProfilePage />} />
+            <Route path="/communities" element={<CommunitiesPage />} />
+            <Route path="/communities/:id" element={<CommunityDetailPage />} />
 
             {/* Protected Routes */}
             <Route element={<PrivateRoute />}>
-              <Route path="/feed" element={<FeedPage />} />
-              <Route path="/recipes/:id" element={<RecipeDetailPage />} />
-              <Route path="/profile/:username" element={<ProfilePage />} />
               <Route path="/planner" element={<MealPlannerPage />} />
               <Route path="/shopping" element={<ShoppingListPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/import" element={<ImporterPage />} />
             </Route>
 
             <Route element={<AdminRoute />}>

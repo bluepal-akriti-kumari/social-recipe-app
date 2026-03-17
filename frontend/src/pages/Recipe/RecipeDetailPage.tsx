@@ -13,6 +13,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SendIcon from '@mui/icons-material/Send';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import ShareIcon from '@mui/icons-material/Share';
 import DescriptionIcon from '@mui/icons-material/Description';
@@ -93,20 +94,62 @@ const RecipeDetailPage = () => {
     onError: () => toast.error('Failed to add ingredients'),
   });
 
+  const bookmarkMutation = useMutation({
+    mutationFn: () => recipeService.bookmarkRecipe(recipeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recipes', recipeId] });
+      toast.success(recipeDetail?.isBookmarked ? 'Removed from bookmarks' : 'Added to bookmarks');
+    },
+  });
+
+  const deleteRecipeMutation = useMutation({
+    mutationFn: () => recipeService.deleteRecipe(recipeId),
+    onSuccess: () => {
+      toast.success('Recipe deleted successfully');
+      navigate('/feed');
+    },
+    onError: () => toast.error('Failed to delete recipe'),
+  });
+
   // --- Handlers ---
-  const handleLike = () => likeMutation.mutate();
+  const handleLike = () => {
+    if (!currentUser) return navigate('/login');
+    likeMutation.mutate();
+  };
   const handleCommentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (commentText.trim()) addCommentMutation.mutate(commentText);
+    if (!currentUser) return navigate('/login');
+    if (!commentText.trim()) return;
+    addCommentMutation.mutate(commentText);
   };
 
   const handleAddToShopping = async () => {
+    if (!currentUser) return navigate('/login');
     if (!recipeDetail) return;
     addToShoppingMutation.mutate();
   };
 
   const handleDeleteComment = async (commentId: number) => {
-    deleteCommentMutation.mutate(commentId);
+    if (window.confirm('Delete this comment?')) {
+      deleteCommentMutation.mutate(commentId);
+    }
+  };
+
+  const handleBookmark = () => {
+    if (!currentUser) return navigate('/login');
+    bookmarkMutation.mutate();
+  };
+
+  const handleShare = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url);
+    toast.success('Recipe link copied to clipboard!');
+  };
+
+  const handleDeleteRecipe = () => {
+    if (window.confirm('Are you sure you want to delete this recipe? This action cannot be undone.')) {
+      deleteRecipeMutation.mutate();
+    }
   };
 
   // Image logic
@@ -200,17 +243,21 @@ const RecipeDetailPage = () => {
               >
                 <IconButton 
                   size="large"
+                  onClick={handleBookmark}
+                  disabled={bookmarkMutation.isPending}
                   sx={{ 
                     bgcolor: 'rgba(255,255,255,0.8)', 
                     backdropFilter: 'blur(20px)',
                     boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                    color: recipeDetail?.isBookmarked ? 'primary.main' : 'inherit',
                     '&:hover': { bgcolor: 'white', transform: 'translateY(-2px)' } 
                   }}
                 >
-                  <BookmarkBorderIcon />
+                  {recipeDetail?.isBookmarked ? <BookmarkIcon /> : <BookmarkBorderIcon />}
                 </IconButton>
                 <IconButton 
                   size="large"
+                  onClick={handleShare}
                   sx={{ 
                     bgcolor: 'rgba(255,255,255,0.8)', 
                     backdropFilter: 'blur(20px)',
@@ -226,19 +273,33 @@ const RecipeDetailPage = () => {
             <Typography variant="h1" sx={{ fontWeight: 950, mb: 3, letterSpacing: '-0.04em', lineHeight: 1, fontSize: { xs: '2.5rem', md: '4.5rem' } }}>
               {recipeDetail.title}
             </Typography>
-            {currentUser && recipeDetail.author.username === (currentUser as any).username && (
-              <Box sx={{ mb: 3 }}>
+            <Box sx={{ mb: 3, display: 'flex', gap: 1 }}>
+              {currentUser && recipeDetail.author.username === (currentUser as any).username && (
                 <Button
                   variant="outlined"
                   startIcon={<EditIcon />}
                   size="small"
                   onClick={() => navigate(`/recipes/${recipeDetail.id}/edit`)}
-                  sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 800, mr: 1 }}
+                  sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 800 }}
                 >
                   Edit Recipe
                 </Button>
-              </Box>
-            )}
+              )}
+              {currentUser && ((currentUser as any).username === recipeDetail.author.username || 
+                (currentUser as any).roles?.some((r: any) => r === 'ROLE_ADMIN' || r === 'ROLE_MODERATOR')) && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteOutlineIcon />}
+                  size="small"
+                  onClick={handleDeleteRecipe}
+                  disabled={deleteRecipeMutation.isPending}
+                  sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 800 }}
+                >
+                  Delete Recipe
+                </Button>
+              )}
+            </Box>
             
             <Box 
               className="glass-card"
@@ -328,10 +389,13 @@ const RecipeDetailPage = () => {
                     <TextField 
                       fullWidth 
                       multiline
-                      rows={3}
-                      placeholder={replyingTo ? "Write a thoughtful reply..." : "Share your thoughts on this culinary masterpiece..."} 
+                      rows={currentUser ? 3 : 1}
+                      placeholder={currentUser ? "Share your thoughts on this culinary masterpiece..." : "Sign in to share your thoughts..."} 
                       variant="outlined"
-                      value={commentText} onChange={(e) => setCommentText(e.target.value)}
+                      value={commentText} 
+                      onChange={(e) => setCommentText(e.target.value)}
+                      onClick={() => { if (!currentUser) navigate('/login'); }}
+                      disabled={addCommentMutation.isPending}
                       sx={{
                         '& .MuiOutlinedInput-root': { 
                           borderRadius: '8px', 
@@ -343,27 +407,30 @@ const RecipeDetailPage = () => {
                       }}
                     />
                   </Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <Button 
-                      type="submit" 
-                      variant="contained" 
-                      endIcon={<SendIcon />} 
-                      sx={{ 
-                        borderRadius: '14px', 
-                        px: 5, 
-                        py: 1.5, 
-                        fontWeight: 900,
-                        boxShadow: '0 8px 24px rgba(99, 102, 241, 0.25)'
-                      }}
-                    >
-                      Post Thought
-                    </Button>
-                  </Box>
+                  {currentUser && (
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <Button 
+                        type="submit" 
+                        variant="contained" 
+                        endIcon={addCommentMutation.isPending ? <CircularProgress size={20} color="inherit" /> : <SendIcon />} 
+                        disabled={!commentText.trim() || addCommentMutation.isPending}
+                        sx={{ 
+                          borderRadius: '14px', 
+                          px: 5, 
+                          py: 1.5, 
+                          fontWeight: 900,
+                          boxShadow: '0 8px 24px rgba(99, 102, 241, 0.25)'
+                        }}
+                      >
+                        {addCommentMutation.isPending ? 'Posting...' : 'Post Thought'}
+                      </Button>
+                    </Box>
+                  )}
                 </Box>
               </Paper>
               
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {comments.map((comment, index) => (
+                {comments.map((comment: any, index: number) => (
                   <motion.div 
                     key={comment.id || index}
                     initial={{ opacity: 0, x: -20 }}
@@ -408,12 +475,13 @@ const RecipeDetailPage = () => {
                           >
                             Reply
                           </Button>
-                          {currentUser && (currentUser as any).username === comment.username && (
+                          {currentUser && ((currentUser as any).username === comment.username || 
+                            (currentUser as any).roles?.some((r: any) => r === 'ROLE_ADMIN' || r === 'ROLE_MODERATOR')) && (
                             <Button 
                               size="small" 
                               startIcon={deleteCommentMutation.isPending && deleteCommentMutation.variables === comment.id ? <CircularProgress size={14} /> : <DeleteOutlineIcon sx={{ fontSize: '18px !important' }} />}
                               sx={{ p: 0, minWidth: 0, color: 'error.main', fontWeight: 800, textTransform: 'none', ml: 2, '&:hover': { opacity: 0.8 } }}
-                              onClick={() => deleteCommentMutation.mutate(comment.id)}
+                              onClick={() => handleDeleteComment(comment.id)}
                               disabled={deleteCommentMutation.isPending}
                             >
                               Delete

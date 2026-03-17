@@ -25,6 +25,7 @@ export interface RecipeSummary {
   likeCount: number;
   commentCount: number;
   isLiked: boolean;
+  isBookmarked?: boolean;
   createdAt: string;
   author: {
     id: number;
@@ -48,8 +49,8 @@ export interface CursorResponse<T> {
 
 export const recipeService = {
   // Updated for Cursor-based Pagination
-  getExploreFeed: (cursor?: string, size = 12): Promise<CursorResponse<RecipeSummary>> =>
-    api.get(`/feed/explore`, { params: { cursor, size } }).then(r => r.data),
+  getExploreFeed: (cursor?: string, category?: string, size = 12): Promise<CursorResponse<RecipeSummary>> =>
+    api.get(`/feed/explore`, { params: { cursor, category, size } }).then(r => r.data),
 
   getPersonalizedFeed: (cursor?: string, size = 12): Promise<CursorResponse<RecipeSummary>> =>
     api.get(`/feed/personalized`, { params: { cursor, size } }).then(r => r.data),
@@ -78,6 +79,9 @@ export const recipeService = {
 
   likeRecipe: (id: number) =>
     api.post(`/recipes/${id}/like`).then(r => r.data),
+
+  bookmarkRecipe: (id: number) =>
+    api.post(`/bookmarks/${id}`).then(r => r.data),
 
   getComments: (recipeId: number, page = 0, size = 20) =>
     api.get(`/recipes/${recipeId}/comments`, { params: { page, size } }).then(r => r.data),

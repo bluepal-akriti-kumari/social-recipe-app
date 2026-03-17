@@ -156,6 +156,35 @@ public class InteractionController {
                 .map(this::mapToCommentResponse));
     }
 
+    @DeleteMapping("/comments/{id}")
+    @Transactional
+    public ResponseEntity<?> deleteComment(@PathVariable("id") Long id) {
+        String username = getCurrentUsername();
+        if (username == null) return ResponseEntity.status(401).body("Auth required");
+
+        Comment comment = commentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", id));
+        
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+
+        // RBAC: Author, Moderator, or Admin can delete
+        boolean isAuthor = comment.getUser().getUsername().equals(username);
+        boolean isModeratorOrAdmin = user.getRoles().stream()
+                .anyMatch(r -> r.equals("ROLE_MODERATOR") || r.equals("ROLE_ADMIN"));
+
+        if (!isAuthor && !isModeratorOrAdmin) {
+            return ResponseEntity.status(403).body("Not authorized to delete this comment");
+        }
+
+        Recipe recipe = comment.getRecipe();
+        recipe.setCommentCount(Math.max(0, recipe.getCommentCount() - 1));
+        recipeRepository.save(recipe);
+        
+        commentRepository.delete(comment);
+        return ResponseEntity.ok("Comment deleted successfully");
+    }
+
     private CommentResponse mapToCommentResponse(Comment comment) {
         return CommentResponse.builder()
                 .id(comment.getId())

@@ -1,17 +1,21 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Container, Typography, Box, CircularProgress, Alert, Grid } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import RecipeCard from '../../components/recipes/RecipeCard';
-import HeroCarousel from '../../components/home/HeroCarousel';
+import FeaturedRecipeCarousel from '../../components/discovery/FeaturedRecipeCarousel';
+import CategoryQuickBar from '../../components/discovery/CategoryQuickBar';
 import CommunitySidebar from '../../components/home/CommunitySidebar';
 import { recipeService } from '../../services/recipe.service';
+import { toast } from 'react-hot-toast';
 
 const FeedPage = () => {
   const location = useLocation();
+  const queryClient = useQueryClient();
   const queryParams = new URLSearchParams(location.search);
   const searchQuery = queryParams.get('q');
+  const [selectedCategory, setSelectedCategory] = useState('');
 
   // --- Search Results (Static Query) ---
   const { 
@@ -33,8 +37,8 @@ const FeedPage = () => {
     isLoading: isExploreLoading,
     error: exploreError,
   } = useInfiniteQuery({
-    queryKey: ['recipes', 'explore'],
-    queryFn: ({ pageParam }) => recipeService.getExploreFeed(pageParam),
+    queryKey: ['recipes', 'explore', selectedCategory],
+    queryFn: ({ pageParam }) => recipeService.getExploreFeed(pageParam, selectedCategory),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
     enabled: !searchQuery,
@@ -61,13 +65,26 @@ const FeedPage = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, searchQuery]);
 
-  const handleLike = (id: number) => {
-    // In a full React Query implementation, we'd use useMutation and queryClient.invalidateQueries
-    // For now, let's just trigger the service call and then invalidate
-    recipeService.likeRecipe(id).then(() => {
-      // Logic for optimistic update or invalidation
-    });
-  };
+  // --- Mutations ---
+  const likeMutation = useMutation({
+    mutationFn: (id: number) => recipeService.likeRecipe(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recipes'] });
+    },
+    onError: () => toast.error('Failed to like recipe'),
+  });
+
+  const bookmarkMutation = useMutation({
+    mutationFn: (id: number) => recipeService.bookmarkRecipe(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recipes'] });
+      // We could be more specific but this ensures all feeds stay synced
+    },
+    onError: () => toast.error('Failed to bookmark recipe'),
+  });
+
+  const handleLike = (id: number) => likeMutation.mutate(id);
+  const handleBookmark = (id: number) => bookmarkMutation.mutate(id);
 
   const currentLoading = searchQuery ? isSearchLoading : isExploreLoading;
   const currentError = searchQuery ? (searchError as any)?.message : (exploreError as any)?.message;
@@ -82,9 +99,14 @@ const FeedPage = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, ease: 'easeOut' }}
           >
-            <HeroCarousel recipes={displayFeed.slice(0, 5)} />
+            <FeaturedRecipeCarousel />
           </motion.div>
         )}
+
+        <CategoryQuickBar 
+          selectedCategory={selectedCategory} 
+          onSelect={setSelectedCategory} 
+        />
 
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -135,7 +157,7 @@ const FeedPage = () => {
         )}
 
         <Grid container spacing={5}>
-          <Grid item xs={12} lg={searchQuery ? 12 : 8.5}>
+          <Grid size={{ xs: 12, lg: searchQuery ? 12 : 8.5 }}>
             <AnimatePresence mode="popLayout">
               <Box 
                 sx={{ 
@@ -161,6 +183,7 @@ const FeedPage = () => {
                     <RecipeCard 
                       recipe={recipe} 
                       onLike={handleLike} 
+                      onBookmark={handleBookmark}
                     />
                   </motion.div>
                 ))}
@@ -189,7 +212,7 @@ const FeedPage = () => {
           </Grid>
 
           {!searchQuery && (
-            <Grid item lg={3.5} sx={{ display: { xs: 'none', lg: 'block' } }}>
+            <Grid size={{ lg: 3.5 }} sx={{ display: { xs: 'none', lg: 'block' } }}>
               <CommunitySidebar />
             </Grid>
           )}

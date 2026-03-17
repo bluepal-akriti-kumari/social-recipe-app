@@ -16,6 +16,7 @@ import RecipeCard from '../../components/recipes/RecipeCard';
 import EditProfileModal from '../../components/profile/EditProfileModal';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../services/api';
+import { toast } from 'react-hot-toast';
 
 const ProfilePage = () => {
   const { username } = useParams<{ username: string }>();
@@ -59,6 +60,27 @@ const ProfilePage = () => {
   });
 
   const handleFollowToggle = () => followMutation.mutate();
+
+  const likeMutation = useMutation({
+    mutationFn: (id: number) => recipeService.likeRecipe(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles', username, 'recipes'] });
+      queryClient.invalidateQueries({ queryKey: ['recipes'] });
+    },
+    onError: () => toast.error('Failed to update like'),
+  });
+
+  const bookmarkMutation = useMutation({
+    mutationFn: (id: number) => recipeService.bookmarkRecipe(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles', username, 'recipes'] });
+      queryClient.invalidateQueries({ queryKey: ['recipes'] });
+    },
+    onError: () => toast.error('Failed to update bookmark'),
+  });
+
+  const handleLike = (id: number) => likeMutation.mutate(id);
+  const handleBookmark = (id: number) => bookmarkMutation.mutate(id);
 
   if (isProfileLoading && !profile) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
@@ -280,7 +302,11 @@ const ProfilePage = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1, duration: 0.6 }}
                 >
-                  <RecipeCard recipe={recipe} onLike={() => { /* Handle like */ }} />
+                  <RecipeCard 
+                    recipe={recipe} 
+                    onLike={handleLike} 
+                    onBookmark={handleBookmark}
+                  />
                 </motion.div>
               ))
             ) : (
