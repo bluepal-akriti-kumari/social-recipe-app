@@ -56,6 +56,17 @@ public class User {
     @Builder.Default
     private Set<String> roles = new HashSet<>(Set.of("ROLE_USER"));
 
+    @Builder.Default
+    @Column(name = "is_verified", nullable = false)
+    private boolean isVerified = false;
+
+    @Builder.Default
+    @Column(name = "reputation_points", nullable = false)
+    private Integer reputationPoints = 0;
+
+    @Column(name = "reputation_level", length = 50)
+    private String reputationLevel;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

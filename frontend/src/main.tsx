@@ -4,6 +4,7 @@ import { Provider } from 'react-redux'
 import { ThemeProvider, CssBaseline } from '@mui/material'
 import { store } from './store/store'
 import theme from './theme/muiTheme'
+import { WebSocketProvider } from './hooks/useWebSocket'
 import './index.css'
 import App from './App.tsx'
 
@@ -12,7 +13,9 @@ createRoot(document.getElementById('root')!).render(
     <Provider store={store}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <App />
+        <WebSocketProvider>
+          <App />
+        </WebSocketProvider>
       </ThemeProvider>
     </Provider>
   </StrictMode>,
