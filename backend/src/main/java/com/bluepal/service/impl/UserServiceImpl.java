@@ -17,10 +17,13 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final FollowRepository followRepository;
+    private final com.bluepal.service.NotificationService notificationService;
 
-    public UserServiceImpl(UserRepository userRepository, FollowRepository followRepository) {
+    public UserServiceImpl(UserRepository userRepository, FollowRepository followRepository,
+                           com.bluepal.service.NotificationService notificationService) {
         this.userRepository = userRepository;
         this.followRepository = followRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -45,6 +48,9 @@ public class UserServiceImpl implements UserService {
                 .followerCount(user.getFollowerCount())
                 .followingCount(user.getFollowingCount())
                 .isFollowing(isFollowing)
+                .isVerified(user.isVerified())
+                .reputationPoints(user.getReputationPoints())
+                .reputationLevel(user.getReputationLevel())
                 .build();
     }
 
@@ -135,6 +141,15 @@ public class UserServiceImpl implements UserService {
 
             following.setFollowerCount(following.getFollowerCount() + 1);
             follower.setFollowingCount(follower.getFollowingCount() + 1);
+
+            // Send Notification
+            notificationService.createAndSendNotification(
+                    following,
+                    follower,
+                    com.bluepal.entity.NotificationType.FOLLOW,
+                    null,
+                    follower.getUsername() + " started following you"
+            );
         }
 
         // Persist updated counts to the database
@@ -168,7 +183,36 @@ public class UserServiceImpl implements UserService {
                 .coverPictureUrl(updatedUser.getCoverPictureUrl())
                 .followerCount(updatedUser.getFollowerCount())
                 .followingCount(updatedUser.getFollowingCount())
-                .isFollowing(false) // When updating own profile, isFollowing isn't really applicable or usually false
+                .isFollowing(false)
+                .isVerified(updatedUser.isVerified())
+                .reputationPoints(updatedUser.getReputationPoints())
+                .reputationLevel(updatedUser.getReputationLevel())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void updateReputation(String username, int points) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+        
+        user.setReputationPoints(user.getReputationPoints() + points);
+        
+        // Update level based on points
+        if (user.getReputationPoints() >= 5000) {
+            user.setReputationLevel("Michelin Star Chef");
+            user.setVerified(true);
+        } else if (user.getReputationPoints() >= 2000) {
+            user.setReputationLevel("Executive Chef");
+            user.setVerified(true);
+        } else if (user.getReputationPoints() >= 1000) {
+            user.setReputationLevel("Sous Chef");
+        } else if (user.getReputationPoints() >= 500) {
+            user.setReputationLevel("Chef de Partie");
+        } else {
+            user.setReputationLevel("Commis Chef");
+        }
+        
+        userRepository.save(user);
     }
 }

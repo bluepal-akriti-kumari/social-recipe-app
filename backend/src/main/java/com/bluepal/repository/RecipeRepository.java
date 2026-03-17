@@ -24,6 +24,15 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
            "AND r.createdAt < :cursor ORDER BY r.createdAt DESC")
     List<Recipe> findPersonalizedCursor(@Param("user") User user, @Param("cursor") LocalDateTime cursor, Pageable pageable);
 
+    // Trending recipes based on likes and rating (simplified)
+    @Query("SELECT r FROM Recipe r ORDER BY (r.likeCount + r.ratingCount) DESC")
+    List<Recipe> findTrending(Pageable pageable);
+
+    List<Recipe> findByCategoryOrderByCreatedAtDesc(com.bluepal.entity.RecipeCategory category, Pageable pageable);
+
+    @Query("SELECT r FROM Recipe r WHERE r.category = :category AND r.createdAt < :cursor ORDER BY r.createdAt DESC")
+    List<Recipe> findExploreCursorWithCategory(@Param("category") com.bluepal.entity.RecipeCategory category, @Param("cursor") LocalDateTime cursor, Pageable pageable);
+
     // Full-text search for ingredients using PostgreSQL GIN index
     @Query(value = "SELECT DISTINCT r.* FROM recipes r " +
            "JOIN ingredients i ON r.id = i.recipe_id " +

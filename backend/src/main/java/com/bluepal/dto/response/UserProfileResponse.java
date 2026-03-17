@@ -17,5 +17,8 @@ public class UserProfileResponse {
     private String coverPictureUrl;
     private Integer followerCount;
     private Integer followingCount;
-    private Boolean isFollowing; // True if the current requesting user follows this user
+    private Boolean isFollowing;
+    private Boolean isVerified;
+    private Integer reputationPoints;
+    private String reputationLevel;
 }

@@ -73,85 +73,140 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, prof
   };
 
   return (
-    <Modal open={open} onClose={onClose} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <Modal 
+      open={open} 
+      onClose={onClose} 
+      sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        backdropFilter: 'blur(8px)' 
+      }}
+    >
       <Box sx={{ 
         width: { xs: '95%', sm: 500 }, 
-        bgcolor: 'background.paper', 
-        borderRadius: 6, 
+        bgcolor: 'rgba(255, 255, 255, 0.98)', 
+        borderRadius: 2, 
         overflow: 'hidden',
-        boxShadow: '0 25px 50px rgba(0,0,0,0.1)',
-        outline: 'none'
+        boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+        outline: 'none',
+        border: '1px solid rgba(0,0,0,0.05)',
+        position: 'relative'
       }}>
         {/* Header/Cover Preview */}
-        <Box sx={{ position: 'relative', height: 140, bgcolor: '#f1f5f9' }}>
+        <Box sx={{ position: 'relative', height: 180, bgcolor: '#f1f5f9' }}>
           {coverImage ? (
             <Box component="img" src={coverImage} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <Box sx={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #ef4444 0%, #f97316 100%)', opacity: 0.8 }} />
+            <Box sx={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', opacity: 0.9 }} />
           )}
+          <Box className="card-overlay" />
+          
           <IconButton 
             component="label"
             sx={{ 
-              position: 'absolute', top: 12, right: 12, bgcolor: 'rgba(255,255,255,0.8)', 
-              '&:hover': { bgcolor: 'white' }, backdropFilter: 'blur(4px)' 
+              position: 'absolute', top: 20, right: 20, 
+              bgcolor: 'rgba(255,255,255,0.85)', 
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+              '&:hover': { bgcolor: 'white', transform: 'scale(1.1)' },
+              transition: 'all 0.3s ease'
             }}
-            size="small"
           >
             <input hidden accept="image/*" type="file" onChange={(e) => handleImageUpload(e, 'cover')} />
-            {uploadingCover ? <CircularProgress size={20} /> : <PhotoCameraIcon fontSize="small" />}
+            {uploadingCover ? <CircularProgress size={24} /> : <PhotoCameraIcon />}
           </IconButton>
           
-          <IconButton onClick={onClose} sx={{ position: 'absolute', top: 12, left: 12, bgcolor: 'rgba(0,0,0,0.2)', color: 'white', '&:hover': { bgcolor: 'rgba(0,0,0,0.4)' } }} size="small">
-            <CloseIcon fontSize="small" />
+          <IconButton 
+            onClick={onClose} 
+            sx={{ 
+              position: 'absolute', top: 20, left: 20, 
+              bgcolor: 'rgba(0,0,0,0.3)', 
+              color: 'white', 
+              backdropFilter: 'blur(10px)',
+              '&:hover': { bgcolor: 'rgba(0,0,0,0.5)', transform: 'rotate(90deg)' },
+              transition: 'all 0.3s ease'
+            }}
+          >
+            <CloseIcon />
           </IconButton>
         </Box>
 
         <Box sx={{ p: 4, pt: 0 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: -6, mb: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: -8, mb: 4 }}>
             <Box sx={{ position: 'relative' }}>
               <Avatar 
                 src={image} 
-                sx={{ width: 100, height: 100, border: '4px solid white', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                sx={{ 
+                  width: 110, 
+                  height: 110, 
+                  border: '4px solid white', 
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+                  bgcolor: 'primary.main',
+                  fontSize: '2.5rem',
+                  fontWeight: 900
+                }}
               >
                 {profile.username[0].toUpperCase()}
               </Avatar>
               <IconButton 
                 component="label" 
                 sx={{ 
-                  position: 'absolute', bottom: 0, right: 0, 
+                  position: 'absolute', bottom: 8, right: 8, 
                   bgcolor: 'primary.main', color: 'white',
-                  '&:hover': { bgcolor: 'primary.dark' },
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                  '&:hover': { bgcolor: 'primary.dark', transform: 'scale(1.05)' },
+                  boxShadow: '0 4px 12px rgba(44, 62, 80, 0.3)',
+                  p: 1,
+                  transition: 'all 0.3s ease'
                 }}
-                size="small"
                 disabled={uploading}
               >
                 <input hidden accept="image/*" type="file" onChange={(e) => handleImageUpload(e, 'avatar')} />
-                {uploading ? <CircularProgress size={16} color="inherit" /> : <PhotoCameraIcon sx={{ fontSize: 16 }} />}
+                {uploading ? <CircularProgress size={20} color="inherit" /> : <PhotoCameraIcon sx={{ fontSize: 20 }} />}
               </IconButton>
             </Box>
           </Box>
 
-          <Typography variant="h6" fontWeight={800} textAlign="center" mb={1}>{profile.username}</Typography>
-          <Typography variant="body2" color="text.secondary" textAlign="center" mb={4}>Update your profile details</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 950, textAlign: 'center', mb: 0.5, letterSpacing: '-0.02em' }}>
+            {profile.username}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', mb: 4, fontWeight: 500 }}>
+            Update your profile details
+          </Typography>
 
           <TextField
             fullWidth
-            label="About You"
+            size="small"
+            label="Professional Bio"
             multiline
-            rows={4}
+            rows={3}
             value={bio}
             onChange={(e) => setBio(e.target.value)}
-            placeholder="Tell us about yourself..."
-            sx={{ mb: 4, '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+            placeholder="Share your culinary journey..."
+            sx={{ 
+              mb: 4, 
+              '& .MuiOutlinedInput-root': { 
+                borderRadius: 1.5,
+                bgcolor: 'rgba(0,0,0,0.01)',
+                fontWeight: 500,
+                '& fieldset': { borderColor: 'rgba(0,0,0,0.1)' },
+              },
+              '& .MuiInputLabel-root': { fontWeight: 700 }
+            }}
           />
 
-          <Stack direction="row" spacing={2}>
+          <Stack direction="row" spacing={3}>
             <Button 
               fullWidth 
-              variant="outlined" 
+              variant="text" 
               onClick={onClose}
-              sx={{ py: 1.5, borderRadius: 3, fontWeight: 700 }}
+              sx={{ 
+                py: 1.2, 
+                borderRadius: 1.5, 
+                fontWeight: 800, 
+                color: 'text.secondary',
+                '&:hover': { bgcolor: 'rgba(0,0,0,0.03)', color: 'text.primary' }
+              }}
             >
               Cancel
             </Button>
@@ -160,7 +215,13 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, prof
               variant="contained" 
               onClick={handleSave}
               disabled={saving || uploading || uploadingCover}
-              sx={{ py: 1.5, borderRadius: 3, fontWeight: 800 }}
+              sx={{ 
+                py: 1.2, 
+                borderRadius: 1.5, 
+                fontWeight: 900,
+                boxShadow: '0 4px 12px rgba(44, 62, 80, 0.15)',
+                '&:hover': { bgcolor: 'primary.dark' }
+              }}
             >
               {saving ? <CircularProgress size={24} color="inherit" /> : 'Save Changes'}
             </Button>

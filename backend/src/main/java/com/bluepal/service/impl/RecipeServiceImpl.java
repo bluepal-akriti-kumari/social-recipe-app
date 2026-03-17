@@ -6,6 +6,7 @@ import com.bluepal.entity.*;
 import com.bluepal.exception.ResourceNotFoundException;
 import com.bluepal.repository.*;
 import com.bluepal.service.interfaces.RecipeService;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,12 +23,18 @@ public class RecipeServiceImpl implements RecipeService {
         private final RecipeRepository recipeRepository;
         private final UserRepository userRepository;
         private final LikeRepository likeRepository;
+        private final com.bluepal.service.interfaces.RatingService ratingService;
+        private final com.bluepal.service.interfaces.BookmarkService bookmarkService;
 
         public RecipeServiceImpl(RecipeRepository recipeRepository, UserRepository userRepository,
-                        LikeRepository likeRepository) {
+                        LikeRepository likeRepository,
+                        com.bluepal.service.interfaces.RatingService ratingService,
+                        @Lazy com.bluepal.service.interfaces.BookmarkService bookmarkService) {
                 this.recipeRepository = recipeRepository;
                 this.userRepository = userRepository;
                 this.likeRepository = likeRepository;
+                this.ratingService = ratingService;
+                this.bookmarkService = bookmarkService;
         }
 
         @Override
@@ -38,7 +45,7 @@ public class RecipeServiceImpl implements RecipeService {
                 List<Recipe> recipes = recipeRepository.findExploreCursor(effectiveCursor, limit);
 
                 List<RecipeResponse> content = recipes.stream()
-                                .map(r -> this.mapToResponse(r, checkIsLiked(r, currentUsername)))
+                                .map(r -> this.mapToResponse(r, currentUsername))
                                 .collect(Collectors.toList());
 
                 String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
@@ -53,7 +60,7 @@ public class RecipeServiceImpl implements RecipeService {
                 // Prepare query for Postgres tsquery: 'chicken & rice'
                 String formattedQuery = query.trim().replaceAll("\\s+", " & ");
                 return recipeRepository.searchByIngredientFullText(formattedQuery).stream()
-                                .map(r -> this.mapToResponse(r, checkIsLiked(r, currentUsername)))
+                                .map(r -> this.mapToResponse(r, currentUsername))
                                 .collect(Collectors.toList());
         }
 
@@ -71,6 +78,7 @@ public class RecipeServiceImpl implements RecipeService {
                                 .cookTimeMinutes(request.getCookTimeMinutes())
                                 .servings(request.getServings())
                                 .author(author)
+                                .category(com.bluepal.entity.RecipeCategory.valueOf(request.getCategory().toUpperCase()))
                                 .likeCount(0)
                                 .commentCount(0)
                                 .build();
@@ -85,7 +93,20 @@ public class RecipeServiceImpl implements RecipeService {
                                         .stepNumber(sr.getStepNumber()).instruction(sr.getInstruction()).build()));
                 }
 
-                return mapToResponse(recipeRepository.save(recipe), false);
+                Recipe savedRecipe = recipeRepository.save(recipe);
+                
+                // Award reputation points for sharing a recipe
+                User user = userRepository.findByUsername(username).orElse(author);
+                user.setReputationPoints(user.getReputationPoints() + 50);
+                
+                // Check and update level
+                if (user.getReputationPoints() >= 1000) user.setReputationLevel("Sous Chef");
+                else if (user.getReputationPoints() >= 500) user.setReputationLevel("Chef de Partie");
+                else user.setReputationLevel("Commis Chef");
+                
+                userRepository.save(user);
+
+                return mapToResponse(savedRecipe, username);
         }
 
         // Helper method to check if current user liked the recipe
@@ -93,12 +114,17 @@ public class RecipeServiceImpl implements RecipeService {
                 if (username == null)
                         return false;
                 return userRepository.findByUsername(username)
-                                .map(u -> likeRepository.existsByUserAndRecipe(u, recipe))
+                                .map(user -> likeRepository.existsByUserAndRecipe(user, recipe))
                                 .orElse(false);
         }
 
         // The Mapping Method that fixes your Compilation Error
-        private RecipeResponse mapToResponse(Recipe recipe, boolean isLiked) {
+        private RecipeResponse mapToResponse(Recipe recipe, String currentUsername) {
+                boolean isLiked = checkIsLiked(recipe, currentUsername);
+                User currentUser = currentUsername != null ? userRepository.findByUsername(currentUsername).orElse(null) : null;
+                boolean isBookmarked = currentUser != null && bookmarkService.isBookmarked(currentUser, recipe.getId());
+                int userRating = currentUser != null ? ratingService.getUserRating(currentUser, recipe) : 0;
+
                 return RecipeResponse.builder()
                                 .id(recipe.getId())
                                 .title(recipe.getTitle())
@@ -109,7 +135,12 @@ public class RecipeServiceImpl implements RecipeService {
                                 .servings(recipe.getServings())
                                 .likeCount(recipe.getLikeCount())
                                 .commentCount(recipe.getCommentCount())
+                                .averageRating(recipe.getAverageRating())
+                                .ratingCount(recipe.getRatingCount())
+                                .category(recipe.getCategory() != null ? recipe.getCategory().name() : null)
                                 .isLiked(isLiked)
+                                .isBookmarked(isBookmarked)
+                                .userRating(userRating)
                                 .createdAt(recipe.getCreatedAt())
                                 .author(RecipeResponse.AuthorDto.builder()
                                                 .id(recipe.getAuthor().getId())
@@ -129,12 +160,11 @@ public class RecipeServiceImpl implements RecipeService {
                                 .build();
         }
 
-        // Remaining Required Methods (Placeholders to satisfy interface)
         @Override
         public RecipeResponse getRecipeById(Long id, String currentUsername) {
                 Recipe recipe = recipeRepository.findById(id)
                                 .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
-                return mapToResponse(recipe, checkIsLiked(recipe, currentUsername));
+                return mapToResponse(recipe, currentUsername);
         }
 
         @Override
@@ -148,7 +178,7 @@ public class RecipeServiceImpl implements RecipeService {
                 List<Recipe> recipes = recipeRepository.findPersonalizedCursor(user, effectiveCursor, limit);
 
                 List<RecipeResponse> content = recipes.stream()
-                                .map(r -> this.mapToResponse(r, checkIsLiked(r, username)))
+                                .map(r -> this.mapToResponse(r, username))
                                 .collect(Collectors.toList());
 
                 String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
@@ -166,7 +196,7 @@ public class RecipeServiceImpl implements RecipeService {
                 return recipeRepository.findAll().stream()
                                 .filter(r -> r.getAuthor().equals(author))
                                 .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-                                .map(r -> this.mapToResponse(r, checkIsLiked(r, currentUsername)))
+                                .map(r -> this.mapToResponse(r, currentUsername))
                                 .collect(Collectors.toList());
         }
 
@@ -178,7 +208,7 @@ public class RecipeServiceImpl implements RecipeService {
                 return likeRepository.findByUser(user).stream()
                                 .map(Like::getRecipe)
                                 .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-                                .map(r -> this.mapToResponse(r, checkIsLiked(r, currentUsername)))
+                                .map(r -> this.mapToResponse(r, currentUsername))
                                 .collect(Collectors.toList());
         }
 
@@ -212,7 +242,7 @@ public class RecipeServiceImpl implements RecipeService {
                                         .stepNumber(sr.getStepNumber()).instruction(sr.getInstruction()).build()));
                 }
 
-                return mapToResponse(recipeRepository.save(recipe), true);
+                return mapToResponse(recipeRepository.save(recipe), username);
         }
 
         @Override
@@ -223,5 +253,42 @@ public class RecipeServiceImpl implements RecipeService {
                         throw new RuntimeException("You are not authorized to delete this recipe");
                 }
                 recipeRepository.delete(recipe);
+        }
+
+        @Override
+        public List<RecipeResponse> getTrendingRecipes(String currentUsername, int limit) {
+                Pageable pageable = PageRequest.of(0, limit);
+                return recipeRepository.findTrending(pageable).stream()
+                                .map(r -> this.mapToResponse(r, currentUsername))
+                                .collect(Collectors.toList());
+        }
+
+        @Override
+        public List<RecipeResponse> getRecipesByCategory(String category, String currentUsername, int limit) {
+                com.bluepal.entity.RecipeCategory cat = com.bluepal.entity.RecipeCategory.valueOf(category.toUpperCase());
+                Pageable pageable = PageRequest.of(0, limit);
+                return recipeRepository.findByCategoryOrderByCreatedAtDesc(cat, pageable).stream()
+                                .map(r -> this.mapToResponse(r, currentUsername))
+                                .collect(Collectors.toList());
+        }
+
+        @Override
+        public Map<String, Object> getExploreFeedCursorByCategory(String category, LocalDateTime cursor, int size,
+                        String currentUsername) {
+                com.bluepal.entity.RecipeCategory cat = com.bluepal.entity.RecipeCategory.valueOf(category.toUpperCase());
+                LocalDateTime effectiveCursor = (cursor == null) ? LocalDateTime.now() : cursor;
+                Pageable limit = PageRequest.of(0, size);
+
+                List<Recipe> recipes = recipeRepository.findExploreCursorWithCategory(cat, effectiveCursor, limit);
+
+                List<RecipeResponse> content = recipes.stream()
+                                .map(r -> this.mapToResponse(r, currentUsername))
+                                .collect(Collectors.toList());
+
+                String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
+
+                return Map.of(
+                                "content", content,
+                                "nextCursor", nextCursor);
         }
 }

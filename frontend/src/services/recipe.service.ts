@@ -30,6 +30,7 @@ export interface RecipeSummary {
     username: string;
     profilePictureUrl: string;
   };
+  category?: string;
 }
 
 export interface RecipeDetail extends RecipeSummary {

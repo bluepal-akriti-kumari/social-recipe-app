@@ -41,7 +41,13 @@ const recipeSlice = createSlice({
     fetchExploreSuccess(state, action: PayloadAction<any>) {
       state.loading = false;
 
-      const newContent = action.payload.content || [];
+      const newContent = (action.payload.content || []).filter((r: any) => {
+        if (!r.id || isNaN(Number(r.id))) {
+          console.warn('Backend returned a recipe without a valid ID:', r);
+          return false;
+        }
+        return true;
+      });
       const incomingCursor = action.payload.nextCursor;
 
       // Filter out duplicates by ID to prevent "same key" React warnings
@@ -59,6 +65,11 @@ const recipeSlice = createSlice({
     },
     fetchDetailSuccess(state, action: PayloadAction<RecipeDetail>) {
       state.loading = false;
+      if (!action.payload?.id) {
+        console.error('fetchDetailSuccess reached with null/missing ID:', action.payload);
+        state.error = 'Invalid recipe data received';
+        return;
+      }
       state.recipeDetail = action.payload;
     },
     fetchCommentsSuccess(state, action: PayloadAction<any[]>) {

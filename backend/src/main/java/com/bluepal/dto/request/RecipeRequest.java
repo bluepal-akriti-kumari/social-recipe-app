@@ -21,6 +21,8 @@ public class RecipeRequest {
 
     private Integer servings;
 
+    private String category; // Maps to RecipeCategory enum
+
     @NotEmpty(message = "At least one ingredient is required")
     private List<IngredientRequest> ingredients;
 

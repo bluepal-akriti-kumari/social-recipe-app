@@ -39,13 +39,30 @@ public class RecipeController {
     @GetMapping("/feed/explore")
     public ResponseEntity<Map<String, Object>> getExploreFeed(
             @RequestParam(name = "cursor", required = false) String cursorStr,
-            @RequestParam(name = "size", defaultValue = "12") int size) {
+            @RequestParam(name = "size", defaultValue = "12") int size,
+            @RequestParam(name = "category", required = false) String category) {
         
         LocalDateTime cursor = (cursorStr != null && !cursorStr.isEmpty()) 
                 ? LocalDateTime.parse(cursorStr) 
                 : null;
 
+        if (category != null && !category.isEmpty()) {
+            return ResponseEntity.ok(recipeService.getExploreFeedCursorByCategory(category, cursor, size, getCurrentUsername()));
+        }
         return ResponseEntity.ok(recipeService.getExploreFeedCursor(cursor, size, getCurrentUsername()));
+    }
+
+    @GetMapping("/recipes/trending")
+    public ResponseEntity<List<RecipeResponse>> getTrendingRecipes(
+            @RequestParam(name = "limit", defaultValue = "10") int limit) {
+        return ResponseEntity.ok(recipeService.getTrendingRecipes(getCurrentUsername(), limit));
+    }
+
+    @GetMapping("/recipes/category/{category}")
+    public ResponseEntity<List<RecipeResponse>> getRecipesByCategory(
+            @PathVariable("category") String category,
+            @RequestParam(name = "limit", defaultValue = "10") int limit) {
+        return ResponseEntity.ok(recipeService.getRecipesByCategory(category, getCurrentUsername(), limit));
     }
 
     // ─── Personalized Feed (Updated to Cursor-based) ───────────────────────────

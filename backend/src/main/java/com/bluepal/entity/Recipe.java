@@ -61,6 +61,18 @@ public class Recipe {
     @Column(name = "comment_count", nullable = false)
     private Integer commentCount = 0;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category")
+    private RecipeCategory category;
+
+    @Builder.Default
+    @Column(name = "average_rating")
+    private Double averageRating = 0.0;
+
+    @Builder.Default
+    @Column(name = "rating_count")
+    private Integer ratingCount = 0;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
