@@ -268,26 +268,34 @@ public class RecipeServiceImpl implements RecipeService {
 
 	@Override
 	public List<RecipeResponse> getRecipesByCategory(String category, String currentUsername, int limit) {
-		com.bluepal.entity.RecipeCategory cat = com.bluepal.entity.RecipeCategory.valueOf(category.toUpperCase());
-		Pageable pageable = PageRequest.of(0, limit);
-		return recipeRepository.findByCategoryOrderByCreatedAtDesc(cat, pageable).stream()
-				.map(r -> this.mapToResponse(r, currentUsername)).collect(Collectors.toList());
+		try {
+			com.bluepal.entity.RecipeCategory cat = com.bluepal.entity.RecipeCategory.valueOf(category.toUpperCase());
+			Pageable pageable = PageRequest.of(0, limit);
+			return recipeRepository.findByCategoryOrderByCreatedAtDesc(cat, pageable).stream()
+					.map(r -> this.mapToResponse(r, currentUsername)).collect(Collectors.toList());
+		} catch (IllegalArgumentException e) {
+			return List.of(); // Return empty list for unknown category
+		}
 	}
 
 	@Override
 	public Map<String, Object> getExploreFeedCursorByCategory(String category, LocalDateTime cursor, int size,
 			String currentUsername) {
-		com.bluepal.entity.RecipeCategory cat = com.bluepal.entity.RecipeCategory.valueOf(category.toUpperCase());
-		LocalDateTime effectiveCursor = (cursor == null) ? LocalDateTime.now() : cursor;
-		Pageable limit = PageRequest.of(0, size);
+		try {
+			com.bluepal.entity.RecipeCategory cat = com.bluepal.entity.RecipeCategory.valueOf(category.toUpperCase());
+			LocalDateTime effectiveCursor = (cursor == null) ? LocalDateTime.now() : cursor;
+			Pageable limit = PageRequest.of(0, size);
 
-		List<Recipe> recipes = recipeRepository.findExploreCursorWithCategory(cat, effectiveCursor, limit);
+			List<Recipe> recipes = recipeRepository.findExploreCursorWithCategory(cat, effectiveCursor, limit);
 
-		List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
-				.collect(Collectors.toList());
+			List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
+					.collect(Collectors.toList());
 
-		String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
+			String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
 
-		return Map.of("content", content, "nextCursor", nextCursor);
+			return Map.of("content", content, "nextCursor", nextCursor);
+		} catch (IllegalArgumentException e) {
+			return Map.of("content", List.of(), "nextCursor", "");
+		}
 	}
 }

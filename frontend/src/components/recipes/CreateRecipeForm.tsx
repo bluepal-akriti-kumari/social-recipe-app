@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { 
   Box, Stepper, Step, StepLabel, Button, 
   Typography, TextField, IconButton, 
-  CircularProgress, Alert, Grid
+  CircularProgress, Alert, Grid, MenuItem
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -23,6 +23,7 @@ interface RecipeFormValues {
   additionalImages: string[];
   ingredients: { name: string; quantity: string; unit: string }[];
   steps: { stepNumber: number; instruction: string }[];
+  category: string;
 }
 
 interface CreateRecipeFormProps {
@@ -38,13 +39,16 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
 
   const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<RecipeFormValues>({
     defaultValues: {
+      title: '',
+      description: '',
       ingredients: [{ name: '', quantity: '', unit: '' }],
       steps: [{ stepNumber: 1, instruction: '' }],
       prepTimeMinutes: 15,
       cookTimeMinutes: 30,
       servings: 4,
       imageUrl: '',
-      additionalImages: []
+      additionalImages: [],
+      category: 'VEG'
     }
   });
 
@@ -127,6 +131,27 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
               error={!!errors.title} helperText={errors.title?.message}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
             />
+            <TextField
+              size="small"
+              select
+              fullWidth
+              label="Category"
+              {...register('category', { required: 'Category is required' })}
+              error={!!errors.category}
+              helperText={errors.category?.message}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
+            >
+              <MenuItem value="VEG">Vegetarian</MenuItem>
+              <MenuItem value="NON_VEG">Non-Vegetarian</MenuItem>
+              <MenuItem value="BREAKFAST">Breakfast</MenuItem>
+              <MenuItem value="BAKING">Baking</MenuItem>
+              <MenuItem value="SEAFOOD">Seafood</MenuItem>
+              <MenuItem value="HEALTHY">Healthy</MenuItem>
+              <MenuItem value="ITALIAN">Italian</MenuItem>
+              <MenuItem value="DESSERTS">Desserts</MenuItem>
+              <MenuItem value="SNACK">Snack</MenuItem>
+              <MenuItem value="DRINK">Drink</MenuItem>
+            </TextField>
             <TextField
               size="small"
               fullWidth multiline rows={3} label="The Story" placeholder="What's the inspiration behind this recipe?"
