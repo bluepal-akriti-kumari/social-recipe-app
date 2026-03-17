@@ -5,11 +5,13 @@ import AddBoxIcon from '@mui/icons-material/AddBox';
 import PersonIcon from '@mui/icons-material/Person';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useModal } from '../../context/ModalContext';
 
 const MobileBottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
+  const { openCreateRecipeModal, isCreateRecipeModalOpen } = useModal();
 
   if (!isAuthenticated) return null;
 
@@ -17,7 +19,7 @@ const MobileBottomNav = () => {
     const path = location.pathname;
     if (path === '/feed') return 0;
     if (path.includes('/search') || (path === '/feed' && location.search)) return 1;
-    if (path === '/recipes/create') return 2;
+    if (isCreateRecipeModalOpen) return 2;
     if (path.includes(`/profile/${user?.username}`)) return 3;
     return 0;
   };
@@ -42,16 +44,16 @@ const MobileBottomNav = () => {
         value={getActiveValue()}
         onChange={(_, newValue) => {
           if (newValue === 0) navigate('/feed');
-          if (newValue === 1) navigate('/feed'); // Assuming search is part of feed or a dedicated page
-          if (newValue === 2) navigate('/recipes/create');
+          if (newValue === 1) navigate('/feed'); 
+          if (newValue === 2) openCreateRecipeModal();
           if (newValue === 3) navigate(`/profile/${user?.username}`);
         }}
         sx={{ height: 64 }}
       >
-        <BottomNavigationAction icon={<HomeIcon />} />
-        <BottomNavigationAction icon={<SearchIcon />} />
-        <BottomNavigationAction icon={<AddBoxIcon sx={{ fontSize: 32, color: 'primary.main' }} />} />
-        <BottomNavigationAction icon={<PersonIcon />} />
+        <BottomNavigationAction icon={<HomeIcon sx={{ color: 'primary.main' }} />} />
+        <BottomNavigationAction icon={<SearchIcon sx={{ color: 'primary.main' }} />} />
+        <BottomNavigationAction icon={<AddBoxIcon sx={{ fontSize: 32, color: 'secondary.main' }} />} />
+        <BottomNavigationAction icon={<PersonIcon sx={{ color: 'primary.main' }} />} />
       </BottomNavigation>
     </Paper>
   );

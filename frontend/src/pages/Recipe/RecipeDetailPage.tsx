@@ -5,7 +5,7 @@ import {
   Container, Grid, Box, Typography, Avatar, 
   List, ListItem, ListItemText, ListItemIcon, 
   Paper, IconButton, TextField, Button, CircularProgress, 
-  Alert, alpha
+  Alert, alpha, Stack
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
@@ -16,13 +16,19 @@ import SendIcon from '@mui/icons-material/Send';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import ShareIcon from '@mui/icons-material/Share';
 import DescriptionIcon from '@mui/icons-material/Description';
+import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import type { AppDispatch, RootState } from '../../store/store';
 import { 
   getRecipeByIdThunk, likeRecipeThunk, 
   getCommentsThunk, addCommentThunk 
 } from '../../features/recipes/recipeThunks';
+import { shoppingListService } from '../../services/shoppingList.service';
+import AddToPlannerModal from './AddToPlannerModal';
+import { toast } from 'react-hot-toast';
 
 const RecipeDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,10 +38,20 @@ const RecipeDetailPage = () => {
   const { recipeDetail, comments, loading, error } = useSelector((state: RootState) => state.recipes);
   const [commentText, setCommentText] = useState('');
   const [replyingTo, setReplyingTo] = useState<{ id: number; username: string } | null>(null);
+  const [isPlannerOpen, setIsPlannerOpen] = useState(false);
+  const [addingToShopping, setAddingToShopping] = useState(false);
 
   useEffect(() => {
     if (id) {
+      if (id === 'NaN') {
+        console.error('CRITICAL: RecipeDetailPage reached with id="NaN". This usually means a navigation source has a recipe with an undefined ID. Check RecipeCard and HeroCarousel data.');
+        return;
+      }
       const recipeId = parseInt(id);
+      if (isNaN(recipeId)) {
+        console.error(`Invalid recipe id: ${id}`);
+        return;
+      }
       dispatch(getRecipeByIdThunk(recipeId));
       dispatch(getCommentsThunk(recipeId));
     }
@@ -54,6 +70,19 @@ const RecipeDetailPage = () => {
     }
   };
 
+  const handleAddToShopping = async () => {
+    if (!recipeDetail) return;
+    setAddingToShopping(true);
+    try {
+      await shoppingListService.addFromRecipe(recipeDetail.id);
+      toast.success('All ingredients added to your shopping list!');
+    } catch (err) {
+      toast.error('Failed to add ingredients');
+    } finally {
+      setAddingToShopping(false);
+    }
+  };
+
   if (loading && !recipeDetail) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
   }
@@ -68,230 +97,378 @@ const RecipeDetailPage = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
-      <Button 
-        startIcon={<ArrowBackIcon />} 
-        onClick={() => navigate(-1)} 
-        sx={{ mb: 4, borderRadius: 3, fontWeight: 700, color: 'text.secondary' }}
-      >
-        Back to discovery
-      </Button>
-      
-      <Grid container spacing={6}>
-        {/* Left Column: Image and Main Info */}
-        <Grid size={{ xs: 12, md: 7 }}>
-          <Box sx={{ position: 'relative', mb: 6 }}>
+    <Box className="bg-mesh" sx={{ minHeight: '100vh', py: { xs: 4, md: 10 } }}>
+      <Container maxWidth="lg">
+        <Button 
+          startIcon={<ArrowBackIcon />} 
+          onClick={() => navigate(-1)} 
+          sx={{ 
+            mb: 2, 
+            borderRadius: '8px', 
+            fontWeight: 800, 
+            color: 'text.secondary',
+            textTransform: 'none',
+            '&:hover': { bgcolor: 'rgba(0,0,0,0.03)', color: 'primary.main' }
+          }}
+        >
+          Back to discovery
+        </Button>
+        
+        <Grid container spacing={6}>
+          {/* Left Column: Image and Main Info */}
+          <Grid size={{ xs: 12, md: 7 }}>
+            <Box sx={{ position: 'relative', mb: 6 }}>
+              <Box 
+                component="img" 
+                src={recipeDetail.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80'} 
+                sx={{ 
+                  width: '100%', 
+                  aspectRatio: '16/9',
+                  objectFit: 'cover',
+                  borderRadius: '16px', 
+                  boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+                  border: '1px solid rgba(255,255,255,0.3)'
+                }}
+              />
+              <Box 
+                sx={{ 
+                  position: 'absolute', top: 24, right: 24,
+                  display: 'flex', gap: 2
+                }}
+              >
+                <IconButton 
+                  size="large"
+                  sx={{ 
+                    bgcolor: 'rgba(255,255,255,0.8)', 
+                    backdropFilter: 'blur(20px)',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                    '&:hover': { bgcolor: 'white', transform: 'translateY(-2px)' } 
+                  }}
+                >
+                  <BookmarkBorderIcon />
+                </IconButton>
+                <IconButton 
+                  size="large"
+                  sx={{ 
+                    bgcolor: 'rgba(255,255,255,0.8)', 
+                    backdropFilter: 'blur(20px)',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                    '&:hover': { bgcolor: 'white', transform: 'translateY(-2px)' } 
+                  }}
+                >
+                  <ShareIcon />
+                </IconButton>
+              </Box>
+            </Box>
+            
+            <Typography variant="h1" sx={{ fontWeight: 950, mb: 3, letterSpacing: '-0.04em', lineHeight: 1, fontSize: { xs: '2.5rem', md: '4.5rem' } }}>
+              {recipeDetail.title}
+            </Typography>
+            
             <Box 
-              component="img" 
-              src={recipeDetail.imageUrl || 'https://via.placeholder.com/800x600'} 
+              className="glass-card"
               sx={{ 
-                width: '100%', 
-                aspectRatio: '16/9',
-                objectFit: 'cover',
-                borderRadius: 6, 
-                boxShadow: '0 30px 60px rgba(0,0,0,0.12)',
-              }}
-            />
-            <Box 
-              sx={{ 
-                position: 'absolute', top: 20, right: 20,
-                display: 'flex', gap: 1
+                display: 'flex', 
+                alignItems: 'center', 
+                mb: 6, 
+                p: 2, 
+                borderRadius: '12px',
               }}
             >
-              <IconButton 
-                size="large"
-                sx={{ bgcolor: 'white', '&:hover': { bgcolor: '#f1f5f9' }, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-              >
-                <BookmarkBorderIcon />
-              </IconButton>
-              <IconButton 
-                size="large"
-                sx={{ bgcolor: 'white', '&:hover': { bgcolor: '#f1f5f9' }, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-              >
-                <ShareIcon />
-              </IconButton>
-            </Box>
-          </Box>
-          
-          <Typography variant="h2" sx={{ fontWeight: 900, mb: 3, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-            {recipeDetail.title}
-          </Typography>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 5, p: 3, bgcolor: 'white', borderRadius: 4, border: '1px solid rgba(226, 232, 240, 0.8)' }}>
-            <Avatar 
-              src={recipeDetail.author.profilePictureUrl} 
-              sx={{ width: 56, height: 56, cursor: 'pointer', mr: 2, border: '2px solid white', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-              onClick={() => navigate(`/profile/${recipeDetail.author.username}`)}
-            />
-            <Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, cursor: 'pointer', '&:hover': { color: 'primary.main' } }} onClick={() => navigate(`/profile/${recipeDetail.author.username}`)}>
-                {recipeDetail.author.username}
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                Chef & Food Enthusiast • {new Date(recipeDetail.createdAt).toLocaleDateString()}
-              </Typography>
-            </Box>
-            <Box sx={{ flexGrow: 1 }} />
-            <Box sx={{ display: 'flex', alignItems: 'center', p: 1, pr: 2, borderRadius: 5, bgcolor: recipeDetail.isLiked ? 'primary.light' : '#f1f5f9' }}>
-              <IconButton onClick={handleLike} color={recipeDetail.isLiked ? 'primary' : 'default'} sx={{ transition: 'all 0.3s' }}>
-                {recipeDetail.isLiked ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-              </IconButton>
-              <Typography sx={{ fontWeight: 800, color: recipeDetail.isLiked ? 'primary.main' : 'text.primary' }}>
-                {recipeDetail.likeCount}
-              </Typography>
-            </Box>
-          </Box>
-
-          <Box sx={{ mb: 6 }}>
-            <Typography variant="h5" sx={{ fontWeight: 800, mb: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <DescriptionIcon sx={{ color: 'primary.main' }} /> The Story
-            </Typography>
-            <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.8, fontSize: '1.1rem', whiteSpace: 'pre-wrap' }}>
-              {recipeDetail.description}
-            </Typography>
-          </Box>
-
-          {/* Social Section */}
-          <Box id="comments" sx={{ mt: 8 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-              <Typography variant="h5" sx={{ fontWeight: 800 }}>Comments ({recipeDetail.commentCount})</Typography>
-            </Box>
-
-            <Paper sx={{ p: 4, borderRadius: 4, border: '1px solid rgba(226, 232, 240, 0.8)', mb: 4, bgcolor: '#f8fafc' }}>
-              <Box component="form" onSubmit={handleCommentSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {replyingTo && (
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'primary.light', p: 1.5, borderRadius: 2 }}>
-                    <Typography variant="caption" sx={{ color: 'primary.dark', fontWeight: 700 }}>Replying to <b>@{replyingTo.username}</b></Typography>
-                    <Button size="small" variant="text" color="primary" sx={{ p: 0, minWidth: 0 }} onClick={() => setReplyingTo(null)}>Cancel</Button>
-                  </Box>
-                )}
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Avatar src={(currentUser as any)?.profilePictureUrl} sx={{ width: 40, height: 40 }} />
-                  <TextField 
-                    fullWidth 
-                    multiline
-                    rows={2}
-                    placeholder={replyingTo ? "Write a thoughtful reply..." : "What do you think of this recipe?"} 
-                    variant="outlined"
-                    value={commentText} onChange={(e) => setCommentText(e.target.value)}
-                    sx={{
-                      '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'white' }
-                    }}
-                  />
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <Button type="submit" variant="contained" endIcon={<SendIcon />} sx={{ borderRadius: 3, px: 4 }}>
-                    Post Comment
-                  </Button>
-                </Box>
+              <Avatar 
+                src={recipeDetail.author.profilePictureUrl} 
+                sx={{ width: 64, height: 64, cursor: 'pointer', mr: 2.5, border: '3px solid white', boxShadow: '0 8px 20px rgba(0,0,0,0.1)' }}
+                onClick={() => navigate(`/profile/${recipeDetail.author.username}`)}
+              />
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer', '&:hover': { color: 'primary.main' } }} onClick={() => navigate(`/profile/${recipeDetail.author.username}`)}>
+                  {recipeDetail.author.username}
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                  Master Chef • {new Date(recipeDetail.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+                </Typography>
               </Box>
-            </Paper>
-            
-            <List sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {comments.map((comment, index) => (
-                <Box key={comment.id || index} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
-                  <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: '1px solid rgba(226, 232, 240, 0.5)', ml: comment.parentId ? 6 : 0, bgcolor: comment.parentId ? alpha('#f8fafc', 0.5) : 'white' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                      <Avatar src={comment.userProfilePictureUrl} sx={{ width: 40, height: 40, cursor: 'pointer' }} onClick={() => navigate(`/profile/${comment.username}`)} />
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                          <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer' }} onClick={() => navigate(`/profile/${comment.username}`)}>
-                            {comment.username}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                            {new Date(comment.createdAt).toLocaleDateString()}
-                          </Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ color: 'text.primary', lineHeight: 1.6, mb: 1.5 }}>
-                          {comment.content}
-                        </Typography>
-                        <Button 
-                          size="small" 
-                          startIcon={<ChatBubbleOutlineIcon sx={{ fontSize: '16px !important' }} />}
-                          sx={{ p: 0, minWidth: 0, color: 'text.secondary', fontWeight: 700, textTransform: 'none', '&:hover': { color: 'primary.main' } }} 
-                          onClick={() => setReplyingTo({ id: comment.id, username: comment.username })}
-                        >
-                          Reply
-                        </Button>
-                      </Box>
-                    </Box>
-                  </Paper>
-                </Box>
-              ))}
-            </List>
-          </Box>
-        </Grid>
+              <Box sx={{ flexGrow: 1 }} />
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  p: 1.5, 
+                  px: 2, 
+                  borderRadius: '8px', 
+                  bgcolor: recipeDetail.isLiked ? 'rgba(244, 63, 94, 0.1)' : 'rgba(0,0,0,0.03)',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                <IconButton 
+                  onClick={handleLike} 
+                  sx={{ 
+                    color: recipeDetail.isLiked ? 'secondary.main' : 'text.disabled',
+                    transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                    '&:hover': { transform: 'scale(1.2)' }
+                  }}
+                >
+                  {recipeDetail.isLiked ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+                </IconButton>
+                <Typography sx={{ fontWeight: 900, color: recipeDetail.isLiked ? 'secondary.main' : 'text.primary', ml: 1 }}>
+                  {recipeDetail.likeCount}
+                </Typography>
+              </Box>
+            </Box>
 
-        {/* Right Column: Cooking Stats & Ingredients */}
-        <Grid size={{ xs: 12, md: 5 }}>
-          <Box sx={{ position: 'sticky', top: 100 }}>
-            <Paper sx={{ p: 4, borderRadius: 6, mb: 4, bgcolor: 'white', border: '1px solid rgba(226, 232, 240, 0.8)', boxShadow: '0 10px 30px rgba(0,0,0,0.03)' }}>
-              <Typography variant="h6" sx={{ fontWeight: 800, mb: 3 }}>Cooking Details</Typography>
-              <Grid container spacing={3}>
-                <Grid size={{ xs: 6 }}>
-                  <Box sx={{ p: 2, borderRadius: 4, bgcolor: '#fff5f5', border: '1px solid #fee2e2' }}>
-                    <AccessTimeIcon sx={{ color: 'primary.main', mb: 1 }} />
-                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block' }}>TIME</Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 800 }}>
-                      {Number(recipeDetail.prepTimeMinutes) + Number(recipeDetail.cookTimeMinutes)} mins
+            <Box sx={{ mb: 8 }}>
+              <Typography variant="h5" sx={{ fontWeight: 900, mb: 3, display: 'flex', alignItems: 'center', gap: 2, letterSpacing: '-0.02em' }}>
+                <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'primary.light', display: 'flex' }}>
+                  <DescriptionIcon sx={{ color: 'primary.main' }} />
+                </Box>
+                Culinary Story
+              </Typography>
+              <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 2, fontSize: '1.2rem', fontWeight: 500, letterSpacing: '0.01em' }}>
+                {recipeDetail.description}
+              </Typography>
+            </Box>
+
+            {/* Social Section */}
+            <Box id="comments" sx={{ mt: 10 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
+                <Typography variant="h4" sx={{ fontWeight: 950, letterSpacing: '-0.03em' }}>
+                  Community Talk <span style={{ color: alpha('#6366f1', 0.5), fontSize: '1.5rem' }}>({recipeDetail.commentCount})</span>
+                </Typography>
+              </Box>
+
+              <Paper className="glass" sx={{ p: 3, borderRadius: '12px', mb: 4 }}>
+                <Box component="form" onSubmit={handleCommentSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {replyingTo && (
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: alpha('#6366f1', 0.1), p: 1.5, borderRadius: '10px' }}>
+                      <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 800 }}>Replying to <b>@{replyingTo.username}</b></Typography>
+                      <Button size="small" variant="text" color="primary" sx={{ p: 0, minWidth: 0, fontWeight: 800 }} onClick={() => setReplyingTo(null)}>Cancel</Button>
+                    </Box>
+                  )}
+                  <Box sx={{ display: 'flex', gap: 2.5 }}>
+                    <Avatar 
+                      src={(currentUser as any)?.profilePictureUrl} 
+                      sx={{ width: 48, height: 48, border: '2px solid white', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} 
+                    />
+                    <TextField 
+                      fullWidth 
+                      multiline
+                      rows={3}
+                      placeholder={replyingTo ? "Write a thoughtful reply..." : "Share your thoughts on this culinary masterpiece..."} 
+                      variant="outlined"
+                      value={commentText} onChange={(e) => setCommentText(e.target.value)}
+                      sx={{
+                        '& .MuiOutlinedInput-root': { 
+                          borderRadius: '8px', 
+                          bgcolor: 'white',
+                          fontWeight: 500,
+                          '& fieldset': { borderColor: 'rgba(0,0,0,0.05)' },
+                          '&:hover fieldset': { borderColor: 'primary.light' }
+                        }
+                      }}
+                    />
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <Button 
+                      type="submit" 
+                      variant="contained" 
+                      endIcon={<SendIcon />} 
+                      sx={{ 
+                        borderRadius: '14px', 
+                        px: 5, 
+                        py: 1.5, 
+                        fontWeight: 900,
+                        boxShadow: '0 8px 24px rgba(99, 102, 241, 0.25)'
+                      }}
+                    >
+                      Post Thought
+                    </Button>
+                  </Box>
+                </Box>
+              </Paper>
+              
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {comments.map((comment, index) => (
+                  <motion.div 
+                    key={comment.id || index}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <Paper 
+                      elevation={0} 
+                      sx={{ 
+                        p: 2.5, 
+                        borderRadius: '12px', 
+                        border: '1px solid rgba(0,0,0,0.03)', 
+                        ml: comment.parentId ? 6 : 0, 
+                        bgcolor: comment.parentId ? 'rgba(0,0,0,0.015)' : 'white',
+                        transition: 'transform 0.3s ease',
+                        '&:hover': { transform: 'translateX(8px)' }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2.5 }}>
+                        <Avatar 
+                          src={comment.userProfilePictureUrl} 
+                          sx={{ width: 44, height: 44, border: '2px solid white', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', cursor: 'pointer' }} 
+                          onClick={() => navigate(`/profile/${comment.username}`)} 
+                        />
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography sx={{ fontWeight: 900, fontSize: '1rem', cursor: 'pointer' }} onClick={() => navigate(`/profile/${comment.username}`)}>
+                              {comment.username}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                              {new Date(comment.createdAt).toLocaleDateString()}
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2" sx={{ color: 'text.primary', lineHeight: 1.8, mb: 2, fontSize: '1rem', fontWeight: 500 }}>
+                            {comment.content}
+                          </Typography>
+                          <Button 
+                            size="small" 
+                            startIcon={<ChatBubbleOutlineIcon sx={{ fontSize: '18px !important' }} />}
+                            sx={{ p: 0, minWidth: 0, color: 'primary.main', fontWeight: 800, textTransform: 'none', '&:hover': { opacity: 0.8 } }} 
+                            onClick={() => setReplyingTo({ id: comment.id, username: comment.username })}
+                          >
+                            Reply
+                          </Button>
+                        </Box>
+                      </Box>
+                    </Paper>
+                  </motion.div>
+                ))}
+              </Box>
+            </Box>
+          </Grid>
+
+          {/* Right Column: Cooking Stats & Ingredients */}
+          <Grid size={{ xs: 12, md: 5 }}>
+            <Box sx={{ position: 'sticky', top: 120 }}>
+              <Paper 
+                className="glass-card"
+                sx={{ p: 3, borderRadius: '16px', mb: 3 }}
+              >
+                <Typography variant="h6" sx={{ fontWeight: 900, mb: 4, letterSpacing: '-0.02em' }}>Kitchen Briefing</Typography>
+                <Grid container spacing={3}>
+                  <Grid size={{ xs: 6 }}>
+                    <Box sx={{ p: 3, borderRadius: '20px', bgcolor: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.1)' }}>
+                      <AccessTimeIcon sx={{ color: 'primary.main', mb: 1.5, fontSize: 28 }} />
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, display: 'block', mb: 0.5, letterSpacing: '0.05em' }}>DURATION</Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 950 }}>
+                        {Number(recipeDetail.prepTimeMinutes) + Number(recipeDetail.cookTimeMinutes)} min
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Box sx={{ p: 3, borderRadius: '20px', bgcolor: 'rgba(244, 63, 94, 0.08)', border: '1px solid rgba(244, 63, 94, 0.1)' }}>
+                      <RestaurantIcon sx={{ color: 'secondary.main', mb: 1.5, fontSize: 28 }} />
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, display: 'block', mb: 0.5, letterSpacing: '0.05em' }}>PORTIONS</Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 950 }}>{recipeDetail.servings} people</Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Paper>
+
+              <Paper 
+                className="glass-card"
+                sx={{ p: 3, borderRadius: '16px', mb: 4 }}
+              >
+                <Typography variant="h6" sx={{ fontWeight: 900, mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{ width: 8, height: 24, borderRadius: 4, bgcolor: 'primary.main' }} />
+                  Inventory Needed
+                </Typography>
+
+                <Stack spacing={2} sx={{ mb: 4 }}>
+                  <Button 
+                    fullWidth 
+                    variant="contained" 
+                    startIcon={<ShoppingBasketIcon />}
+                    onClick={handleAddToShopping}
+                    disabled={addingToShopping}
+                    sx={{ borderRadius: '8px', py: 1, fontWeight: 900 }}
+                  >
+                    Add All to Shopping List
+                  </Button>
+                  <Button 
+                    fullWidth 
+                    variant="outlined" 
+                    startIcon={<CalendarMonthIcon />}
+                    onClick={() => setIsPlannerOpen(true)}
+                    sx={{ borderRadius: '8px', py: 1, fontWeight: 900 }}
+                  >
+                    Add to Meal Planner
+                  </Button>
+                </Stack>
+
+                <List sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {recipeDetail.ingredients.map((ing) => (
+                    <ListItem key={ing.id} sx={{ px: 0, py: 0 }}>
+                      <ListItemIcon sx={{ minWidth: 36 }}>
+                        <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: 'primary.main', boxShadow: '0 0 0 5px rgba(99, 102, 241, 0.1)' }} />
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary={
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography sx={{ fontWeight: 800, fontSize: '1.05rem' }}>{ing.name}</Typography>
+                            <Typography sx={{ color: 'primary.main', fontWeight: 950, bgcolor: 'rgba(99, 102, 241, 0.08)', px: 1.5, py: 0.5, borderRadius: '10px', fontSize: '0.9rem' }}>
+                              {ing.quantity} {ing.unit || ''}
+                            </Typography>
+                          </Box>
+                        } 
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Paper>
+
+              <Typography variant="h5" sx={{ fontWeight: 950, mb: 4, px: 2, letterSpacing: '-0.02em' }}>The Process</Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
+                {[...recipeDetail.steps].sort((a, b) => Number(a.stepNumber) - Number(b.stepNumber)).map((step, index) => (
+                  <Box 
+                    key={step.id} 
+                    sx={{ 
+                      display: 'flex', 
+                      gap: 3, 
+                      p: 4, 
+                      borderRadius: '24px', 
+                      bgcolor: 'white', 
+                      border: '1px solid rgba(0,0,0,0.03)', 
+                      transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)', 
+                      '&:hover': { 
+                        transform: 'scale(1.05) translateX(10px)', 
+                        borderColor: 'primary.light',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.05)'
+                      } 
+                    }}
+                  >
+                    <Box sx={{ 
+                      minWidth: 36, height: 36, borderRadius: '8px', 
+                      bgcolor: 'primary.main', color: 'white', 
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 950, fontSize: '1.1rem', boxShadow: '0 4px 8px rgba(99, 102, 241, 0.2)'
+                    }}>
+                      {index + 1}
+                    </Box>
+                    <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.8, color: 'text.primary', fontSize: '1.05rem' }}>
+                      {step.instruction}
                     </Typography>
                   </Box>
-                </Grid>
-                <Grid size={{ xs: 6 }}>
-                  <Box sx={{ p: 2, borderRadius: 4, bgcolor: '#f0fdf4', border: '1px solid #d1fae5' }}>
-                    <RestaurantIcon sx={{ color: 'secondary.main', mb: 1 }} />
-                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block' }}>SERVINGS</Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 800 }}>{recipeDetail.servings} people</Typography>
-                  </Box>
-                </Grid>
-              </Grid>
-            </Paper>
-
-            <Paper sx={{ p: 4, borderRadius: 6, mb: 4, bgcolor: 'white', border: '1px solid rgba(226, 232, 240, 0.8)', boxShadow: '0 10px 30px rgba(0,0,0,0.03)' }}>
-              <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                Ingredients
-              </Typography>
-              <List sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                {recipeDetail.ingredients.map((ing) => (
-                  <ListItem key={ing.id} sx={{ px: 0, py: 0 }}>
-                    <ListItemIcon sx={{ minWidth: 32 }}>
-                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'primary.main', boxShadow: '0 0 0 4px rgba(239, 68, 68, 0.1)' }} />
-                    </ListItemIcon>
-                    <ListItemText 
-                      primary={
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography sx={{ fontWeight: 600 }}>{ing.name}</Typography>
-                          <Typography sx={{ color: 'text.secondary', fontWeight: 700 }}>{ing.quantity} {ing.unit || ''}</Typography>
-                        </Box>
-                      } 
-                    />
-                  </ListItem>
                 ))}
-              </List>
-            </Paper>
-
-            <Typography variant="h5" sx={{ fontWeight: 800, mb: 3, px: 1 }}>Instructions</Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {[...recipeDetail.steps].sort((a, b) => Number(a.stepNumber) - Number(b.stepNumber)).map((step, index) => (
-                <Box key={step.id} sx={{ display: 'flex', gap: 3, p: 3, borderRadius: 4, bgcolor: 'white', border: '1px solid rgba(226, 232, 240, 0.8)', transition: 'all 0.3s', '&:hover': { transform: 'scale(1.02)', borderColor: 'primary.light' } }}>
-                  <Box sx={{ 
-                    minWidth: 36, height: 36, borderRadius: '12px', 
-                    bgcolor: 'primary.main', color: 'white', 
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 900, fontSize: '1.1rem', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
-                  }}>
-                    {index + 1}
-                  </Box>
-                  <Typography variant="body1" sx={{ fontWeight: 500, lineHeight: 1.6, color: 'text.primary' }}>
-                    {step.instruction}
-                  </Typography>
-                </Box>
-              ))}
+              </Box>
             </Box>
-          </Box>
+          </Grid>
         </Grid>
-      </Grid>
-    </Container>
+      </Container>
+      
+      {recipeDetail && (
+        <AddToPlannerModal 
+          open={isPlannerOpen} 
+          onClose={() => setIsPlannerOpen(false)}
+          recipeId={recipeDetail.id}
+          recipeTitle={recipeDetail.title}
+        />
+      )}
+    </Box>
   );
 };
 

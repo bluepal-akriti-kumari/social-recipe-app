@@ -22,7 +22,12 @@ public class RecipeResponse {
     private Integer servings;
     private Integer likeCount;
     private Integer commentCount;
+    private Double averageRating;
+    private Integer ratingCount;
+    private String category;
     private Boolean isLiked; // true if current user has liked this recipe
+    private Boolean isBookmarked;
+    private Integer userRating; // Current user's rating for this recipe
     private AuthorDto author;
     private List<IngredientDto> ingredients;
     private List<StepDto> steps;

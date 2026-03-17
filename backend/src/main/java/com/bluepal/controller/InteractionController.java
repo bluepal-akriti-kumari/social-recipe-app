@@ -34,13 +34,20 @@ public class InteractionController {
     private final CommentRepository commentRepository;
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
+    private final com.bluepal.service.NotificationService notificationService;
+
+    private final com.bluepal.service.interfaces.UserService userService;
 
     public InteractionController(LikeRepository likeRepository, CommentRepository commentRepository,
-                                 RecipeRepository recipeRepository, UserRepository userRepository) {
+                                 RecipeRepository recipeRepository, UserRepository userRepository,
+                                 com.bluepal.service.NotificationService notificationService,
+                                 com.bluepal.service.interfaces.UserService userService) {
         this.likeRepository = likeRepository;
         this.commentRepository = commentRepository;
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
+        this.userService = userService;
     }
 
     private String getCurrentUsername() {
@@ -74,6 +81,19 @@ public class InteractionController {
             likeRepository.save(Like.builder().user(user).recipe(recipe).build());
             recipe.setLikeCount(recipe.getLikeCount() + 1);
             recipeRepository.save(recipe);
+
+            // Send Notification
+            notificationService.createAndSendNotification(
+                    recipe.getAuthor(),
+                    user,
+                    com.bluepal.entity.NotificationType.LIKE,
+                    recipe.getId(),
+                    user.getUsername() + " liked your recipe: " + recipe.getTitle()
+            );
+
+            // Award reputation points for receiving a like (to the author)
+            userService.updateReputation(recipe.getAuthor().getUsername(), 5);
+
             return ResponseEntity.ok(Map.of("liked", true, "likeCount", recipe.getLikeCount()));
         }
     }
@@ -106,6 +126,18 @@ public class InteractionController {
         Comment saved = commentRepository.save(comment);
         recipe.setCommentCount(recipe.getCommentCount() + 1);
         recipeRepository.save(recipe);
+
+        // Send Notification
+        notificationService.createAndSendNotification(
+                recipe.getAuthor(),
+                user,
+                com.bluepal.entity.NotificationType.COMMENT,
+                recipe.getId(),
+                user.getUsername() + " commented on your recipe: " + recipe.getTitle()
+        );
+
+        // Award reputation points for commenting
+        userService.updateReputation(user.getUsername(), 10);
 
         return ResponseEntity.ok(mapToCommentResponse(saved));
     }

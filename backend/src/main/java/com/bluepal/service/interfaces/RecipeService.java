@@ -19,6 +19,12 @@ public interface RecipeService {
 
     List<RecipeResponse> getUserRecipes(String username, String currentUsername);
     List<RecipeResponse> getUserLikedRecipes(String username, String currentUsername);
+    
+    // Categorization & Trending
+    List<RecipeResponse> getTrendingRecipes(String currentUsername, int limit);
+    List<RecipeResponse> getRecipesByCategory(String category, String currentUsername, int limit);
+    Map<String, Object> getExploreFeedCursorByCategory(String category, LocalDateTime cursor, int size, String currentUsername);
+
     RecipeResponse updateRecipe(Long id, RecipeRequest request, String username);
     void deleteRecipe(Long id, String username);
 }
