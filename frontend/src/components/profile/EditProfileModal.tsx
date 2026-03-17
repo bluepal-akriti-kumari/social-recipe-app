@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { 
   Modal, Box, Typography, TextField, Button, 
-  Avatar, IconButton, Stack, CircularProgress 
+  Avatar, IconButton, Stack, CircularProgress,
+  InputAdornment, Popover // Added these
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import InsertEmoticonIcon from '@mui/icons-material/InsertEmoticon'; // Added this
+import EmojiPicker, { Theme, type EmojiClickData } from 'emoji-picker-react';
 import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '../../store/store';
 import { updateProfileThunk } from '../../features/user/userThunks';
@@ -17,8 +20,6 @@ interface EditProfileModalProps {
   profile: UserProfile;
 }
 
-// modal style removed as it was unused and causing lint error
-
 const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, profile }) => {
   const dispatch = useDispatch<AppDispatch>();
   const [bio, setBio] = useState(profile.bio || '');
@@ -27,6 +28,24 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, prof
   const [uploading, setUploading] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // --- EMOJI PICKER STATE ---
+  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
+
+  const handleEmojiOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleEmojiClose = () => {
+    setAnchorEl(null);
+  };
+
+  const onEmojiClick = (emojiData: EmojiClickData) => {
+    setBio((prev) => prev + emojiData.emoji);
+    // Optional: close after picking
+    // setAnchorEl(null);
+  };
+  // --------------------------
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'cover') => {
     const file = e.target.files?.[0];
@@ -100,7 +119,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, prof
           ) : (
             <Box sx={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', opacity: 0.9 }} />
           )}
-          <Box className="card-overlay" />
           
           <IconButton 
             component="label"
@@ -174,6 +192,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, prof
             Update your profile details
           </Typography>
 
+          {/* BIO FIELD WITH EMOJI BUTTON */}
           <TextField
             fullWidth
             size="small"
@@ -183,6 +202,15 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, prof
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             placeholder="Share your culinary journey..."
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end" sx={{ alignSelf: 'flex-start', mt: 1 }}>
+                  <IconButton onClick={handleEmojiOpen} size="small">
+                    <InsertEmoticonIcon sx={{ color: 'primary.main' }} />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
             sx={{ 
               mb: 4, 
               '& .MuiOutlinedInput-root': { 
@@ -194,6 +222,32 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, prof
               '& .MuiInputLabel-root': { fontWeight: 700 }
             }}
           />
+
+          {/* EMOJI POPOVER */}
+          <Popover
+            open={Boolean(anchorEl)}
+            anchorEl={anchorEl}
+            onClose={handleEmojiClose}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            PaperProps={{
+                sx: { borderRadius: 3, mt: 1, boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }
+            }}
+          >
+            <EmojiPicker 
+                onEmojiClick={onEmojiClick} 
+                autoFocusSearch={false}
+                theme={Theme.LIGHT}
+                width={300}
+                height={400}
+            />
+          </Popover>
 
           <Stack direction="row" spacing={3}>
             <Button 

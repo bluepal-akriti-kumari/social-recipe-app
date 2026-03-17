@@ -19,6 +19,7 @@
     "@types/sockjs-client": "^1.5.4",
     "axios": "^1.13.6",
     "date-fns": "^4.1.0",
+    "emoji-picker-react": "^4.18.0",
     "framer-motion": "^12.37.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
