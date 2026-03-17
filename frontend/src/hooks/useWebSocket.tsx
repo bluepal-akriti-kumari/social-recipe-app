@@ -52,9 +52,25 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const fetchInitialNotifications = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/notifications?page=0&size=20', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.content || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch initial notifications', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (isAuthenticated && user) {
       fetchUnreadCount();
+      fetchInitialNotifications();
       
       const socket = new SockJS('/ws');
       const client = new Client({
@@ -91,7 +107,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
         }
       };
     }
-  }, [isAuthenticated, user, fetchUnreadCount]);
+  }, [isAuthenticated, user, fetchUnreadCount, fetchInitialNotifications]);
 
   const markAsRead = async (id: number) => {
     try {

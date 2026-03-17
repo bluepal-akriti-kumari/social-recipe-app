@@ -19,6 +19,8 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import EditIcon from '@mui/icons-material/Edit';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import type { AppDispatch, RootState } from '../../store/store';
@@ -40,6 +42,8 @@ const RecipeDetailPage = () => {
   const [replyingTo, setReplyingTo] = useState<{ id: number; username: string } | null>(null);
   const [isPlannerOpen, setIsPlannerOpen] = useState(false);
   const [addingToShopping, setAddingToShopping] = useState(false);
+  const [activeImage, setActiveImage] = useState<string | null>(null);
+  const [deletingCommentId, setDeletingCommentId] = useState<number | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -56,6 +60,12 @@ const RecipeDetailPage = () => {
       dispatch(getCommentsThunk(recipeId));
     }
   }, [id, dispatch]);
+
+  useEffect(() => {
+    if (recipeDetail && !activeImage) {
+      setActiveImage(recipeDetail.imageUrl);
+    }
+  }, [recipeDetail, activeImage]);
 
   const handleLike = () => {
     if (recipeDetail) dispatch(likeRecipeThunk(recipeDetail.id));
@@ -80,6 +90,19 @@ const RecipeDetailPage = () => {
       toast.error('Failed to add ingredients');
     } finally {
       setAddingToShopping(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    setDeletingCommentId(commentId);
+    try {
+      await recipeService.deleteComment(commentId);
+      toast.success('Comment deleted');
+      if (recipeDetail) dispatch(getCommentsThunk(recipeDetail.id));
+    } catch {
+      toast.error('Failed to delete comment');
+    } finally {
+      setDeletingCommentId(null);
     }
   };
 
@@ -120,16 +143,49 @@ const RecipeDetailPage = () => {
             <Box sx={{ position: 'relative', mb: 6 }}>
               <Box 
                 component="img" 
-                src={recipeDetail.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80'} 
+                src={activeImage || recipeDetail.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80'} 
                 sx={{ 
                   width: '100%', 
                   aspectRatio: '16/9',
                   objectFit: 'cover',
                   borderRadius: '16px', 
                   boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-                  border: '1px solid rgba(255,255,255,0.3)'
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  transition: 'all 0.5s ease-in-out'
                 }}
               />
+              
+              {/* Additional Images Thumbnails */}
+              {recipeDetail.additionalImages && recipeDetail.additionalImages.length > 0 && (
+                <Box sx={{ display: 'flex', gap: 1.5, mt: 2, overflowX: 'auto', pb: 1, scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}>
+                  <Box 
+                    onClick={() => setActiveImage(recipeDetail.imageUrl)}
+                    sx={{ 
+                      width: 80, height: 80, borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', flexShrink: 0,
+                      border: activeImage === recipeDetail.imageUrl ? '3px solid #6366f1' : '1px solid rgba(0,0,0,0.1)',
+                      opacity: activeImage === recipeDetail.imageUrl ? 1 : 0.6,
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <img src={recipeDetail.imageUrl} alt="Cover" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </Box>
+                  {recipeDetail.additionalImages.map((img, idx) => (
+                    <Box 
+                      key={idx}
+                      onClick={() => setActiveImage(img)}
+                      sx={{ 
+                        width: 80, height: 80, borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', flexShrink: 0,
+                        border: activeImage === img ? '3px solid #6366f1' : '1px solid rgba(0,0,0,0.1)',
+                        opacity: activeImage === img ? 1 : 0.6,
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <img src={img} alt={`Additional ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </Box>
+                  ))}
+                </Box>
+              )}
+
               <Box 
                 sx={{ 
                   position: 'absolute', top: 24, right: 24,
@@ -164,6 +220,19 @@ const RecipeDetailPage = () => {
             <Typography variant="h1" sx={{ fontWeight: 950, mb: 3, letterSpacing: '-0.04em', lineHeight: 1, fontSize: { xs: '2.5rem', md: '4.5rem' } }}>
               {recipeDetail.title}
             </Typography>
+            {currentUser && recipeDetail.author.username === (currentUser as any).username && (
+              <Box sx={{ mb: 3 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<EditIcon />}
+                  size="small"
+                  onClick={() => navigate(`/recipes/${recipeDetail.id}/edit`)}
+                  sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 800, mr: 1 }}
+                >
+                  Edit Recipe
+                </Button>
+              </Box>
+            )}
             
             <Box 
               className="glass-card"
@@ -332,6 +401,17 @@ const RecipeDetailPage = () => {
                           >
                             Reply
                           </Button>
+                          {currentUser && (currentUser as any).username === comment.username && (
+                            <Button 
+                              size="small" 
+                              startIcon={deletingCommentId === comment.id ? <CircularProgress size={14} /> : <DeleteOutlineIcon sx={{ fontSize: '18px !important' }} />}
+                              sx={{ p: 0, minWidth: 0, color: 'error.main', fontWeight: 800, textTransform: 'none', ml: 2, '&:hover': { opacity: 0.8 } }}
+                              onClick={() => handleDeleteComment(comment.id)}
+                              disabled={deletingCommentId === comment.id}
+                            >
+                              Delete
+                            </Button>
+                          )}
                         </Box>
                       </Box>
                     </Paper>
