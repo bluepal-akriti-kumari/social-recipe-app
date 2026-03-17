@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { 
   Card, CardContent, CardMedia, Typography, 
   Box, Avatar, IconButton, Chip 
@@ -8,17 +9,29 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 import type { RecipeSummary } from '../../services/recipe.service';
 
 interface RecipeCardProps {
   recipe: RecipeSummary;
   onLike?: (id: number) => void;
+  onBookmark?: (id: number) => void;
 }
 
-const RecipeCard = ({ recipe, onLike }: RecipeCardProps) => {
+const RecipeCard = ({ recipe, onLike, onBookmark }: RecipeCardProps) => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
+  const handleInteraction = (e: React.MouseEvent, callback?: (id: number) => void) => {
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    callback?.(recipe.id);
+  };
 
   return (
     <motion.div
@@ -74,14 +87,16 @@ const RecipeCard = ({ recipe, onLike }: RecipeCardProps) => {
 
           <IconButton
             size="small"
+            onClick={(e) => handleInteraction(e, onBookmark)}
             sx={{ 
               position: 'absolute', top: 12, right: 12,
               bgcolor: 'rgba(255,255,255,0.9)', 
               '&:hover': { bgcolor: 'white' },
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              color: recipe.isBookmarked ? 'primary.main' : 'inherit'
             }}
           >
-            <BookmarkBorderIcon fontSize="small" sx={{ color: 'primary.main' }} />
+            {recipe.isBookmarked ? <BookmarkIcon fontSize="small" /> : <BookmarkBorderIcon fontSize="small" />}
           </IconButton>
         </Box>
 
@@ -141,7 +156,7 @@ const RecipeCard = ({ recipe, onLike }: RecipeCardProps) => {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <IconButton 
                   size="small" 
-                  onClick={() => onLike?.(recipe.id)}
+                  onClick={(e) => handleInteraction(e, onLike)}
                   sx={{ 
                     p: 0,
                     color: recipe.isLiked ? 'secondary.main' : 'text.disabled',

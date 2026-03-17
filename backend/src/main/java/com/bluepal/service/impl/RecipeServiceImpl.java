@@ -245,7 +245,15 @@ public class RecipeServiceImpl implements RecipeService {
 	public void deleteRecipe(Long id, String username) {
 		Recipe recipe = recipeRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
-		if (!recipe.getAuthor().getUsername().equals(username)) {
+		
+		User user = userRepository.findByUsername(username)
+				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+
+		boolean isAuthor = recipe.getAuthor().getUsername().equals(username);
+		boolean isModeratorOrAdmin = user.getRoles().stream()
+				.anyMatch(r -> r.equals("ROLE_MODERATOR") || r.equals("ROLE_ADMIN"));
+
+		if (!isAuthor && !isModeratorOrAdmin) {
 			throw new RuntimeException("You are not authorized to delete this recipe");
 		}
 		recipeRepository.delete(recipe);
