@@ -18,11 +18,20 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     @Query("SELECT r FROM Recipe r WHERE r.createdAt < :cursor ORDER BY r.createdAt DESC")
     List<Recipe> findExploreCursor(@Param("cursor") LocalDateTime cursor, Pageable pageable);
 
+    // Initial load for Explore Feed
+    List<Recipe> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
     // Cursor-based Personalized Feed
     @Query("SELECT r FROM Recipe r WHERE r.author IN " +
            "(SELECT f.following FROM Follow f WHERE f.follower = :user) " +
            "AND r.createdAt < :cursor ORDER BY r.createdAt DESC")
     List<Recipe> findPersonalizedCursor(@Param("user") User user, @Param("cursor") LocalDateTime cursor, Pageable pageable);
+
+    // Initial load for Personalized Feed
+    @Query("SELECT r FROM Recipe r WHERE r.author IN " +
+           "(SELECT f.following FROM Follow f WHERE f.follower = :user) " +
+           "ORDER BY r.createdAt DESC")
+    List<Recipe> findPersonalizedLatest(@Param("user") User user, Pageable pageable);
 
     // Trending recipes based on likes and rating (simplified)
     @Query("SELECT r FROM Recipe r ORDER BY (r.likeCount + r.ratingCount) DESC")

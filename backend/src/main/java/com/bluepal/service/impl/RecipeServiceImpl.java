@@ -36,20 +36,6 @@ public class RecipeServiceImpl implements RecipeService {
 		this.bookmarkService = bookmarkService;
 	}
 
-	@Override
-	public Map<String, Object> getExploreFeedCursor(LocalDateTime cursor, int size, String currentUsername) {
-		LocalDateTime effectiveCursor = (cursor == null) ? LocalDateTime.now() : cursor;
-		Pageable limit = PageRequest.of(0, size);
-
-		List<Recipe> recipes = recipeRepository.findExploreCursor(effectiveCursor, limit);
-
-		List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
-				.collect(Collectors.toList());
-
-		String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
-
-		return Map.of("content", content, "nextCursor", nextCursor);
-	}
 
 	@Override
 	public List<RecipeResponse> searchRecipesFullText(String query, String currentUsername) {
@@ -166,14 +152,41 @@ public class RecipeServiceImpl implements RecipeService {
 	}
 
 	@Override
+	public Map<String, Object> getExploreFeedCursor(LocalDateTime cursor, int size, String currentUsername) {
+		try {
+			List<Recipe> recipes;
+			Pageable limit = PageRequest.of(0, size);
+
+			if (cursor == null) {
+				recipes = recipeRepository.findAllByOrderByCreatedAtDesc(limit);
+			} else {
+				recipes = recipeRepository.findExploreCursor(cursor, limit);
+			}
+
+			List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
+					.collect(Collectors.toList());
+
+			String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
+
+			return Map.of("content", content, "nextCursor", nextCursor);
+		} catch (Exception e) {
+			return Map.of("content", List.of(), "nextCursor", "");
+		}
+	}
+
+	@Override
 	public Map<String, Object> getPersonalizedFeedCursor(String username, LocalDateTime cursor, int size) {
 		User user = userRepository.findByUsername(username)
 				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
-		LocalDateTime effectiveCursor = (cursor == null) ? LocalDateTime.now() : cursor;
 		Pageable limit = PageRequest.of(0, size);
+		List<Recipe> recipes;
 
-		List<Recipe> recipes = recipeRepository.findPersonalizedCursor(user, effectiveCursor, limit);
+		if (cursor == null) {
+			recipes = recipeRepository.findPersonalizedLatest(user, limit);
+		} else {
+			recipes = recipeRepository.findPersonalizedCursor(user, cursor, limit);
+		}
 
 		List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, username))
 				.collect(Collectors.toList());
@@ -282,11 +295,15 @@ public class RecipeServiceImpl implements RecipeService {
 	public Map<String, Object> getExploreFeedCursorByCategory(String category, LocalDateTime cursor, int size,
 			String currentUsername) {
 		try {
-			com.bluepal.entity.RecipeCategory cat = com.bluepal.entity.RecipeCategory.valueOf(category.toUpperCase());
-			LocalDateTime effectiveCursor = (cursor == null) ? LocalDateTime.now() : cursor;
+			com.bluepal.entity.RecipeCategory cat = com.bluepal.entity.RecipeCategory.valueOf(category.trim().toUpperCase());
 			Pageable limit = PageRequest.of(0, size);
+			List<Recipe> recipes;
 
-			List<Recipe> recipes = recipeRepository.findExploreCursorWithCategory(cat, effectiveCursor, limit);
+			if (cursor == null) {
+				recipes = recipeRepository.findByCategoryOrderByCreatedAtDesc(cat, limit);
+			} else {
+				recipes = recipeRepository.findExploreCursorWithCategory(cat, cursor, limit);
+			}
 
 			List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
 					.collect(Collectors.toList());

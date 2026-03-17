@@ -7,7 +7,7 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { recipeService } from '../../services/recipe.service';
 import axios from 'axios';
 
@@ -131,27 +131,34 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
               error={!!errors.title} helperText={errors.title?.message}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
             />
-            <TextField
-              size="small"
-              select
-              fullWidth
-              label="Category"
-              {...register('category', { required: 'Category is required' })}
-              error={!!errors.category}
-              helperText={errors.category?.message}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
-            >
-              <MenuItem value="VEG">Vegetarian</MenuItem>
-              <MenuItem value="NON_VEG">Non-Vegetarian</MenuItem>
-              <MenuItem value="BREAKFAST">Breakfast</MenuItem>
-              <MenuItem value="BAKING">Baking</MenuItem>
-              <MenuItem value="SEAFOOD">Seafood</MenuItem>
-              <MenuItem value="HEALTHY">Healthy</MenuItem>
-              <MenuItem value="ITALIAN">Italian</MenuItem>
-              <MenuItem value="DESSERTS">Desserts</MenuItem>
-              <MenuItem value="SNACK">Snack</MenuItem>
-              <MenuItem value="DRINK">Drink</MenuItem>
-            </TextField>
+            <Controller
+              name="category"
+              control={control}
+              rules={{ required: 'Category is required' }}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  size="small"
+                  select
+                  fullWidth
+                  label="Category"
+                  error={!!errors.category}
+                  helperText={errors.category?.message}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
+                >
+                  <MenuItem value="VEG">Vegetarian</MenuItem>
+                  <MenuItem value="NON_VEG">Non-Vegetarian</MenuItem>
+                  <MenuItem value="BREAKFAST">Breakfast</MenuItem>
+                  <MenuItem value="BAKING">Baking</MenuItem>
+                  <MenuItem value="SEAFOOD">Seafood</MenuItem>
+                  <MenuItem value="HEALTHY">Healthy</MenuItem>
+                  <MenuItem value="ITALIAN">Italian</MenuItem>
+                  <MenuItem value="DESSERTS">Desserts</MenuItem>
+                  <MenuItem value="SNACK">Snack</MenuItem>
+                  <MenuItem value="DRINK">Drink</MenuItem>
+                </TextField>
+              )}
+            />
             <TextField
               size="small"
               fullWidth multiline rows={3} label="The Story" placeholder="What's the inspiration behind this recipe?"
@@ -279,6 +286,7 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
                 <Box key={field.id} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                   <TextField size="small" label="Name" sx={{ flex: 3 }} {...register(`ingredients.${index}.name` as const, { required: true })} />
                   <TextField size="small" label="Qty" sx={{ flex: 1 }} {...register(`ingredients.${index}.quantity` as const, { required: true })} />
+                  <TextField size="small" label="Unit" sx={{ flex: 1 }} {...register(`ingredients.${index}.unit` as const)} />
                   <IconButton onClick={() => removeIngredient(index)} color="error" size="small">
                     <DeleteIcon />
                   </IconButton>
