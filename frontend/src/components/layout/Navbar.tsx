@@ -1,18 +1,22 @@
-import { AppBar, Toolbar, Typography, Button, Avatar, Box, IconButton, Menu, MenuItem, InputBase, alpha, styled } from '@mui/material';
+import { 
+  AppBar, Toolbar, Typography, Button, Avatar, 
+  Box, IconButton, Menu, MenuItem, InputBase, 
+  alpha, styled, Container, Tooltip 
+} from '@mui/material';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import SearchIcon from '@mui/icons-material/Search';
-import { useState } from 'react';
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
-// Styled components removed to consolidate into the main Navbar component for simplicity
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
-  borderRadius: Number(theme.shape.borderRadius) * 2,
-  backgroundColor: alpha(theme.palette.common.white, 0.15),
+  borderRadius: '24px',
+  backgroundColor: alpha(theme.palette.text.primary, 0.05),
   '&:hover': {
-    backgroundColor: alpha(theme.palette.common.white, 0.25),
+    backgroundColor: alpha(theme.palette.text.primary, 0.08),
   },
   marginRight: theme.spacing(2),
   marginLeft: 0,
@@ -23,6 +27,13 @@ const Search = styled('div')(({ theme }) => ({
   },
   display: 'flex',
   alignItems: 'center',
+  transition: 'all 0.3s ease',
+  border: '1px solid transparent',
+  '&:focus-within': {
+    border: `1px solid ${theme.palette.primary.main}`,
+    backgroundColor: 'white',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+  }
 }));
 
 const Navbar = () => {
@@ -30,6 +41,13 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
   const handleClose = () => setAnchorEl(null);
@@ -47,65 +65,130 @@ const Navbar = () => {
   };
 
   return (
-    <AppBar position="fixed" sx={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)' }}>
-      <Toolbar>
-        <RestaurantMenuIcon sx={{ mr: 1 }} />
-        <Typography
-          variant="h6"
-          component="div"
-          sx={{ flexGrow: 1, fontWeight: 700, cursor: 'pointer', display: { xs: 'none', sm: 'block' } }}
-          onClick={() => navigate('/feed')}
-        >
-          RecipeApp
-        </Typography>
+    <AppBar 
+      position="fixed" 
+      sx={{ 
+        background: scrolled ? 'rgba(255, 255, 255, 0.8)' : 'transparent',
+        backdropFilter: scrolled ? 'blur(12px)' : 'none',
+        borderBottom: scrolled ? '1px solid rgba(226, 232, 240, 0.8)' : 'none',
+        transition: 'all 0.3s ease',
+        pt: scrolled ? 0 : 1
+      }}
+    >
+      <Container maxWidth="xl">
+        <Toolbar disableGutters>
+          <Box 
+            sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer', mr: 2 }}
+            onClick={() => navigate('/feed')}
+          >
+            <Box 
+              sx={{ 
+                bgcolor: 'primary.main', 
+                p: 1, 
+                borderRadius: '12px', 
+                display: 'flex', 
+                mr: 1.5,
+                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
+              }}
+            >
+              <RestaurantMenuIcon sx={{ color: 'white' }} />
+            </Box>
+            <Typography
+              variant="h5"
+              sx={{ 
+                fontWeight: 800, 
+                letterSpacing: '-0.5px',
+                display: { xs: 'none', sm: 'block' },
+                background: 'linear-gradient(135deg, #0f172a 0%, #334155 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}
+            >
+              RecipeApp
+            </Typography>
+          </Box>
 
-        <Search>
-          <Box sx={{ px: 2, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <SearchIcon />
+          <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>
+            <Search sx={{ display: { xs: 'none', md: 'flex' } }}>
+              <Box sx={{ px: 2, display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                <SearchIcon sx={{ fontSize: 20 }} />
+              </Box>
+              <InputBase
+                placeholder="Find some inspiration..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearch}
+                sx={{
+                  color: 'text.primary',
+                  width: '100%',
+                  '& .MuiInputBase-input': {
+                    py: 1,
+                    pr: 3,
+                    width: { md: '30ch', lg: '45ch' },
+                    fontSize: '0.95rem'
+                  },
+                }}
+              />
+            </Search>
           </Box>
-          <InputBase
-            placeholder="Search ingredients..."
-            inputProps={{ 'aria-label': 'search' }}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={handleSearch}
-            sx={{
-              color: 'inherit',
-              width: '100%',
-              '& .MuiInputBase-input': {
-                py: 1,
-                pr: 1,
-                transition: (theme) => theme.transitions.create('width'),
-                width: { xs: '100%', md: '20ch' },
-              },
-            }}
-          />
-        </Search>
 
-        {isAuthenticated ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0, sm: 1 } }}>
-            <IconButton color="inherit" onClick={() => navigate('/recipes/create')} title="Create Recipe">
-              <AddCircleOutlineIcon />
-            </IconButton>
-            <IconButton onClick={handleMenu}>
-              <Avatar sx={{ width: 32, height: 32, bgcolor: 'white', color: 'primary.main', fontWeight: 700, fontSize: 14 }}>
-                {user?.username?.[0]?.toUpperCase()}
-              </Avatar>
-            </IconButton>
-            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
-              <MenuItem onClick={() => { navigate(`/profile/${user?.username}`); handleClose(); }}>
-                My Profile
-              </MenuItem>
-              <MenuItem onClick={handleLogout}>Logout</MenuItem>
-            </Menu>
-          </Box>
-        ) : (
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button color="inherit" onClick={() => navigate('/login')}>Login</Button>
-            <Button variant="outlined" color="inherit" onClick={() => navigate('/register')} sx={{ display: { xs: 'none', sm: 'block' } }}>Sign Up</Button>
-          </Box>
-        )}
-      </Toolbar>
+          {isAuthenticated ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
+              <Tooltip title="Notifications">
+                <IconButton color="inherit" sx={{ display: { xs: 'none', sm: 'flex' } }}>
+                  <NotificationsNoneIcon />
+                </IconButton>
+              </Tooltip>
+              <Button 
+                variant="contained" 
+                startIcon={<AddCircleOutlineIcon />}
+                onClick={() => navigate('/recipes/create')}
+                sx={{ px: 3, display: { xs: 'none', sm: 'flex' } }}
+              >
+                Create
+              </Button>
+              <IconButton onClick={handleMenu} sx={{ p: 0.5, border: '2px solid transparent', '&:hover': { borderColor: 'primary.light' } }}>
+                <Avatar 
+                  src={user?.profilePictureUrl}
+                  sx={{ width: 36, height: 36, fontWeight: 700, fontSize: 14 }}
+                >
+                  {user?.username?.[0]?.toUpperCase()}
+                </Avatar>
+              </IconButton>
+              <Menu 
+                anchorEl={anchorEl} 
+                open={Boolean(anchorEl)} 
+                onClose={handleClose}
+                PaperProps={{
+                  sx: { mt: 1.5, minWidth: 180, borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.05)' }
+                }}
+              >
+                <MenuItem onClick={() => { navigate(`/profile/${user?.username}`); handleClose(); }}>
+                  My Profile
+                </MenuItem>
+                <MenuItem onClick={() => { navigate('/settings'); handleClose(); }}>
+                  Settings
+                </MenuItem>
+                <Box sx={{ my: 1, height: '1px', bgcolor: 'divider' }} />
+                <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
+                  Logout
+                </MenuItem>
+              </Menu>
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', gap: 1.5 }}>
+              <Button color="inherit" onClick={() => navigate('/login')}>Login</Button>
+              <Button 
+                variant="contained" 
+                onClick={() => navigate('/register')} 
+                sx={{ display: { xs: 'none', sm: 'block' } }}
+              >
+                Sign Up
+              </Button>
+            </Box>
+          )}
+        </Toolbar>
+      </Container>
     </AppBar>
   );
 };

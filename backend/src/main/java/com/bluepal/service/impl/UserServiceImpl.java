@@ -41,6 +41,7 @@ public class UserServiceImpl implements UserService {
                 .username(user.getUsername())
                 .bio(user.getBio())
                 .profilePictureUrl(user.getProfilePictureUrl())
+                .coverPictureUrl(user.getCoverPictureUrl())
                 .followerCount(user.getFollowerCount())
                 .followingCount(user.getFollowingCount())
                 .isFollowing(isFollowing)
@@ -139,5 +140,35 @@ public class UserServiceImpl implements UserService {
         // Persist updated counts to the database
         userRepository.save(following);
         userRepository.save(follower);
+    }
+
+    @Override
+    @Transactional
+    public UserProfileResponse updateProfile(String username, com.bluepal.dto.request.UpdateProfileRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+
+        if (request.getBio() != null) {
+            user.setBio(request.getBio());
+        }
+        if (request.getProfilePictureUrl() != null) {
+            user.setProfilePictureUrl(request.getProfilePictureUrl());
+        }
+        if (request.getCoverPictureUrl() != null) {
+            user.setCoverPictureUrl(request.getCoverPictureUrl());
+        }
+
+        User updatedUser = userRepository.save(user);
+
+        return UserProfileResponse.builder()
+                .id(updatedUser.getId())
+                .username(updatedUser.getUsername())
+                .bio(updatedUser.getBio())
+                .profilePictureUrl(updatedUser.getProfilePictureUrl())
+                .coverPictureUrl(updatedUser.getCoverPictureUrl())
+                .followerCount(updatedUser.getFollowerCount())
+                .followingCount(updatedUser.getFollowingCount())
+                .isFollowing(false) // When updating own profile, isFollowing isn't really applicable or usually false
+                .build();
     }
 }
