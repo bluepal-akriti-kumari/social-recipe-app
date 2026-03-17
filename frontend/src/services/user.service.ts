@@ -10,6 +10,9 @@ export interface UserProfile {
   followerCount: number;
   followingCount: number;
   isFollowing: boolean;
+  isVerified?: boolean;
+  reputationPoints?: number;
+  reputationLevel?: string;
 }
 
 export const userService = {
