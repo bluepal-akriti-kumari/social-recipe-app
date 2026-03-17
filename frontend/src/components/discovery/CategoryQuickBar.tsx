@@ -8,13 +8,13 @@ import CoffeeIcon from '@mui/icons-material/Coffee';
 import IcecreamIcon from '@mui/icons-material/Icecream';
 
 const CATEGORIES = [
-  { label: 'All Recipes', icon: null },
-  { label: 'Healthy', icon: <SpaIcon sx={{ fontSize: 18 }} /> },
-  { label: 'Italian', icon: <LocalPizzaIcon sx={{ fontSize: 18 }} /> },
-  { label: 'Seafood', icon: <SetMealIcon sx={{ fontSize: 18 }} /> },
-  { label: 'Baking', icon: <BakeryDiningIcon sx={{ fontSize: 18 }} /> },
-  { label: 'Breakfast', icon: <CoffeeIcon sx={{ fontSize: 18 }} /> },
-  { label: 'Desserts', icon: <IcecreamIcon sx={{ fontSize: 18 }} /> },
+  { label: 'All Recipes', value: '', icon: null },
+  { label: 'Healthy', value: 'HEALTHY', icon: <SpaIcon sx={{ fontSize: 18 }} /> },
+  { label: 'Italian', value: 'ITALIAN', icon: <LocalPizzaIcon sx={{ fontSize: 18 }} /> },
+  { label: 'Seafood', value: 'SEAFOOD', icon: <SetMealIcon sx={{ fontSize: 18 }} /> },
+  { label: 'Baking', value: 'BAKING', icon: <BakeryDiningIcon sx={{ fontSize: 18 }} /> },
+  { label: 'Breakfast', value: 'BREAKFAST', icon: <CoffeeIcon sx={{ fontSize: 18 }} /> },
+  { label: 'Desserts', value: 'DESSERTS', icon: <IcecreamIcon sx={{ fontSize: 18 }} /> },
 ];
 
 interface CategoryQuickBarProps {
@@ -47,20 +47,20 @@ const CategoryQuickBar = ({ selectedCategory, onSelect }: CategoryQuickBarProps)
           <Chip
             icon={cat.icon || undefined}
             label={cat.label}
-            onClick={() => onSelect(cat.label === 'All Recipes' ? '' : cat.label)}
+            onClick={() => onSelect(cat.value)}
             sx={{ 
               px: 2, py: 2.5, borderRadius: 2,
               fontWeight: 800,
-              bgcolor: (selectedCategory === cat.label || (selectedCategory === '' && cat.label === 'All Recipes')) ? 'primary.main' : 'white',
-              color: (selectedCategory === cat.label || (selectedCategory === '' && cat.label === 'All Recipes')) ? 'white' : 'text.primary',
-              border: (selectedCategory === cat.label || (selectedCategory === '' && cat.label === 'All Recipes')) ? 'none' : '1px solid rgba(0,0,0,0.08)',
-              boxShadow: (selectedCategory === cat.label || (selectedCategory === '' && cat.label === 'All Recipes')) ? '0 8px 24px rgba(99, 102, 241, 0.25)' : 'none',
+              bgcolor: selectedCategory === cat.value ? 'primary.main' : 'white',
+              color: selectedCategory === cat.value ? 'white' : 'text.primary',
+              border: selectedCategory === cat.value ? 'none' : '1px solid rgba(0,0,0,0.08)',
+              boxShadow: selectedCategory === cat.value ? '0 8px 24px rgba(99, 102, 241, 0.25)' : 'none',
               '&:hover': {
-                bgcolor: (selectedCategory === cat.label || (selectedCategory === '' && cat.label === 'All Recipes')) ? 'primary.main' : alpha('#6366f1', 0.05),
+                bgcolor: selectedCategory === cat.value ? 'primary.main' : alpha('#6366f1', 0.05),
                 borderColor: 'primary.main',
               },
               '& .MuiChip-icon': {
-                color: (selectedCategory === cat.label || (selectedCategory === '' && cat.label === 'All Recipes')) ? 'white' : 'primary.main',
+                color: selectedCategory === cat.value ? 'white' : 'primary.main',
               }
             }}
           />
