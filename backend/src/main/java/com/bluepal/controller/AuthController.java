@@ -85,4 +85,42 @@ public class AuthController {
 
         return ResponseEntity.ok("User registered successfully!");
     }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(
+            @RequestBody java.util.Map<String, String> body,
+            org.springframework.security.core.Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+        String username = auth.getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new com.bluepal.exception.ResourceNotFoundException("User", "username", username));
+        
+        String currentPassword = body.get("currentPassword");
+        String newPassword = body.get("newPassword");
+        
+        if (!encoder.matches(currentPassword, user.getPassword())) {
+            return ResponseEntity.badRequest().body("Current password is incorrect");
+        }
+        if (newPassword == null || newPassword.length() < 6) {
+            return ResponseEntity.badRequest().body("New password must be at least 6 characters");
+        }
+
+        user.setPassword(encoder.encode(newPassword));
+        userRepository.save(user);
+        return ResponseEntity.ok("Password changed successfully");
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/users/me")
+    public ResponseEntity<?> deleteAccount(org.springframework.security.core.Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+        String username = auth.getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new com.bluepal.exception.ResourceNotFoundException("User", "username", username));
+        userRepository.delete(user);
+        return ResponseEntity.ok("Account deleted successfully");
+    }
 }

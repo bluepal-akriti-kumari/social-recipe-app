@@ -20,6 +20,7 @@ interface RecipeFormValues {
   cookTimeMinutes: number;
   servings: number;
   imageUrl: string;
+  additionalImages: string[];
   ingredients: { name: string; quantity: string; unit: string }[];
   steps: { stepNumber: number; instruction: string }[];
 }
@@ -42,7 +43,8 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
       prepTimeMinutes: 15,
       cookTimeMinutes: 30,
       servings: 4,
-      imageUrl: ''
+      imageUrl: '',
+      additionalImages: []
     }
   });
 
@@ -57,28 +59,40 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
   });
 
   const imageUrl = watch('imageUrl');
+  const additionalImages = watch('additionalImages') || [];
 
   const handleNext = () => setActiveStep((prev) => prev + 1);
   const handleBack = () => setActiveStep((prev) => prev - 1);
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, isAdditional = false) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
     setUploading(true);
     try {
       const { signature, timestamp, apiKey, cloudName } = await recipeService.getCloudinarySignature();
       
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('api_key', apiKey || '');
-      formData.append('timestamp', timestamp);
-      formData.append('signature', signature);
-      formData.append('folder', 'recipes');
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('api_key', apiKey || '');
+        formData.append('timestamp', timestamp);
+        formData.append('signature', signature);
+        formData.append('folder', 'recipes');
+        const res = await axios.post(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, formData);
+        return res.data.secure_url;
+      });
 
-      const res = await axios.post(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, formData);
+      const uploadedUrls = await Promise.all(uploadPromises);
       
-      setValue('imageUrl', res.data.secure_url);
+      if (!isAdditional) {
+        setValue('imageUrl', uploadedUrls[0]);
+        if (uploadedUrls.length > 1) {
+          setValue('additionalImages', [...additionalImages, ...uploadedUrls.slice(1)]);
+        }
+      } else {
+        setValue('additionalImages', [...additionalImages, ...uploadedUrls]);
+      }
     } catch (err) {
       console.error('Upload failed', err);
       setError('Image upload failed. Please try again.');
@@ -159,18 +173,67 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
               ) : (
                 <label htmlFor="modal-image-upload" style={{ cursor: 'pointer' }}>
                   <input
-                    accept="image/*" id="modal-image-upload" type="file"
-                    style={{ display: 'none' }} onChange={handleImageUpload}
+                    accept="image/*" id="modal-image-upload" type="file" multiple
+                    style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, false)}
                   />
                   <Box sx={{ py: 2 }}>
                     <CloudUploadIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 1, opacity: 0.5 }} />
                     <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Upload Cover Photo</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
+                      You can select multiple photos at once
+                    </Typography>
                     <Button variant="contained" component="span" size="small" disabled={uploading} sx={{ mt: 1, borderRadius: 3 }}>
                       {uploading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : 'Choose Image'}
                     </Button>
                   </Box>
                 </label>
               )}
+            </Box>
+
+            {/* Additional Images Section */}
+            <Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Additional Photos</Typography>
+                <label htmlFor="additional-image-upload" style={{ cursor: 'pointer' }}>
+                  <input
+                    accept="image/*" id="additional-image-upload" type="file" multiple
+                    style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, true)}
+                  />
+                  <Button variant="outlined" component="span" size="small" disabled={uploading} sx={{ borderRadius: 1.5 }} startIcon={<AddIcon />}>
+                    Add More
+                  </Button>
+                </label>
+              </Box>
+              
+              <Grid container spacing={1}>
+                {additionalImages.map((url, index) => (
+                  <Grid item xs={4} key={index}>
+                    <Box sx={{ position: 'relative', pt: '100%' }}>
+                      <Box 
+                        component="img" src={url} 
+                        sx={{ 
+                          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
+                          objectFit: 'cover', borderRadius: 1.5, border: '1px solid #e2e8f0' 
+                        }} 
+                      />
+                      <IconButton 
+                        size="small" color="error" 
+                        onClick={() => {
+                          const newImages = [...additionalImages];
+                          newImages.splice(index, 1);
+                          setValue('additionalImages', newImages);
+                        }}
+                        sx={{ 
+                          position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(255,255,255,0.8)',
+                          '&:hover': { bgcolor: 'white' }
+                        }}
+                      >
+                        <DeleteIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
             </Box>
           </Box>
         );

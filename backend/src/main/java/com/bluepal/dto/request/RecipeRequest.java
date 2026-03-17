@@ -15,6 +15,8 @@ public class RecipeRequest {
 
     private String imageUrl;
 
+    private List<String> additionalImages;
+
     private Integer prepTimeMinutes;
 
     private Integer cookTimeMinutes;
