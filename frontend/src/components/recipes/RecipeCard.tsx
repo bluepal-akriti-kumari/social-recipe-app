@@ -2,6 +2,7 @@ import {
   Card, CardContent, CardMedia, Typography, 
   Box, Avatar, IconButton, Chip 
 } from '@mui/material';
+import VerifiedIcon from '@mui/icons-material/Verified';
 import { motion } from 'framer-motion';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
@@ -93,8 +94,9 @@ const RecipeCard = ({ recipe, onLike }: RecipeCardProps) => {
             >
               {recipe.author?.username?.[0]?.toUpperCase()}
             </Avatar>
-            <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+            <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5 }}>
               {recipe.author?.username}
+              {recipe.author?.isVerified && <VerifiedIcon sx={{ fontSize: 14, color: 'primary.main' }} />}
             </Typography>
           </Box>
 

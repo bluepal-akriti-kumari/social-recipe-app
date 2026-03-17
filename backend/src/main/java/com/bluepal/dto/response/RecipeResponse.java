@@ -42,6 +42,7 @@ public class RecipeResponse {
         private Long id;
         private String username;
         private String profilePictureUrl;
+        private Boolean isVerified;
     }
 
     @Data

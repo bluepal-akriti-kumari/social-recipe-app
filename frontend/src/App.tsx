@@ -15,10 +15,17 @@ import { ModalProvider } from './context/ModalContext';
 import { WebSocketProvider } from './hooks/useWebSocket';
 import CreateRecipeModal from './components/recipes/CreateRecipeModal';
 import SettingsPage from './pages/Settings/SettingsPage';
+import AdminDashboard from './pages/Admin/AdminDashboard';
 
 const PrivateRoute = () => {
   const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+  return isAuthenticated ? <Outlet /> : <Navigate to="/login" />;
+};
+
+const AdminRoute = () => {
+  const { user, isAuthenticated } = useAuth();
+  const isAdmin = user?.roles?.includes('ROLE_ADMIN');
+  return isAuthenticated && isAdmin ? <Outlet /> : <Navigate to="/feed" />;
 };
 
 const App = () => {
@@ -41,6 +48,10 @@ const App = () => {
               <Route path="/planner" element={<MealPlannerPage />} />
               <Route path="/shopping" element={<ShoppingListPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+            </Route>
+
+            <Route element={<AdminRoute />}>
+              <Route path="/admin" element={<AdminDashboard />} />
             </Route>
 
             {/* Default Redirect */}

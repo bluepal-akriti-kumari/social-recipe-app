@@ -145,6 +145,7 @@ public class RecipeServiceImpl implements RecipeService {
 				.createdAt(recipe.getCreatedAt())
 				.author(RecipeResponse.AuthorDto.builder().id(recipe.getAuthor().getId())
 						.username(recipe.getAuthor().getUsername())
+						.isVerified(recipe.getAuthor().isVerified())
 						.profilePictureUrl(recipe.getAuthor().getProfilePictureUrl()).build())
 				.ingredients(recipe.getIngredients().stream()
 						.map(i -> RecipeResponse.IngredientDto.builder().id(i.getId()).name(i.getName())

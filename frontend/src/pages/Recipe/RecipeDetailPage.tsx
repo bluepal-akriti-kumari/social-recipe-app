@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
 import { 
   Container, Grid, Box, Typography, Avatar, 
   List, ListItem, ListItemText, ListItemIcon, 
   Paper, IconButton, TextField, Button, CircularProgress, 
   Alert, alpha, Stack
 } from '@mui/material';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -21,100 +21,105 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditIcon from '@mui/icons-material/Edit';
+import VerifiedIcon from '@mui/icons-material/Verified';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
-import type { AppDispatch, RootState } from '../../store/store';
-import { 
-  getRecipeByIdThunk, likeRecipeThunk, 
-  getCommentsThunk, addCommentThunk 
-} from '../../features/recipes/recipeThunks';
+import { recipeService } from '../../services/recipe.service';
 import { shoppingListService } from '../../services/shoppingList.service';
 import AddToPlannerModal from './AddToPlannerModal';
 import { toast } from 'react-hot-toast';
-import { recipeService } from '../../services/recipe.service';
 
 const RecipeDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const dispatch = useDispatch<AppDispatch>();
+  const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
-  const { recipeDetail, comments, loading, error } = useSelector((state: RootState) => state.recipes);
+  
+  const recipeId = parseInt(id || '0');
   const [commentText, setCommentText] = useState('');
   const [replyingTo, setReplyingTo] = useState<{ id: number; username: string } | null>(null);
   const [isPlannerOpen, setIsPlannerOpen] = useState(false);
-  const [addingToShopping, setAddingToShopping] = useState(false);
   const [activeImage, setActiveImage] = useState<string | null>(null);
-  const [deletingCommentId, setDeletingCommentId] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (id) {
-      if (id === 'NaN') {
-        console.error('CRITICAL: RecipeDetailPage reached with id="NaN". This usually means a navigation source has a recipe with an undefined ID. Check RecipeCard and HeroCarousel data.');
-        return;
-      }
-      const recipeId = parseInt(id);
-      if (isNaN(recipeId)) {
-        console.error(`Invalid recipe id: ${id}`);
-        return;
-      }
-      dispatch(getRecipeByIdThunk(recipeId));
-      dispatch(getCommentsThunk(recipeId));
-    }
-  }, [id, dispatch]);
+  // --- Data Fetching (UseQuery) ---
+  const { 
+    data: recipeDetail, 
+    isLoading: isRecipeLoading, 
+    error: recipeError 
+  } = useQuery({
+    queryKey: ['recipes', recipeId],
+    queryFn: () => recipeService.getRecipeById(recipeId),
+    enabled: !!recipeId && !isNaN(recipeId),
+  });
 
-  useEffect(() => {
-    if (recipeDetail && !activeImage) {
-      setActiveImage(recipeDetail.imageUrl);
-    }
-  }, [recipeDetail, activeImage]);
+  const { 
+    data: comments = [], 
+    isLoading: isCommentsLoading 
+  } = useQuery({
+    queryKey: ['recipes', recipeId, 'comments'],
+    queryFn: () => recipeService.getComments(recipeId).then(res => res.content),
+    enabled: !!recipeId && !isNaN(recipeId),
+  });
 
-  const handleLike = () => {
-    if (recipeDetail) dispatch(likeRecipeThunk(recipeDetail.id));
-  };
+  // --- Mutations ---
+  const likeMutation = useMutation({
+    mutationFn: () => recipeService.likeRecipe(recipeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recipes', recipeId] });
+    },
+  });
 
-  const handleCommentSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (commentText.trim() && recipeDetail) {
-      dispatch(addCommentThunk(recipeDetail.id, commentText, replyingTo?.id));
+  const addCommentMutation = useMutation({
+    mutationFn: (text: string) => recipeService.addComment(recipeId, text, replyingTo?.id),
+    onSuccess: () => {
       setCommentText('');
       setReplyingTo(null);
-    }
+      queryClient.invalidateQueries({ queryKey: ['recipes', recipeId, 'comments'] });
+      toast.success('Comment posted!');
+    },
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: (commentId: number) => recipeService.deleteComment(commentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recipes', recipeId, 'comments'] });
+      toast.success('Comment deleted');
+    },
+  });
+
+  const addToShoppingMutation = useMutation({
+    mutationFn: () => shoppingListService.addFromRecipe(recipeId),
+    onSuccess: () => toast.success('All ingredients added to your shopping list!'),
+    onError: () => toast.error('Failed to add ingredients'),
+  });
+
+  // --- Handlers ---
+  const handleLike = () => likeMutation.mutate();
+  const handleCommentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (commentText.trim()) addCommentMutation.mutate(commentText);
   };
 
   const handleAddToShopping = async () => {
     if (!recipeDetail) return;
-    setAddingToShopping(true);
-    try {
-      await shoppingListService.addFromRecipe(recipeDetail.id);
-      toast.success('All ingredients added to your shopping list!');
-    } catch (err) {
-      toast.error('Failed to add ingredients');
-    } finally {
-      setAddingToShopping(false);
-    }
+    addToShoppingMutation.mutate();
   };
 
   const handleDeleteComment = async (commentId: number) => {
-    setDeletingCommentId(commentId);
-    try {
-      await recipeService.deleteComment(commentId);
-      toast.success('Comment deleted');
-      if (recipeDetail) dispatch(getCommentsThunk(recipeDetail.id));
-    } catch {
-      toast.error('Failed to delete comment');
-    } finally {
-      setDeletingCommentId(null);
-    }
+    deleteCommentMutation.mutate(commentId);
   };
 
-  if (loading && !recipeDetail) {
+  // Image logic
+  const displayImage = activeImage || recipeDetail?.imageUrl;
+
+  if (isRecipeLoading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
   }
 
-  if (error || !recipeDetail) {
+  if (recipeError || !recipeDetail) {
     return (
       <Container maxWidth="md" sx={{ py: 6 }}>
-        <Alert severity="error">{error || 'Recipe not found'}</Alert>
+        <Alert severity="error">{(recipeError as any)?.message || 'Recipe not found'}</Alert>
         <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} sx={{ mt: 2 }}>Back</Button>
       </Container>
     );
@@ -144,7 +149,7 @@ const RecipeDetailPage = () => {
             <Box sx={{ position: 'relative', mb: 6 }}>
               <Box 
                 component="img" 
-                src={activeImage || recipeDetail.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80'} 
+                src={displayImage || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80'} 
                 sx={{ 
                   width: '100%', 
                   aspectRatio: '16/9',
@@ -251,8 +256,9 @@ const RecipeDetailPage = () => {
                 onClick={() => navigate(`/profile/${recipeDetail.author.username}`)}
               />
               <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer', '&:hover': { color: 'primary.main' } }} onClick={() => navigate(`/profile/${recipeDetail.author.username}`)}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 0.5, '&:hover': { color: 'primary.main' } }} onClick={() => navigate(`/profile/${recipeDetail.author.username}`)}>
                   {recipeDetail.author.username}
+                  {recipeDetail.author.isVerified && <VerifiedIcon sx={{ fontSize: 18, color: 'primary.main' }} />}
                 </Typography>
                 <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
                   Master Chef • {new Date(recipeDetail.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
@@ -405,10 +411,10 @@ const RecipeDetailPage = () => {
                           {currentUser && (currentUser as any).username === comment.username && (
                             <Button 
                               size="small" 
-                              startIcon={deletingCommentId === comment.id ? <CircularProgress size={14} /> : <DeleteOutlineIcon sx={{ fontSize: '18px !important' }} />}
+                              startIcon={deleteCommentMutation.isPending && deleteCommentMutation.variables === comment.id ? <CircularProgress size={14} /> : <DeleteOutlineIcon sx={{ fontSize: '18px !important' }} />}
                               sx={{ p: 0, minWidth: 0, color: 'error.main', fontWeight: 800, textTransform: 'none', ml: 2, '&:hover': { opacity: 0.8 } }}
-                              onClick={() => handleDeleteComment(comment.id)}
-                              disabled={deletingCommentId === comment.id}
+                              onClick={() => deleteCommentMutation.mutate(comment.id)}
+                              disabled={deleteCommentMutation.isPending}
                             >
                               Delete
                             </Button>
@@ -464,11 +470,11 @@ const RecipeDetailPage = () => {
                     fullWidth 
                     variant="contained" 
                     startIcon={<ShoppingBasketIcon />}
-                    onClick={handleAddToShopping}
-                    disabled={addingToShopping}
+                    onClick={() => addToShoppingMutation.mutate()}
+                    disabled={addToShoppingMutation.isPending}
                     sx={{ borderRadius: '8px', py: 1, fontWeight: 900 }}
                   >
-                    Add All to Shopping List
+                    {addToShoppingMutation.isPending ? 'Adding...' : 'Add All to Shopping List'}
                   </Button>
                   <Button 
                     fullWidth 
