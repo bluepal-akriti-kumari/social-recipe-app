@@ -30,6 +30,7 @@ export interface RecipeSummary {
     id: number;
     username: string;
     profilePictureUrl: string;
+    isVerified?: boolean;
   };
   category?: string;
 }

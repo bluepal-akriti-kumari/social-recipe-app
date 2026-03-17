@@ -1,76 +1,73 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
 import { 
   Container, Box, Typography, Avatar, 
   Button, Paper, Tabs, Tab, CircularProgress, 
   Alert
 } from '@mui/material';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import EditIcon from '@mui/icons-material/Edit';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
+import VerifiedIcon from '@mui/icons-material/Verified';
 import { motion } from 'framer-motion';
-import type { AppDispatch, RootState } from '../../store/store';
-import { getProfileThunk, followUserThunk, unfollowUserThunk } from '../../features/user/userThunks';
 import { recipeService } from '../../services/recipe.service';
 import type { RecipeSummary } from '../../services/recipe.service';
 import RecipeCard from '../../components/recipes/RecipeCard';
 import EditProfileModal from '../../components/profile/EditProfileModal';
 import { useAuth } from '../../hooks/useAuth';
+import api from '../../services/api';
 
 const ProfilePage = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
-  const dispatch = useDispatch<AppDispatch>();
+  const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
-  const { profile, loading, error } = useSelector((state: RootState) => state.user);
   
   const [activeTab, setActiveTab] = useState(0);
-  const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
-  const [recipesLoading, setRecipesLoading] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (username) {
-      dispatch(getProfileThunk(username));
-    }
-  }, [username, dispatch]);
+  // --- Data Fetching (React Query) ---
+  const { 
+    data: profile, 
+    isLoading: isProfileLoading, 
+    error: profileError 
+  } = useQuery({
+    queryKey: ['profiles', username],
+    queryFn: () => api.get(`/users/${username}`).then(res => res.data),
+    enabled: !!username,
+  });
 
-  useEffect(() => {
-    const fetchRecipes = async () => {
-      if (!username) return;
-      setRecipesLoading(true);
-      try {
-        const data = activeTab === 0 
-          ? await recipeService.getUserRecipes(username)
-          : await recipeService.getUserLikedRecipes(username);
-        setRecipes(data);
-      } catch (err) {
-        console.error('Failed to fetch recipes', err);
-      } finally {
-        setRecipesLoading(false);
-      }
-    };
+  const { 
+    data: recipes = [], 
+    isLoading: isRecipesLoading 
+  } = useQuery({
+    queryKey: ['profiles', username, 'recipes', activeTab],
+    queryFn: () => activeTab === 0 
+      ? recipeService.getUserRecipes(username!) 
+      : recipeService.getUserLikedRecipes(username!),
+    enabled: !!username && !!profile,
+  });
 
-    fetchRecipes();
-  }, [username, activeTab]);
+  // --- Mutations ---
+  const followMutation = useMutation({
+    mutationFn: () => profile?.isFollowing 
+      ? api.delete(`/users/${username}/follow`) 
+      : api.post(`/users/${username}/follow`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles', username] });
+    },
+  });
 
-  const handleFollowToggle = () => {
-    if (!username || !profile) return;
-    if (profile.isFollowing) {
-      dispatch(unfollowUserThunk(username));
-    } else {
-      dispatch(followUserThunk(username));
-    }
-  };
+  const handleFollowToggle = () => followMutation.mutate();
 
-  if (loading && !profile) {
+  if (isProfileLoading && !profile) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
   }
 
-  if (error || !profile) {
+  if (profileError || !profile) {
     return (
       <Container maxWidth="md" sx={{ py: 6 }}>
-        <Alert severity="error">{error || 'User not found'}</Alert>
+        <Alert severity="error">{(profileError as any)?.message || 'User not found'}</Alert>
       </Container>
     );
   }
@@ -136,7 +133,7 @@ const ProfilePage = () => {
                   sx={{ 
                     position: 'absolute', bottom: 25, right: 15, 
                     width: 44, height: 44, 
-                    bgcolor: '#4f46e5', 
+                    bgcolor: 'white', 
                     borderRadius: '50%', 
                     border: '5px solid white', 
                     zIndex: 2,
@@ -146,7 +143,7 @@ const ProfilePage = () => {
                     boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
                   }}
                 >
-                  <Typography sx={{ color: 'white', fontWeight: 900, fontSize: '1.2rem' }}>✓</Typography>
+                  <VerifiedIcon sx={{ color: 'primary.main', fontSize: 32 }} />
                 </Box>
               )}
             </Box>
@@ -185,6 +182,7 @@ const ProfilePage = () => {
                     <Button 
                       variant={profile.isFollowing ? "outlined" : "contained"} 
                       onClick={handleFollowToggle}
+                      disabled={followMutation.isPending}
                       sx={{ 
                         px: 4, 
                         py: 1,
@@ -192,10 +190,10 @@ const ProfilePage = () => {
                         fontWeight: 900, 
                         minWidth: 120,
                         textTransform: 'none',
-                        boxShadow: profile.isFollowing ? 'none' : '0 8px 16px rgba(99, 102, 241, 0.2)'
+                        boxShadow: (profile.isFollowing || followMutation.isPending) ? 'none' : '0 8px 16px rgba(99, 102, 241, 0.2)'
                       }}
                     >
-                      {profile.isFollowing ? 'Following' : 'Follow'}
+                      {followMutation.isPending ? 'Processing...' : (profile.isFollowing ? 'Following' : 'Follow')}
                     </Button>
                   )}
                 </Box>
@@ -254,7 +252,7 @@ const ProfilePage = () => {
           </Box>
         </Box>
 
-        {recipesLoading ? (
+        {isRecipesLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 15 }}>
             <Box sx={{ position: 'relative', display: 'flex' }}>
               <CircularProgress size={60} thickness={4} sx={{ color: 'rgba(99, 102, 241, 0.1)' }} />
