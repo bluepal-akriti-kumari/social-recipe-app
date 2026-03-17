@@ -31,6 +31,7 @@ import {
 import { shoppingListService } from '../../services/shoppingList.service';
 import AddToPlannerModal from './AddToPlannerModal';
 import { toast } from 'react-hot-toast';
+import { recipeService } from '../../services/recipe.service';
 
 const RecipeDetailPage = () => {
   const { id } = useParams<{ id: string }>();
