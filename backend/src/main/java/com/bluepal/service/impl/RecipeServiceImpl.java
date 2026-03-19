@@ -22,46 +22,47 @@ public class RecipeServiceImpl implements RecipeService {
 
 	private final RecipeRepository recipeRepository;
 	private final UserRepository userRepository;
+	private final NotificationRepository notificationRepository;
+	private final MealPlanRepository mealPlanRepository;
+	private final ShoppingListItemRepository shoppingListItemRepository;
 	private final LikeRepository likeRepository;
+	private final CommentRepository commentRepository;
+	private final BookmarkRepository bookmarkRepository;
+	private final RatingRepository ratingRepository;
 	private final com.bluepal.service.interfaces.RatingService ratingService;
 	private final com.bluepal.service.interfaces.BookmarkService bookmarkService;
 
 	public RecipeServiceImpl(RecipeRepository recipeRepository, UserRepository userRepository,
-			LikeRepository likeRepository, com.bluepal.service.interfaces.RatingService ratingService,
+			NotificationRepository notificationRepository, MealPlanRepository mealPlanRepository,
+			ShoppingListItemRepository shoppingListItemRepository,
+			LikeRepository likeRepository, CommentRepository commentRepository, 
+			BookmarkRepository bookmarkRepository, RatingRepository ratingRepository,
+			com.bluepal.service.interfaces.RatingService ratingService,
 			@Lazy com.bluepal.service.interfaces.BookmarkService bookmarkService) {
 		this.recipeRepository = recipeRepository;
 		this.userRepository = userRepository;
+		this.notificationRepository = notificationRepository;
+		this.mealPlanRepository = mealPlanRepository;
+		this.shoppingListItemRepository = shoppingListItemRepository;
 		this.likeRepository = likeRepository;
+		this.commentRepository = commentRepository;
+		this.bookmarkRepository = bookmarkRepository;
+		this.ratingRepository = ratingRepository;
 		this.ratingService = ratingService;
 		this.bookmarkService = bookmarkService;
 	}
 
 	@Override
-	public Map<String, Object> getExploreFeedCursor(LocalDateTime cursor, int size, String currentUsername) {
-		LocalDateTime effectiveCursor = (cursor == null) ? LocalDateTime.now() : cursor;
-		Pageable limit = PageRequest.of(0, size);
-
-		List<Recipe> recipes = recipeRepository.findExploreCursor(effectiveCursor, limit);
-
-		List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
-				.collect(Collectors.toList());
-
-		String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
-
-		return Map.of("content", content, "nextCursor", nextCursor);
-	}
-
-	@Override
 	public List<RecipeResponse> searchRecipesFullText(String query, String currentUsername) {
-		// Prepare query for Postgres tsquery: 'chicken & rice'
-		String formattedQuery = query.trim().replaceAll("\\s+", " & ");
-		return recipeRepository.searchByIngredientFullText(formattedQuery).stream()
+		// PostgreSQL ILIKE search handles standard string tokens
+		return recipeRepository.searchRecipesFullText(query.trim()).stream()
 				.map(r -> this.mapToResponse(r, currentUsername)).collect(Collectors.toList());
 	}
 
 	@Override
 	@Transactional
 	public RecipeResponse createRecipe(RecipeRequest request, String username) {
+		System.out.println("DEBUG: Creating recipe for user: " + username);
 		User author = userRepository.findByUsername(username)
 				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
@@ -83,12 +84,28 @@ public class RecipeServiceImpl implements RecipeService {
 		Recipe recipe = Recipe.builder().title(request.getTitle()).description(request.getDescription())
 				.imageUrl(request.getImageUrl()).prepTimeMinutes(request.getPrepTimeMinutes())
 				.cookTimeMinutes(request.getCookTimeMinutes()).servings(request.getServings()).author(author)
-				.category(category) // Use the safely determined category here
+				.category(category)
+				.calories(request.getCalories())
+				.protein(request.getProtein())
+				.carbs(request.getCarbs())
+				.fats(request.getFats())
 				.likeCount(0).commentCount(0).build();
 
 		if (request.getIngredients() != null) {
-			request.getIngredients().forEach(ir -> recipe.addIngredient(
-					Ingredient.builder().name(ir.getName()).quantity(ir.getQuantity()).unit(ir.getUnit()).build()));
+			request.getIngredients().forEach(ir -> {
+				ShoppingCategory ingCat = ShoppingCategory.OTHER;
+				if (ir.getCategory() != null) {
+					try {
+						ingCat = ShoppingCategory.valueOf(ir.getCategory().toUpperCase());
+					} catch (IllegalArgumentException ignored) {}
+				}
+				recipe.addIngredient(Ingredient.builder()
+						.name(ir.getName())
+						.quantity(ir.getQuantity())
+						.unit(ir.getUnit())
+						.category(ingCat)
+						.build());
+			});
 		}
 
 		if (request.getSteps() != null) {
@@ -103,7 +120,8 @@ public class RecipeServiceImpl implements RecipeService {
 		Recipe savedRecipe = recipeRepository.save(recipe);
 
 		// Award reputation points
-		author.setReputationPoints(author.getReputationPoints() + 50);
+		int currentPoints = author.getReputationPoints() != null ? author.getReputationPoints() : 0;
+		author.setReputationPoints(currentPoints + 50);
 
 		// Check and update level
 		if (author.getReputationPoints() >= 1000)
@@ -136,6 +154,7 @@ public class RecipeServiceImpl implements RecipeService {
 		return RecipeResponse.builder().id(recipe.getId()).title(recipe.getTitle()).description(recipe.getDescription())
 				.imageUrl(recipe.getImageUrl()).prepTimeMinutes(recipe.getPrepTimeMinutes())
 				.cookTimeMinutes(recipe.getCookTimeMinutes()).servings(recipe.getServings())
+				.calories(recipe.getCalories()).protein(recipe.getProtein()).carbs(recipe.getCarbs()).fats(recipe.getFats())
 				.likeCount(recipe.getLikeCount()).commentCount(recipe.getCommentCount())
 				.averageRating(recipe.getAverageRating()).ratingCount(recipe.getRatingCount())
 				.category(recipe.getCategory() != null ? recipe.getCategory().name() : null).isLiked(isLiked)
@@ -145,10 +164,12 @@ public class RecipeServiceImpl implements RecipeService {
 				.createdAt(recipe.getCreatedAt())
 				.author(RecipeResponse.AuthorDto.builder().id(recipe.getAuthor().getId())
 						.username(recipe.getAuthor().getUsername())
+						.isVerified(recipe.getAuthor().isVerified())
 						.profilePictureUrl(recipe.getAuthor().getProfilePictureUrl()).build())
 				.ingredients(recipe.getIngredients().stream()
 						.map(i -> RecipeResponse.IngredientDto.builder().id(i.getId()).name(i.getName())
-								.quantity(i.getQuantity()).unit(i.getUnit()).build())
+								.quantity(i.getQuantity()).unit(i.getUnit())
+								.category(i.getCategory() != null ? i.getCategory().name() : null).build())
 						.collect(Collectors.toList()))
 				.steps(recipe
 						.getSteps().stream().map(s -> RecipeResponse.StepDto.builder().id(s.getId())
@@ -158,6 +179,7 @@ public class RecipeServiceImpl implements RecipeService {
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public RecipeResponse getRecipeById(Long id, String currentUsername) {
 		Recipe recipe = recipeRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
@@ -165,14 +187,43 @@ public class RecipeServiceImpl implements RecipeService {
 	}
 
 	@Override
+	@Transactional(readOnly = true)
+	public Map<String, Object> getExploreFeedCursor(LocalDateTime cursor, int size, String currentUsername) {
+		try {
+			List<Recipe> recipes;
+			Pageable limit = PageRequest.of(0, size);
+
+			if (cursor == null) {
+				recipes = recipeRepository.findAllByOrderByCreatedAtDesc(limit);
+			} else {
+				recipes = recipeRepository.findExploreCursor(cursor, limit);
+			}
+
+			List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
+					.collect(Collectors.toList());
+
+			String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
+
+			return Map.of("content", content, "nextCursor", nextCursor);
+		} catch (Exception e) {
+			return Map.of("content", List.of(), "nextCursor", "");
+		}
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public Map<String, Object> getPersonalizedFeedCursor(String username, LocalDateTime cursor, int size) {
 		User user = userRepository.findByUsername(username)
 				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
-		LocalDateTime effectiveCursor = (cursor == null) ? LocalDateTime.now() : cursor;
 		Pageable limit = PageRequest.of(0, size);
+		List<Recipe> recipes;
 
-		List<Recipe> recipes = recipeRepository.findPersonalizedCursor(user, effectiveCursor, limit);
+		if (cursor == null) {
+			recipes = recipeRepository.findPersonalizedLatest(user, limit);
+		} else {
+			recipes = recipeRepository.findPersonalizedCursor(user, cursor, limit);
+		}
 
 		List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, username))
 				.collect(Collectors.toList());
@@ -183,23 +234,49 @@ public class RecipeServiceImpl implements RecipeService {
 	}
 
 	@Override
-	public List<RecipeResponse> getUserRecipes(String username, String currentUsername) {
+	@Transactional(readOnly = true)
+	public Map<String, Object> getUserRecipes(String username, LocalDateTime cursor, int size, String currentUsername) {
 		User author = userRepository.findByUsername(username)
 				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
-		return recipeRepository.findAll().stream().filter(r -> r.getAuthor().equals(author))
-				.sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-				.map(r -> this.mapToResponse(r, currentUsername)).collect(Collectors.toList());
+		Pageable limit = PageRequest.of(0, size);
+		List<Recipe> recipes;
+
+		if (cursor == null) {
+			recipes = recipeRepository.findByAuthorOrderByCreatedAtDesc(author, limit);
+		} else {
+			recipes = recipeRepository.findUserRecipesCursor(author, cursor, limit);
+		}
+
+		List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
+				.collect(Collectors.toList());
+
+		String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
+
+		return Map.of("content", content, "nextCursor", nextCursor);
 	}
 
 	@Override
-	public List<RecipeResponse> getUserLikedRecipes(String username, String currentUsername) {
+	@Transactional(readOnly = true)
+	public Map<String, Object> getUserLikedRecipes(String username, LocalDateTime cursor, int size, String currentUsername) {
 		User user = userRepository.findByUsername(username)
 				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
-		return likeRepository.findByUser(user).stream().map(Like::getRecipe)
-				.sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-				.map(r -> this.mapToResponse(r, currentUsername)).collect(Collectors.toList());
+		Pageable limit = PageRequest.of(0, size);
+		List<Recipe> recipes;
+
+		if (cursor == null) {
+			recipes = recipeRepository.findLikedRecipesByUser(user, limit);
+		} else {
+			recipes = recipeRepository.findLikedRecipesCursor(user, cursor, limit);
+		}
+
+		List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
+				.collect(Collectors.toList());
+
+		String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
+
+		return Map.of("content", content, "nextCursor", nextCursor);
 	}
 
 	@Override
@@ -218,21 +295,37 @@ public class RecipeServiceImpl implements RecipeService {
 		recipe.setPrepTimeMinutes(request.getPrepTimeMinutes());
 		recipe.setCookTimeMinutes(request.getCookTimeMinutes());
 		recipe.setServings(request.getServings());
+		recipe.setCalories(request.getCalories());
+		recipe.setProtein(request.getProtein());
+		recipe.setCarbs(request.getCarbs());
+		recipe.setFats(request.getFats());
 
 		// Simple clear and re-add for ingredients/steps (can be optimized)
-		recipe.getIngredients().clear();
+		new java.util.ArrayList<>(recipe.getIngredients()).forEach(recipe::removeIngredient);
 		if (request.getIngredients() != null) {
-			request.getIngredients().forEach(ir -> recipe.addIngredient(
-					Ingredient.builder().name(ir.getName()).quantity(ir.getQuantity()).unit(ir.getUnit()).build()));
+			request.getIngredients().forEach(ir -> {
+				ShoppingCategory ingCat = ShoppingCategory.OTHER;
+				if (ir.getCategory() != null) {
+					try {
+						ingCat = ShoppingCategory.valueOf(ir.getCategory().toUpperCase());
+					} catch (IllegalArgumentException ignored) {}
+				}
+				recipe.addIngredient(Ingredient.builder()
+						.name(ir.getName())
+						.quantity(ir.getQuantity())
+						.unit(ir.getUnit())
+						.category(ingCat)
+						.build());
+			});
 		}
 
-		recipe.getSteps().clear();
+		new java.util.ArrayList<>(recipe.getSteps()).forEach(recipe::removeStep);
 		if (request.getSteps() != null) {
 			request.getSteps().forEach(sr -> recipe
 					.addStep(Step.builder().stepNumber(sr.getStepNumber()).instruction(sr.getInstruction()).build()));
 		}
 
-		recipe.getImages().clear();
+		new java.util.ArrayList<>(recipe.getImages()).forEach(recipe::removeImage);
 		if (request.getAdditionalImages() != null) {
 			request.getAdditionalImages().forEach(url -> recipe.addImage(RecipeImage.builder().imageUrl(url).build()));
 		}
@@ -241,16 +334,36 @@ public class RecipeServiceImpl implements RecipeService {
 	}
 
 	@Override
+	@Transactional
 	public void deleteRecipe(Long id, String username) {
 		Recipe recipe = recipeRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
-		if (!recipe.getAuthor().getUsername().equals(username)) {
+
+		User user = userRepository.findByUsername(username)
+				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+
+		boolean isAuthor = recipe.getAuthor().getUsername().equals(username);
+		boolean isModeratorOrAdmin = user.getRoles().stream()
+				.anyMatch(r -> r.equals("ROLE_MODERATOR") || r.equals("ROLE_ADMIN"));
+
+		if (!isAuthor && !isModeratorOrAdmin) {
 			throw new RuntimeException("You are not authorized to delete this recipe");
 		}
+		
+		// Cascade delete related entities
+		likeRepository.deleteByRecipe(recipe);
+		commentRepository.deleteByRecipe(recipe);
+		bookmarkRepository.deleteByRecipe(recipe);
+		ratingRepository.deleteByRecipe(recipe);
+		notificationRepository.deleteByRecipeId(recipe.getId());
+		mealPlanRepository.deleteByRecipe(recipe);
+		shoppingListItemRepository.deleteByRecipe(recipe);
+
 		recipeRepository.delete(recipe);
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public List<RecipeResponse> getTrendingRecipes(String currentUsername, int limit) {
 		Pageable pageable = PageRequest.of(0, limit);
 		return recipeRepository.findTrending(pageable).stream().map(r -> this.mapToResponse(r, currentUsername))
@@ -258,27 +371,42 @@ public class RecipeServiceImpl implements RecipeService {
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public List<RecipeResponse> getRecipesByCategory(String category, String currentUsername, int limit) {
-		com.bluepal.entity.RecipeCategory cat = com.bluepal.entity.RecipeCategory.valueOf(category.toUpperCase());
-		Pageable pageable = PageRequest.of(0, limit);
-		return recipeRepository.findByCategoryOrderByCreatedAtDesc(cat, pageable).stream()
-				.map(r -> this.mapToResponse(r, currentUsername)).collect(Collectors.toList());
+		try {
+			com.bluepal.entity.RecipeCategory cat = com.bluepal.entity.RecipeCategory.valueOf(category.toUpperCase());
+			Pageable pageable = PageRequest.of(0, limit);
+			return recipeRepository.findByCategoryOrderByCreatedAtDesc(cat, pageable).stream()
+					.map(r -> this.mapToResponse(r, currentUsername)).collect(Collectors.toList());
+		} catch (IllegalArgumentException e) {
+			return List.of(); // Return empty list for unknown category
+		}
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public Map<String, Object> getExploreFeedCursorByCategory(String category, LocalDateTime cursor, int size,
 			String currentUsername) {
-		com.bluepal.entity.RecipeCategory cat = com.bluepal.entity.RecipeCategory.valueOf(category.toUpperCase());
-		LocalDateTime effectiveCursor = (cursor == null) ? LocalDateTime.now() : cursor;
-		Pageable limit = PageRequest.of(0, size);
+		try {
+			com.bluepal.entity.RecipeCategory cat = com.bluepal.entity.RecipeCategory
+					.valueOf(category.trim().toUpperCase());
+			Pageable limit = PageRequest.of(0, size);
+			List<Recipe> recipes;
 
-		List<Recipe> recipes = recipeRepository.findExploreCursorWithCategory(cat, effectiveCursor, limit);
+			if (cursor == null) {
+				recipes = recipeRepository.findByCategoryOrderByCreatedAtDesc(cat, limit);
+			} else {
+				recipes = recipeRepository.findExploreCursorWithCategory(cat, cursor, limit);
+			}
 
-		List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
-				.collect(Collectors.toList());
+			List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
+					.collect(Collectors.toList());
 
-		String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
+			String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
 
-		return Map.of("content", content, "nextCursor", nextCursor);
+			return Map.of("content", content, "nextCursor", nextCursor);
+		} catch (IllegalArgumentException e) {
+			return Map.of("content", List.of(), "nextCursor", "");
+		}
 	}
 }

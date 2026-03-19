@@ -21,6 +21,10 @@ public class RecipeResponse {
     private Integer prepTimeMinutes;
     private Integer cookTimeMinutes;
     private Integer servings;
+    private Integer calories;
+    private Double protein;
+    private Double carbs;
+    private Double fats;
     private Integer likeCount;
     private Integer commentCount;
     private Double averageRating;
@@ -42,6 +46,7 @@ public class RecipeResponse {
         private Long id;
         private String username;
         private String profilePictureUrl;
+        private Boolean isVerified;
     }
 
     @Data
@@ -53,6 +58,7 @@ public class RecipeResponse {
         private String name;
         private String quantity;
         private String unit;
+        private String category;
     }
 
     @Data

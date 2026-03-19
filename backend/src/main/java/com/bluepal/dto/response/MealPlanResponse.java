@@ -13,4 +13,10 @@ public class MealPlanResponse {
     private String recipeImageUrl;
     private LocalDate plannedDate;
     private String mealType;
+    private Integer servingsAdjustment;
+    private String status;
+    private Integer calories;
+    private Double protein;
+    private Double carbs;
+    private Double fats;
 }

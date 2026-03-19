@@ -17,5 +17,6 @@ public class CommentResponse {
     private String username;
     private String userProfilePictureUrl;
     private Long parentId;
-    private LocalDateTime createdAt;
+    private java.time.LocalDateTime createdAt;
+    private java.util.List<CommentResponse> replies;
 }

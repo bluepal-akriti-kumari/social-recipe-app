@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Container, Box, Paper, Typography, TextField, Button, 
-  Avatar, Divider, Alert, CircularProgress, IconButton
+  Avatar, Divider, Alert, CircularProgress
 } from '@mui/material';
 import LockIcon from '@mui/icons-material/Lock';
 import PersonIcon from '@mui/icons-material/Person';

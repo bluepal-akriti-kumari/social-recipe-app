@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 import java.util.Optional;
 
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @RestController
 @RequestMapping("/api")
 public class InteractionController {
@@ -70,17 +70,15 @@ public class InteractionController {
         Recipe recipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
 
-        Optional<Like> existing = likeRepository.findByUserAndRecipe(user, recipe);
+        boolean alreadyLiked = likeRepository.existsByUserAndRecipe(user, recipe);
 
-        if (existing.isPresent()) {
-            likeRepository.delete(existing.get());
-            recipe.setLikeCount(Math.max(0, recipe.getLikeCount() - 1));
-            recipeRepository.save(recipe);
-            return ResponseEntity.ok(Map.of("liked", false, "likeCount", recipe.getLikeCount()));
+        if (alreadyLiked) {
+            likeRepository.deleteByUserAndRecipe(user, recipe);
+            recipeRepository.decrementLikeCount(id);
+            return ResponseEntity.ok(Map.of("liked", false, "likeCount", Math.max(0, recipe.getLikeCount() - 1)));
         } else {
             likeRepository.save(Like.builder().user(user).recipe(recipe).build());
-            recipe.setLikeCount(recipe.getLikeCount() + 1);
-            recipeRepository.save(recipe);
+            recipeRepository.incrementLikeCount(id);
 
             // Send Notification
             notificationService.createAndSendNotification(
@@ -94,7 +92,7 @@ public class InteractionController {
             // Award reputation points for receiving a like (to the author)
             userService.updateReputation(recipe.getAuthor().getUsername(), 5);
 
-            return ResponseEntity.ok(Map.of("liked", true, "likeCount", recipe.getLikeCount()));
+            return ResponseEntity.ok(Map.of("liked", true, "likeCount", recipe.getLikeCount() + 1));
         }
     }
 
@@ -124,8 +122,7 @@ public class InteractionController {
         }
         
         Comment saved = commentRepository.save(comment);
-        recipe.setCommentCount(recipe.getCommentCount() + 1);
-        recipeRepository.save(recipe);
+        recipeRepository.incrementCommentCount(id);
 
         // Send Notification
         notificationService.createAndSendNotification(
@@ -143,6 +140,7 @@ public class InteractionController {
     }
 
     @GetMapping("/recipes/{id}/comments")
+    @Transactional(readOnly = true)
     public ResponseEntity<Page<CommentResponse>> getComments(
             @PathVariable("id") Long id,
             @RequestParam(name = "page", defaultValue = "0") int page,
@@ -152,8 +150,36 @@ public class InteractionController {
                 .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
         
         Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(commentRepository.findByRecipeOrderByCreatedAtDesc(recipe, pageable)
+        return ResponseEntity.ok(commentRepository.findByRecipeAndParentIsNullOrderByCreatedAtDesc(recipe, pageable)
                 .map(this::mapToCommentResponse));
+    }
+
+    @DeleteMapping("/comments/{id}")
+    @Transactional
+    public ResponseEntity<?> deleteComment(@PathVariable("id") Long id) {
+        String username = getCurrentUsername();
+        if (username == null) return ResponseEntity.status(401).body("Auth required");
+
+        Comment comment = commentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", id));
+        
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+
+        // RBAC: Author, Moderator, or Admin can delete
+        boolean isAuthor = comment.getUser().getUsername().equals(username);
+        boolean isModeratorOrAdmin = user.getRoles().stream()
+                .anyMatch(r -> r.equals("ROLE_MODERATOR") || r.equals("ROLE_ADMIN"));
+
+        if (!isAuthor && !isModeratorOrAdmin) {
+            return ResponseEntity.status(403).body("Not authorized to delete this comment");
+        }
+
+        Recipe recipe = comment.getRecipe();
+        recipeRepository.decrementCommentCount(recipe.getId());
+        
+        commentRepository.delete(comment);
+        return ResponseEntity.ok("Comment deleted successfully");
     }
 
     private CommentResponse mapToCommentResponse(Comment comment) {
@@ -164,6 +190,9 @@ public class InteractionController {
                 .userProfilePictureUrl(comment.getUser().getProfilePictureUrl())
                 .parentId(comment.getParent() != null ? comment.getParent().getId() : null)
                 .createdAt(comment.getCreatedAt())
+                .replies(comment.getReplies() != null ? 
+                        comment.getReplies().stream().map(this::mapToCommentResponse).collect(java.util.stream.Collectors.toList()) : 
+                        new java.util.ArrayList<>())
                 .build();
     }
 }

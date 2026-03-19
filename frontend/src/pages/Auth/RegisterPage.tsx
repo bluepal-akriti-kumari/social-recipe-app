@@ -2,15 +2,19 @@ import { useForm } from 'react-hook-form';
 import { useDispatch } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import {
-  Box, Card, CardContent, TextField, Button,
-  Typography, Alert, CircularProgress, Divider
+  Box, TextField, Button, Typography, Alert, 
+  CircularProgress, InputAdornment, IconButton, Grid
 } from '@mui/material';
-import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import type { AppDispatch } from '../../store/store';
 import { registerThunk } from '../../features/auth/authThunks';
 import { useAuth } from '../../hooks/useAuth';
 import { clearError } from '../../features/auth/authSlice';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 
 interface RegisterFormValues {
   username: string;
@@ -23,6 +27,7 @@ const RegisterPage = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { loading, error, isAuthenticated } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<RegisterFormValues>();
 
@@ -36,64 +41,203 @@ const RegisterPage = () => {
   };
 
   return (
-    <Box className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-50 px-4 py-8">
-      <Card sx={{ maxWidth: 420, width: '100%', borderRadius: 3, boxShadow: '0 20px 60px rgba(0,0,0,0.1)' }}>
-        <CardContent sx={{ p: 4 }}>
-          <Box sx={{ textAlign: 'center', mb: 3 }}>
-            <Box sx={{ bgcolor: 'primary.main', borderRadius: '50%', p: 1.5, display: 'inline-flex', mb: 1 }}>
-              <PersonAddOutlinedIcon sx={{ color: 'white', fontSize: 28 }} />
+    <Box sx={{ minHeight: '100vh', display: 'flex', bgcolor: 'white' }}>
+      {/* Left Side: Form */}
+      <Box 
+        sx={{ 
+          flex: { xs: 1, md: 0.55, lg: 0.5 }, 
+          display: 'flex', 
+          flexDirection: 'column',
+          p: { xs: 4, md: 5, lg: 6 },
+          position: 'relative',
+          justifyContent: 'center',
+          overflowY: 'auto'
+        }}
+      >
+        <Box sx={{ maxWidth: 500, width: '100%', mx: 'auto' }}>
+          <Box 
+            sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer', mb: { xs: 3, md: 4 } }}
+            onClick={() => navigate('/feed')}
+          >
+            <Box sx={{ bgcolor: 'primary.main', p: 1, borderRadius: 2, display: 'flex', mr: 1.5 }}>
+              <RestaurantMenuIcon sx={{ color: 'white', fontSize: 24 }} />
             </Box>
-            <Typography variant="h5" fontWeight={700}>Create Account</Typography>
-            <Typography variant="body2" color="text.secondary">Join our community of food lovers</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 900, color: 'primary.main', letterSpacing: '-0.04em' }}>
+              Culinario
+            </Typography>
           </Box>
 
-          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+          <Typography variant="h3" sx={{ fontWeight: 950, mb: 1.5, letterSpacing: '-0.03em' }}>
+            Join our community
+          </Typography>
+          <Typography variant="body1" sx={{ color: 'text.secondary', mb: { xs: 4, md: 5 }, fontWeight: 500 }}>
+            Start sharing and discovering amazing recipes today.
+          </Typography>
+
+          {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
 
           <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
-            <TextField
-              fullWidth label="Username" margin="normal"
-              {...register('username', { required: 'Username is required', minLength: { value: 3, message: 'Min 3 characters' } })}
-              error={!!errors.username} helperText={errors.username?.message}
-            />
-            <TextField
-              fullWidth label="Email" type="email" margin="normal"
-              {...register('email', {
-                required: 'Email is required',
-                pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Enter a valid email' }
-              })}
-              error={!!errors.email} helperText={errors.email?.message}
-            />
-            <TextField
-              fullWidth label="Password" type="password" margin="normal"
-              {...register('password', { required: 'Password is required', minLength: { value: 6, message: 'Min 6 chars' } })}
-              error={!!errors.password} helperText={errors.password?.message}
-            />
-            <TextField
-              fullWidth label="Confirm Password" type="password" margin="normal"
-              {...register('confirmPassword', {
-                required: 'Please confirm your password',
-                validate: val => val === watch('password') || 'Passwords do not match'
-              })}
-              error={!!errors.confirmPassword} helperText={errors.confirmPassword?.message}
-            />
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 800 }}>Username</Typography>
+                  <TextField
+                    fullWidth
+                    placeholder="Chef_Explorer"
+                    {...register('username', { required: 'Username is required', minLength: { value: 3, message: 'Min 3 chars' } })}
+                    error={!!errors.username}
+                    helperText={errors.username?.message}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'rgba(0,0,0,0.02)' } }}
+                  />
+                </Box>
+              </Grid>
+              
+              <Grid size={{ xs: 12 }}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 800 }}>Email Address</Typography>
+                  <TextField
+                    fullWidth
+                    placeholder="you@example.com"
+                    {...register('email', { 
+                      required: 'Email is required',
+                      pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email' }
+                    })}
+                    error={!!errors.email}
+                    helperText={errors.email?.message}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'rgba(0,0,0,0.02)' } }}
+                  />
+                </Box>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 800 }}>Password</Typography>
+                  <TextField
+                    fullWidth
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    {...register('password', { required: 'Password is required', minLength: { value: 6, message: 'Min 6 chars' } })}
+                    error={!!errors.password}
+                    helperText={errors.password?.message}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'rgba(0,0,0,0.02)' } }}
+                  />
+                </Box>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 800 }}>Confirm</Typography>
+                  <TextField
+                    fullWidth
+                    type="password"
+                    placeholder="••••••••"
+                    {...register('confirmPassword', {
+                      required: 'Confirm your password',
+                      validate: val => val === watch('password') || 'Passwords match error'
+                    })}
+                    error={!!errors.confirmPassword}
+                    helperText={errors.confirmPassword?.message}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'rgba(0,0,0,0.02)' } }}
+                  />
+                </Box>
+              </Grid>
+            </Grid>
 
             <Button
-              type="submit" fullWidth variant="contained" size="large" disabled={loading}
-              sx={{ mt: 3, mb: 2, py: 1.5, borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+              type="submit"
+              fullWidth
+              variant="contained"
+              size="large"
+              disabled={loading}
+              sx={{ 
+                mt: 4,
+                py: 2, 
+                borderRadius: 3, 
+                textTransform: 'none', 
+                fontWeight: 900, 
+                fontSize: '1.1rem',
+                boxShadow: '0 12px 24px rgba(99, 102, 241, 0.25)',
+                '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 16px 32px rgba(99, 102, 241, 0.3)' }
+              }}
             >
               {loading ? <CircularProgress size={24} color="inherit" /> : 'Create Account'}
             </Button>
           </Box>
 
-          <Divider sx={{ my: 2 }} />
-          <Typography align="center" variant="body2">
-            Already have an account?{' '}
-            <Link to="/login" style={{ color: '#ef4444', textDecoration: 'none', fontWeight: 600 }}>
-              Sign In
-            </Link>
+          <Box sx={{ mt: 4, textAlign: 'center' }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+              Already have an account?{' '}
+              <Link to="/login" style={{ color: '#6366f1', textDecoration: 'none', fontWeight: 800 }}>
+                Sign in instead
+              </Link>
+            </Typography>
+          </Box>
+          </motion.div>
+
+          <Box sx={{ mt: 4, pt: 2 }}>
+            <Button 
+              startIcon={<ArrowBackIcon />} 
+              onClick={() => navigate('/feed')}
+              sx={{ textTransform: 'none', fontWeight: 800, color: 'text.disabled', '&:hover': { color: 'text.primary' } }}
+            >
+              Explore recipes first
+            </Button>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Right Side: Image */}
+      <Box 
+        sx={{ 
+          flex: { xs: 0, md: 0.45, lg: 0.5 },
+          display: { xs: 'none', md: 'block' },
+          position: 'relative',
+          overflow: 'hidden'
+        }}
+      >
+        <Box 
+          component="img"
+          src="/culinary_auth_bg.png"
+          sx={{ 
+            width: '100%', 
+            height: '100%', 
+            objectFit: 'cover'
+          }}
+        />
+        <Box 
+          sx={{ 
+            position: 'absolute', 
+            inset: 0, 
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(139, 92, 246, 0.4) 100%)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            p: 6,
+            color: 'white'
+          }}
+        >
+          <Typography variant="h4" sx={{ fontWeight: 900, mb: 1, letterSpacing: '-0.02em' }}>
+            "Good food is the foundation of genuine happiness."
           </Typography>
-        </CardContent>
-      </Card>
+          <Typography variant="subtitle1" sx={{ opacity: 0.8, fontWeight: 600 }}>
+            — Auguste Escoffier
+          </Typography>
+        </Box>
+      </Box>
     </Box>
   );
 };

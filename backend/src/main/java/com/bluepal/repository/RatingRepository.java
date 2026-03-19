@@ -4,7 +4,11 @@ import com.bluepal.entity.Rating;
 import com.bluepal.entity.Recipe;
 import com.bluepal.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -15,6 +19,10 @@ public interface RatingRepository extends JpaRepository<Rating, Long> {
     
     long countByRecipe(Recipe recipe);
     
-    @org.springframework.data.jpa.repository.Query("SELECT AVG(r.rating) FROM Rating r WHERE r.recipe = :recipe")
-    Double getAverageRatingByRecipe(@org.springframework.data.repository.query.Param("recipe") Recipe recipe);
+    @Query("SELECT AVG(r.rating) FROM Rating r WHERE r.recipe = :recipe")
+    Double getAverageRatingByRecipe(@Param("recipe") Recipe recipe);
+    
+    @Modifying
+    @Transactional
+    void deleteByRecipe(Recipe recipe);
 }

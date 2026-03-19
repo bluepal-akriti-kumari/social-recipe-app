@@ -12,4 +12,6 @@ public class IngredientRequest {
     private String quantity;
 
     private String unit;
+
+    private String category; // Maps to ShoppingCategory enum
 }
