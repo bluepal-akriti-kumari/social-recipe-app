@@ -17,8 +17,8 @@ public interface RecipeService {
     // Full-text search by ingredient
     List<RecipeResponse> searchRecipesFullText(String query, String currentUsername);
 
-    List<RecipeResponse> getUserRecipes(String username, String currentUsername);
-    List<RecipeResponse> getUserLikedRecipes(String username, String currentUsername);
+    Map<String, Object> getUserRecipes(String username, LocalDateTime cursor, int size, String currentUsername);
+    Map<String, Object> getUserLikedRecipes(String username, LocalDateTime cursor, int size, String currentUsername);
     
     // Categorization & Trending
     List<RecipeResponse> getTrendingRecipes(String currentUsername, int limit);

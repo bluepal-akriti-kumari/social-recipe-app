@@ -8,4 +8,6 @@ public class MealPlanRequest {
     private Long recipeId;
     private LocalDate plannedDate;
     private String mealType;
+    private Integer servingsAdjustment;
+    private String status;
 }

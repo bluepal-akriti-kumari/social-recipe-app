@@ -7,12 +7,20 @@ export interface MealPlan {
   recipeImageUrl: string;
   plannedDate: string;
   mealType: string;
+  servingsAdjustment: number;
+  status: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fats?: number;
 }
 
 export interface MealPlanRequest {
   recipeId: number;
   plannedDate: string;
   mealType: string;
+  servingsAdjustment?: number;
+  status?: string;
 }
 
 export const mealPlanService = {
@@ -24,4 +32,7 @@ export const mealPlanService = {
   
   deleteMealPlan: (id: number) =>
     api.delete(`/meal-planner/${id}`).then(r => r.data),
+
+  updateMealPlan: (id: number, request: Partial<MealPlanRequest>) =>
+    api.put<MealPlan>(`/meal-planner/${id}`, request).then(r => r.data),
 };

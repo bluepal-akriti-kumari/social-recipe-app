@@ -29,7 +29,19 @@ public class MealPlanController {
         User user = userRepository.findByUsername(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
-        return ResponseEntity.ok(mealPlanService.addMealPlan(user, request.getRecipeId(), request.getPlannedDate(), request.getMealType()));
+        return ResponseEntity.ok(mealPlanService.addMealPlan(user, request));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<MealPlanResponse> updateMealPlan(
+            @PathVariable Long id,
+            @RequestBody MealPlanRequest request,
+            Authentication authentication) {
+        
+        User user = userRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        return ResponseEntity.ok(mealPlanService.updateMealPlan(id, request, user));
     }
 
     @GetMapping

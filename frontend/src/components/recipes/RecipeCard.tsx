@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Card, CardContent, CardMedia, Typography, 
@@ -11,7 +12,9 @@ import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import { useAuth } from '../../hooks/useAuth';
+import AddToPlannerModal from '../../pages/Recipe/AddToPlannerModal';
 import type { RecipeSummary } from '../../services/recipe.service';
 
 interface RecipeCardProps {
@@ -23,6 +26,7 @@ interface RecipeCardProps {
 const RecipeCard = ({ recipe, onLike, onBookmark }: RecipeCardProps) => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const [isPlannerOpen, setIsPlannerOpen] = useState(false);
 
   const handleInteraction = (e: React.MouseEvent, callback?: (id: number) => void) => {
     e.stopPropagation();
@@ -97,6 +101,24 @@ const RecipeCard = ({ recipe, onLike, onBookmark }: RecipeCardProps) => {
             }}
           >
             {recipe.isBookmarked ? <BookmarkIcon fontSize="small" /> : <BookmarkBorderIcon fontSize="small" />}
+          </IconButton>
+
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isAuthenticated) return navigate('/login');
+              setIsPlannerOpen(true);
+            }}
+            sx={{ 
+              position: 'absolute', top: 50, right: 12,
+              bgcolor: 'rgba(255,255,255,0.9)', 
+              '&:hover': { bgcolor: 'white' },
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              color: 'primary.main'
+            }}
+          >
+            <CalendarMonthIcon fontSize="small" />
           </IconButton>
         </Box>
 
@@ -192,6 +214,13 @@ const RecipeCard = ({ recipe, onLike, onBookmark }: RecipeCardProps) => {
           </Box>
         </CardContent>
       </Card>
+
+      <AddToPlannerModal 
+        open={isPlannerOpen} 
+        onClose={() => setIsPlannerOpen(false)}
+        recipeId={recipe.id}
+        recipeTitle={recipe.title}
+      />
     </motion.div>
   );
 };

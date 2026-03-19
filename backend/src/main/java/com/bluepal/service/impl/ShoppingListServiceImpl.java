@@ -1,9 +1,7 @@
 package com.bluepal.service.impl;
 
-import com.bluepal.entity.Ingredient;
-import com.bluepal.entity.Recipe;
-import com.bluepal.entity.ShoppingListItem;
-import com.bluepal.entity.User;
+import com.bluepal.entity.*;
+import com.bluepal.repository.MealPlanRepository;
 import com.bluepal.repository.RecipeRepository;
 import com.bluepal.repository.ShoppingListItemRepository;
 import com.bluepal.service.interfaces.ShoppingListService;
@@ -19,18 +17,22 @@ public class ShoppingListServiceImpl implements ShoppingListService {
 
     private final ShoppingListItemRepository shoppingListItemRepository;
     private final RecipeRepository recipeRepository;
+    private final MealPlanRepository mealPlanRepository;
 
     @Override
     @Transactional
-    public ShoppingListItem addItem(User user, String name, String quantity, String unit) {
+    public ShoppingListItem addItem(User user, String name, String quantity, String unit, Recipe recipe) {
         return shoppingListItemRepository.findByUserAndNameAndUnitAndPurchased(user, name, unit, false)
                 .map(existing -> {
                     existing.setQuantity(mergeQuantities(existing.getQuantity(), quantity));
+                    // If it was manual and now linked to a recipe, or vice-versa, we keep the existing or update?
+                    // Typically, aggregation means its for multiple things.
                     return shoppingListItemRepository.save(existing);
                 })
                 .orElseGet(() -> {
                     ShoppingListItem item = ShoppingListItem.builder()
                             .user(user)
+                            .recipe(recipe)
                             .name(name)
                             .quantity(quantity)
                             .unit(unit)
@@ -73,11 +75,22 @@ public class ShoppingListServiceImpl implements ShoppingListService {
                 .orElseThrow(() -> new RuntimeException("Recipe not found"));
         
         for (Ingredient ingredient : recipe.getIngredients()) {
-            addItem(user, ingredient.getName(), ingredient.getQuantity(), ingredient.getUnit());
+            addItem(user, ingredient.getName(), ingredient.getQuantity(), ingredient.getUnit(), recipe);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void addIngredientsFromMealPlan(User user, java.time.LocalDate startDate, java.time.LocalDate endDate) {
+        List<com.bluepal.entity.MealPlan> plans = mealPlanRepository.findByUserAndPlannedDateBetween(user, startDate, endDate);
+        for (com.bluepal.entity.MealPlan plan : plans) {
+            addIngredientsFromRecipe(plan.getRecipe().getId(), user);
         }
     }
 
     private String mergeQuantities(String oldQty, String newQty) {
+        if (oldQty == null) return newQty;
+        if (newQty == null) return oldQty;
         try {
             double oldVal = Double.parseDouble(oldQty);
             double newVal = Double.parseDouble(newQty);

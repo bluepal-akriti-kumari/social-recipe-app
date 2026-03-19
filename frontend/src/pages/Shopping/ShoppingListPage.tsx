@@ -64,6 +64,16 @@ const ShoppingListPage = () => {
   const pendingItems = items.filter(i => !i.purchased);
   const purchasedItems = items.filter(i => i.purchased);
 
+  // Group pending items by category
+  const groupedItems = pendingItems.reduce((acc, item) => {
+    const cat = item.category || 'OTHER';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(item);
+    return acc;
+  }, {} as Record<string, ShoppingListItem[]>);
+
+  const categories = Object.keys(groupedItems).sort((a, b) => a.localeCompare(b));
+
   return (
     <Box className="bg-mesh" sx={{ minHeight: '100vh', py: 8 }}>
       <Container maxWidth="md">
@@ -122,40 +132,68 @@ const ShoppingListPage = () => {
           <Stack spacing={4}>
             {error && <Alert severity="error">{error}</Alert>}
             
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 900, mb: 2, px: 1 }}>
-                To Procure <Chip label={pendingItems.length} size="small" sx={{ ml: 1, fontWeight: 900, bgcolor: 'primary.main', color: 'white' }} />
-              </Typography>
-              <Paper className="glass" sx={{ borderRadius: '24px', overflow: 'hidden' }}>
-                <AnimatePresence>
-                  {pendingItems.map((item) => (
-                    <motion.div 
-                        key={item.id} 
-                        initial={{ opacity: 0, x: -20 }} 
-                        animate={{ opacity: 1, x: 0 }} 
-                        exit={{ opacity: 0, x: 20 }}
+              <Stack spacing={3}>
+                {categories.map((cat) => (
+                  <Box key={cat}>
+                    <Typography 
+                      variant="overline" 
+                      sx={{ 
+                        fontWeight: 900, 
+                        color: 'primary.main', 
+                        letterSpacing: '0.1em',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        mb: 1.5,
+                        px: 1
+                      }}
                     >
-                      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.05)', '&:last-child': { borderBottom: 'none' } }}>
-                        <Checkbox checked={item.purchased} onChange={() => handleToggle(item.id)} sx={{ mr: 2 }} />
-                        <Box sx={{ flexGrow: 1 }}>
-                          <Typography sx={{ fontWeight: 700 }}>{item.name}</Typography>
-                          {(item.quantity || item.unit) && (
-                            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                              {item.quantity} {item.unit}
-                            </Typography>
-                          )}
-                        </Box>
-                      </Box>
-                    </motion.div>
-                  ))}
-                  {pendingItems.length === 0 && (
-                    <Box sx={{ p: 4, textAlign: 'center' }}>
-                      <Typography sx={{ color: 'text.disabled', fontStyle: 'italic' }}>Your pantry is well-stocked</Typography>
-                    </Box>
-                  )}
-                </AnimatePresence>
-              </Paper>
-            </Box>
+                      <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.main' }} />
+                      {cat}
+                    </Typography>
+                    <Paper className="glass" sx={{ borderRadius: '24px', overflow: 'hidden' }}>
+                      <AnimatePresence>
+                        {groupedItems[cat].map((item) => (
+                          <motion.div 
+                              key={item.id} 
+                              initial={{ opacity: 0, x: -20 }} 
+                              animate={{ opacity: 1, x: 0 }} 
+                              exit={{ opacity: 0, x: 20 }}
+                          >
+                            <Box sx={{ p: 2, display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.05)', '&:last-child': { borderBottom: 'none' } }}>
+                              <Checkbox checked={item.purchased} onChange={() => handleToggle(item.id)} sx={{ mr: 2 }} />
+                              <Box sx={{ flexGrow: 1 }}>
+                                <Typography sx={{ fontWeight: 700 }}>{item.name}</Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 0.5 }}>
+                                  {(item.quantity || item.unit) && (
+                                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                                      {item.quantity} {item.unit}
+                                    </Typography>
+                                  )}
+                                  {item.recipeTitle && (
+                                    <Chip 
+                                      label={item.recipeTitle} 
+                                      size="small" 
+                                      variant="outlined" 
+                                      onClick={() => item.recipeId && window.open(`/recipes/${item.recipeId}`, '_blank')}
+                                      sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, color: 'primary.main', borderColor: 'primary.light' }} 
+                                    />
+                                  )}
+                                </Box>
+                              </Box>
+                            </Box>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </Paper>
+                  </Box>
+                ))}
+                {pendingItems.length === 0 && (
+                  <Paper className="glass" sx={{ borderRadius: '24px', p: 4, textAlign: 'center' }}>
+                    <Typography sx={{ color: 'text.disabled', fontStyle: 'italic' }}>Your pantry is well-stocked</Typography>
+                  </Paper>
+                )}
+              </Stack>
 
             {purchasedItems.length > 0 && (
               <Box>

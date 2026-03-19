@@ -24,6 +24,10 @@ public class Ingredient {
     @Column(length = 50)
     private String unit;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category")
+    private ShoppingCategory category = ShoppingCategory.OTHER;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "recipe_id", nullable = false)
     @ToString.Exclude

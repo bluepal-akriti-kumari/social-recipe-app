@@ -1,7 +1,6 @@
 import { 
   Box, Container, Typography, Grid, Card, 
-  CardContent, CardMedia, Button, AvatarGroup, Avatar,
-  Chip, alpha
+  CardContent, CardMedia, Button
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';

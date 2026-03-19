@@ -41,6 +41,11 @@ public class Recipe {
 
     private Integer servings;
 
+    private Integer calories;
+    private Double protein;
+    private Double carbs;
+    private Double fats;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id", nullable = false)
     private User author;

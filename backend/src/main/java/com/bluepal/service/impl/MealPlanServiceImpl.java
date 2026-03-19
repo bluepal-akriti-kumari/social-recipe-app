@@ -1,7 +1,9 @@
 package com.bluepal.service.impl;
 
+import com.bluepal.dto.request.MealPlanRequest;
 import com.bluepal.dto.response.MealPlanResponse;
 import com.bluepal.entity.MealPlan;
+import com.bluepal.entity.MealPlanStatus;
 import com.bluepal.entity.Recipe;
 import com.bluepal.entity.User;
 import com.bluepal.repository.MealPlanRepository;
@@ -24,17 +26,49 @@ public class MealPlanServiceImpl implements MealPlanService {
 
     @Override
     @Transactional
-    public MealPlanResponse addMealPlan(User user, Long recipeId, LocalDate date, String mealType) {
-        Recipe recipe = recipeRepository.findById(recipeId)
+    public MealPlanResponse addMealPlan(User user, MealPlanRequest request) {
+        Recipe recipe = recipeRepository.findById(request.getRecipeId())
                 .orElseThrow(() -> new RuntimeException("Recipe not found"));
-        
+
+        MealPlanStatus status = MealPlanStatus.PLANNED;
+        if (request.getStatus() != null) {
+            try {
+                status = MealPlanStatus.valueOf(request.getStatus().toUpperCase());
+            } catch (IllegalArgumentException ignored) {}
+        }
+
         MealPlan mealPlan = MealPlan.builder()
                 .user(user)
                 .recipe(recipe)
-                .plannedDate(date)
-                .mealType(mealType)
+                .plannedDate(request.getPlannedDate())
+                .mealType(request.getMealType())
+                .servingsAdjustment(request.getServingsAdjustment() != null ? request.getServingsAdjustment() : 0)
+                .status(status)
                 .build();
         
+        return mapToResponse(mealPlanRepository.save(mealPlan));
+    }
+
+    @Override
+    @Transactional
+    public MealPlanResponse updateMealPlan(Long id, MealPlanRequest request, User user) {
+        MealPlan mealPlan = mealPlanRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Meal plan not found"));
+
+        if (!mealPlan.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        if (request.getPlannedDate() != null) mealPlan.setPlannedDate(request.getPlannedDate());
+        if (request.getMealType() != null) mealPlan.setMealType(request.getMealType());
+        if (request.getServingsAdjustment() != null) mealPlan.setServingsAdjustment(request.getServingsAdjustment());
+        
+        if (request.getStatus() != null) {
+            try {
+                mealPlan.setStatus(MealPlanStatus.valueOf(request.getStatus().toUpperCase()));
+            } catch (IllegalArgumentException ignored) {}
+        }
+
         return mapToResponse(mealPlanRepository.save(mealPlan));
     }
 
@@ -46,13 +80,20 @@ public class MealPlanServiceImpl implements MealPlanService {
     }
 
     private MealPlanResponse mapToResponse(MealPlan mealPlan) {
+        Recipe recipe = mealPlan.getRecipe();
         return MealPlanResponse.builder()
                 .id(mealPlan.getId())
-                .recipeId(mealPlan.getRecipe().getId())
-                .recipeTitle(mealPlan.getRecipe().getTitle())
-                .recipeImageUrl(mealPlan.getRecipe().getImageUrl())
+                .recipeId(recipe.getId())
+                .recipeTitle(recipe.getTitle())
+                .recipeImageUrl(recipe.getImageUrl())
                 .plannedDate(mealPlan.getPlannedDate())
                 .mealType(mealPlan.getMealType())
+                .servingsAdjustment(mealPlan.getServingsAdjustment())
+                .status(mealPlan.getStatus().name())
+                .calories(recipe.getCalories())
+                .protein(recipe.getProtein())
+                .carbs(recipe.getCarbs())
+                .fats(recipe.getFats())
                 .build();
     }
 

@@ -28,11 +28,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserProfileResponse getUserProfile(String username, String currentUsername) {
+        System.out.println("DEBUG: Fetching profile for " + username + " (current: " + currentUsername + ")");
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
         boolean isFollowing = false;
         if (currentUsername != null) {
+            System.out.println("DEBUG: Checking if " + currentUsername + " follows " + username);
             Optional<User> currentUserOpt = userRepository.findByUsername(currentUsername);
             if (currentUserOpt.isPresent()) {
                 isFollowing = followRepository.existsByFollowerAndFollowing(currentUserOpt.get(), user);

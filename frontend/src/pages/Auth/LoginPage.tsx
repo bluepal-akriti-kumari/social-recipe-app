@@ -80,11 +80,11 @@ const LoginPage = () => {
 
           <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
             <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 800, color: 'text.primary' }}>Username</Typography>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 800, color: 'text.primary' }}>Username or Email</Typography>
               <TextField
                 fullWidth
-                placeholder="Enter your username"
-                {...register('username', { required: 'Username is required' })}
+                placeholder="Username or Email"
+                {...register('username', { required: 'Username or Email is required' })}
                 error={!!errors.username}
                 helperText={errors.username?.message}
                 sx={{ 

@@ -3,15 +3,16 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { 
   Container, Box, Typography, Avatar, 
   Button, Paper, Tabs, Tab, CircularProgress, 
-  Alert
+  Alert, Grid, Drawer, IconButton, Tooltip
 } from '@mui/material';
+import CommunitySidebar from '../../components/home/CommunitySidebar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import EditIcon from '@mui/icons-material/Edit';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import VerifiedIcon from '@mui/icons-material/Verified';
+import HubIcon from '@mui/icons-material/Hub';
 import { motion } from 'framer-motion';
 import { recipeService } from '../../services/recipe.service';
-import type { RecipeSummary } from '../../services/recipe.service';
 import RecipeCard from '../../components/recipes/RecipeCard';
 import EditProfileModal from '../../components/profile/EditProfileModal';
 import { useAuth } from '../../hooks/useAuth';
@@ -26,6 +27,7 @@ const ProfilePage = () => {
   
   const [activeTab, setActiveTab] = useState(0);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isPulseDrawerOpen, setIsPulseDrawerOpen] = useState(false);
 
   // --- Data Fetching (React Query) ---
   const { 
@@ -38,16 +40,33 @@ const ProfilePage = () => {
     enabled: !!username,
   });
 
+  const [recipes, setRecipes] = useState<any[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+
   const { 
-    data: recipes = [], 
-    isLoading: isRecipesLoading 
+    isLoading: isRecipesLoading,
+    isFetching: isRecipesFetching
   } = useQuery({
     queryKey: ['profiles', username, 'recipes', activeTab],
-    queryFn: () => activeTab === 0 
-      ? recipeService.getUserRecipes(username!) 
-      : recipeService.getUserLikedRecipes(username!),
+    queryFn: async () => {
+      const data = activeTab === 0 
+        ? await recipeService.getUserRecipes(username!) 
+        : await recipeService.getUserLikedRecipes(username!);
+      setRecipes(data.content);
+      setNextCursor(data.nextCursor);
+      return data;
+    },
     enabled: !!username && !!profile,
   });
+
+  const handleLoadMore = async () => {
+    if (!nextCursor) return;
+    const data = activeTab === 0 
+      ? await recipeService.getUserRecipes(username!, nextCursor) 
+      : await recipeService.getUserLikedRecipes(username!, nextCursor);
+    setRecipes(prev => [...prev, ...data.content]);
+    setNextCursor(data.nextCursor);
+  };
 
   // --- Mutations ---
   const followMutation = useMutation({
@@ -218,6 +237,19 @@ const ProfilePage = () => {
                       {followMutation.isPending ? 'Processing...' : (profile.isFollowing ? 'Following' : 'Follow')}
                     </Button>
                   )}
+                  <Tooltip title="Community Pulse">
+                    <IconButton 
+                      onClick={() => setIsPulseDrawerOpen(true)}
+                      sx={{ 
+                        bgcolor: 'background.paper', 
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                        border: '1px solid rgba(0,0,0,0.05)',
+                        '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' }
+                      }}
+                    >
+                      <HubIcon color="primary" />
+                    </IconButton>
+                  </Tooltip>
                 </Box>
               </Box>
               
@@ -243,103 +275,163 @@ const ProfilePage = () => {
           </Box>
         </Paper>
 
-        <Box sx={{ mb: 8, display: 'flex', justifyContent: 'center' }}>
-          <Box sx={{ p: 0.5, borderRadius: 2.5, display: 'inline-flex', bgcolor: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.05)' }}>
-            <Tabs 
-              value={activeTab} 
-              onChange={(_, val) => setActiveTab(val)} 
-              sx={{ 
-                minHeight: 0,
-                '& .MuiTabs-indicator': { display: 'none' },
-                '& .MuiTab-root': { 
-                  minHeight: 40, 
-                  px: { xs: 3, sm: 6 }, 
-                  borderRadius: 2, 
-                  fontSize: '0.9rem', 
-                  fontWeight: 900,
-                  color: 'text.secondary',
-                  textTransform: 'none',
-                  transition: 'all 0.3s ease',
-                  '&.Mui-selected': { 
-                    color: 'white', 
-                    bgcolor: 'primary.main',
-                    boxShadow: '0 4px 12px rgba(44, 62, 80, 0.2)' 
-                  }
-                }
-              }}
-            >
-              <Tab label="Collection" disableRipple />
-              <Tab label="Liked" disableRipple />
-            </Tabs>
-          </Box>
-        </Box>
-
-        {isRecipesLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 15 }}>
-            <Box sx={{ position: 'relative', display: 'flex' }}>
-              <CircularProgress size={60} thickness={4} sx={{ color: 'rgba(99, 102, 241, 0.1)' }} />
-              <CircularProgress size={60} thickness={4} sx={{ color: 'primary.main', position: 'absolute', left: 0, '& .MuiCircularProgress-circle': { strokeLinecap: 'round' } }} />
-            </Box>
-          </Box>
-        ) : (
-          <Box 
-            sx={{ 
-              display: 'grid', 
-              gridTemplateColumns: {
-                xs: 'repeat(1, 1fr)',
-                sm: 'repeat(2, 1fr)',
-                md: 'repeat(3, 1fr)',
-                lg: 'repeat(4, 1fr)'
-              },
-              gap: 5
-            }}
-          >
-            {recipes.length > 0 ? (
-              recipes.map((recipe, index) => (
-                <motion.div 
-                  key={recipe.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1, duration: 0.6 }}
-                >
-                  <RecipeCard 
-                    recipe={recipe} 
-                    onLike={handleLike} 
-                    onBookmark={handleBookmark}
-                  />
-                </motion.div>
-              ))
-            ) : (
-              <Box sx={{ gridColumn: '1 / -1', textAlign: 'center', py: 20 }}>
-                <Box sx={{ bgcolor: 'rgba(0,0,0,0.03)', p: 4, borderRadius: '50%', display: 'inline-flex', mb: 3 }}>
-                  <RestaurantMenuIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
-                </Box>
-                <Typography variant="h4" sx={{ color: 'text.primary', fontWeight: 950, mb: 2, letterSpacing: '-0.02em' }}>
-                  {activeTab === 0 ? "Empty Culinary Canvas" : "No Treasures Discovered"}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'text.secondary', mb: 6, maxWidth: 450, mx: 'auto', fontSize: '1.1rem', fontWeight: 500 }}>
-                  Every great chef starts with a blank slate. Begin your journey by sharing your first masterpiece.
-                </Typography>
-                <Button 
-                  variant="contained" 
-                  size="medium"
-                  onClick={() => navigate('/feed')}
+        <Grid container spacing={4}>
+          <Grid size={{ xs: 12 }}>
+            <Box sx={{ mb: 8, display: 'flex', justifyContent: 'center' }}>
+              <Box sx={{ p: 0.5, borderRadius: 2.5, display: 'inline-flex', bgcolor: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.05)' }}>
+                <Tabs 
+                  value={activeTab} 
+                  onChange={(_, val) => setActiveTab(val)} 
                   sx={{ 
-                    borderRadius: 2, 
-                    px: 4, 
-                    py: 1.5, 
-                    fontWeight: 900,
-                    boxShadow: '0 8px 16px rgba(44, 62, 80, 0.15)',
-                    textTransform: 'none',
+                    minHeight: 0,
+                    '& .MuiTabs-indicator': { display: 'none' },
+                    '& .MuiTab-root': { 
+                      minHeight: 40, 
+                      px: { xs: 3, sm: 6 }, 
+                      borderRadius: 2, 
+                      fontSize: '0.9rem', 
+                      fontWeight: 900,
+                      color: 'text.secondary',
+                      textTransform: 'none',
+                      transition: 'all 0.3s ease',
+                      '&.Mui-selected': { 
+                        color: 'white', 
+                        bgcolor: 'primary.main',
+                        boxShadow: '0 4px 12px rgba(44, 62, 80, 0.2)' 
+                      }
+                    }
                   }}
                 >
-                  Discover Inspiration
+                  <Tab label="Collection" disableRipple />
+                  <Tab label="Liked" disableRipple />
+                </Tabs>
+              </Box>
+            </Box>
+
+            {isRecipesLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 15 }}>
+                <Box sx={{ position: 'relative', display: 'flex' }}>
+                  <CircularProgress size={60} thickness={4} sx={{ color: 'rgba(99, 102, 241, 0.1)' }} />
+                  <CircularProgress size={60} thickness={4} sx={{ color: 'primary.main', position: 'absolute', left: 0, '& .MuiCircularProgress-circle': { strokeLinecap: 'round' } }} />
+                </Box>
+              </Box>
+            ) : (
+              <Box 
+                sx={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: {
+                    xs: 'repeat(1, 1fr)',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)',
+                    lg: 'repeat(4, 1fr)'
+                  },
+                  gap: 4
+                }}
+              >
+                {recipes.length > 0 ? (
+                  recipes.map((recipe, index) => (
+                    <motion.div 
+                      key={recipe.id}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1, duration: 0.6 }}
+                    >
+                      <RecipeCard 
+                        recipe={recipe} 
+                        onLike={handleLike} 
+                        onBookmark={handleBookmark}
+                      />
+                    </motion.div>
+                  ))
+                ) : (
+                  <Box sx={{ gridColumn: '1 / -1', textAlign: 'center', py: 20 }}>
+                    <Box sx={{ bgcolor: 'rgba(0,0,0,0.03)', p: 4, borderRadius: '50%', display: 'inline-flex', mb: 3 }}>
+                      <RestaurantMenuIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
+                    </Box>
+                    <Typography variant="h4" sx={{ color: 'text.primary', fontWeight: 950, mb: 2, letterSpacing: '-0.02em' }}>
+                      {activeTab === 0 ? "Empty Culinary Canvas" : "No Treasures Discovered"}
+                    </Typography>
+                    <Typography variant="body1" sx={{ color: 'text.secondary', mb: 6, maxWidth: 450, mx: 'auto', fontSize: '1.1rem', fontWeight: 500 }}>
+                      Every great chef starts with a blank slate. Begin your journey by sharing your first masterpiece.
+                    </Typography>
+                    <Button 
+                      variant="contained" 
+                      size="medium"
+                      onClick={() => navigate('/feed')}
+                      sx={{ 
+                        borderRadius: 2, 
+                        px: 4, 
+                        py: 1.5, 
+                        fontWeight: 900,
+                        boxShadow: '0 8px 16px rgba(44, 62, 80, 0.15)',
+                        textTransform: 'none',
+                      }}
+                    >
+                      Discover Inspiration
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            )}
+
+            {nextCursor && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8, mb: 4 }}>
+                <Button 
+                  variant="outlined" 
+                  onClick={handleLoadMore}
+                  disabled={isRecipesFetching}
+                  sx={{ 
+                    borderRadius: '16px', 
+                    px: 8, 
+                    py: 2, 
+                    fontWeight: 950,
+                    borderWidth: '2px',
+                    borderColor: 'primary.main',
+                    letterSpacing: '0.05em',
+                    fontSize: '1rem',
+                    transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                    '&:hover': { 
+                      borderWidth: '2px',
+                      transform: 'scale(1.05) translateY(-5px)',
+                      boxShadow: '0 12px 24px rgba(99, 102, 241, 0.15)',
+                      bgcolor: 'rgba(99, 102, 241, 0.05)'
+                    }
+                  }}
+                >
+                  {isRecipesFetching ? 'Culinario Loading...' : 'Explore More Creations'}
                 </Button>
               </Box>
             )}
-          </Box>
-        )}
+          </Grid>
+        </Grid>
       </Container>
+
+      <Drawer
+        anchor="right"
+        open={isPulseDrawerOpen}
+        onClose={() => setIsPulseDrawerOpen(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: '100%', sm: 400 },
+            bgcolor: 'transparent',
+            boxShadow: 'none',
+            border: 'none',
+          }
+        }}
+      >
+        <Box sx={{ 
+          height: '100%', 
+          bgcolor: 'background.paper',
+          p: 3,
+          boxShadow: '-10px 0 30px rgba(0,0,0,0.05)',
+          overflowY: 'auto'
+        }}>
+          <Typography variant="h5" sx={{ fontWeight: 950, mb: 4, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <HubIcon color="primary" /> Community Pulse
+          </Typography>
+          <CommunitySidebar />
+        </Box>
+      </Drawer>
 
       {profile && (
         <EditProfileModal 
