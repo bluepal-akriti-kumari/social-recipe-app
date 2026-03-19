@@ -52,10 +52,10 @@ docker-compose up --build
 
 ## Implementation Details
 
-- **Cursor-based Pagination**: Uses `createdAt` timestamp for stable and efficient infinite scrolling.
-- **Full-Text Search**: Implemented using PostgreSQL `GIN` indexes on ingredient names for high-performance partial matching.
-- **Threaded Comments**: Supports parent-child relationships for discussions.
-- **Optimistic UI**: Likes use optimistic updates for a snappy user experience.
+- **Cursor-based Pagination**: Uses `createdAt` timestamp for stable and efficient infinite scrolling on Explore, Personalized, and Profile feeds.
+- **Full-Text Search**: High-performance PostgreSQL `GIN` indexes on ingredient names for accurate discovery.
+- **Threaded Comments**: Self-referencing entity structure with recursive frontend rendering for nested discussions.
+- **Atomic Interactions**: Optimized like/comment toggles using atomic repository-level count updates to ensure data integrity under high concurrent load.
 
 ## License
 

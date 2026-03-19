@@ -36,6 +36,15 @@ public class MealPlan {
     @Column(name = "meal_type", nullable = false, length = 20) // BREAKFAST, LUNCH, DINNER, SNACK
     private String mealType;
 
+    @Column(name = "servings_adjustment")
+    @Builder.Default
+    private Integer servingsAdjustment = 0; // +/- from recipe portions
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    @Builder.Default
+    private MealPlanStatus status = MealPlanStatus.PLANNED;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

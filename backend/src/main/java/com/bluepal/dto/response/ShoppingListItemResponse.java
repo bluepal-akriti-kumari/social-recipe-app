@@ -10,5 +10,8 @@ public class ShoppingListItemResponse {
     private String name;
     private String quantity;
     private String unit;
+    private String category;
+    private Long recipeId;
+    private String recipeTitle;
     private boolean purchased;
 }

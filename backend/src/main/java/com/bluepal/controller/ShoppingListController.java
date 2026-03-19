@@ -27,7 +27,7 @@ public class ShoppingListController {
         User user = userRepository.findByUsername(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
-        ShoppingListItem item = shoppingListService.addItem(user, request.getName(), request.getQuantity(), request.getUnit());
+        ShoppingListItem item = shoppingListService.addItem(user, request.getName(), request.getQuantity(), request.getUnit(), null);
         return ResponseEntity.ok(mapToResponse(item));
     }
 
@@ -67,12 +67,28 @@ public class ShoppingListController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/from-meal-plan")
+    public ResponseEntity<Void> addFromMealPlan(
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate startDate,
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate endDate,
+            Authentication authentication) {
+        
+        User user = userRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        shoppingListService.addIngredientsFromMealPlan(user, startDate, endDate);
+        return ResponseEntity.ok().build();
+    }
+
     private ShoppingListItemResponse mapToResponse(ShoppingListItem item) {
         return ShoppingListItemResponse.builder()
                 .id(item.getId())
                 .name(item.getName())
                 .quantity(item.getQuantity())
                 .unit(item.getUnit())
+                .category(item.getCategory() != null ? item.getCategory().name() : "OTHER")
+                .recipeId(item.getRecipe() != null ? item.getRecipe().getId() : null)
+                .recipeTitle(item.getRecipe() != null ? item.getRecipe().getTitle() : null)
                 .purchased(item.isPurchased())
                 .build();
     }

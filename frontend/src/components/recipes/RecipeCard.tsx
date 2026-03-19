@@ -1,23 +1,41 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Card, CardContent, CardMedia, Typography, 
   Box, Avatar, IconButton, Chip 
 } from '@mui/material';
+import VerifiedIcon from '@mui/icons-material/Verified';
 import { motion } from 'framer-motion';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
-import { useNavigate } from 'react-router-dom';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import { useAuth } from '../../hooks/useAuth';
+import AddToPlannerModal from '../../pages/Recipe/AddToPlannerModal';
 import type { RecipeSummary } from '../../services/recipe.service';
 
 interface RecipeCardProps {
   recipe: RecipeSummary;
   onLike?: (id: number) => void;
+  onBookmark?: (id: number) => void;
 }
 
-const RecipeCard = ({ recipe, onLike }: RecipeCardProps) => {
+const RecipeCard = ({ recipe, onLike, onBookmark }: RecipeCardProps) => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const [isPlannerOpen, setIsPlannerOpen] = useState(false);
+
+  const handleInteraction = (e: React.MouseEvent, callback?: (id: number) => void) => {
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    callback?.(recipe.id);
+  };
 
   return (
     <motion.div
@@ -73,14 +91,34 @@ const RecipeCard = ({ recipe, onLike }: RecipeCardProps) => {
 
           <IconButton
             size="small"
+            onClick={(e) => handleInteraction(e, onBookmark)}
             sx={{ 
               position: 'absolute', top: 12, right: 12,
               bgcolor: 'rgba(255,255,255,0.9)', 
               '&:hover': { bgcolor: 'white' },
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              color: recipe.isBookmarked ? 'primary.main' : 'inherit'
             }}
           >
-            <BookmarkBorderIcon fontSize="small" sx={{ color: 'primary.main' }} />
+            {recipe.isBookmarked ? <BookmarkIcon fontSize="small" /> : <BookmarkBorderIcon fontSize="small" />}
+          </IconButton>
+
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isAuthenticated) return navigate('/login');
+              setIsPlannerOpen(true);
+            }}
+            sx={{ 
+              position: 'absolute', top: 50, right: 12,
+              bgcolor: 'rgba(255,255,255,0.9)', 
+              '&:hover': { bgcolor: 'white' },
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              color: 'primary.main'
+            }}
+          >
+            <CalendarMonthIcon fontSize="small" />
           </IconButton>
         </Box>
 
@@ -93,8 +131,9 @@ const RecipeCard = ({ recipe, onLike }: RecipeCardProps) => {
             >
               {recipe.author?.username?.[0]?.toUpperCase()}
             </Avatar>
-            <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+            <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5 }}>
               {recipe.author?.username}
+              {recipe.author?.isVerified && <VerifiedIcon sx={{ fontSize: 14, color: 'primary.main' }} />}
             </Typography>
           </Box>
 
@@ -139,7 +178,7 @@ const RecipeCard = ({ recipe, onLike }: RecipeCardProps) => {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <IconButton 
                   size="small" 
-                  onClick={() => onLike?.(recipe.id)}
+                  onClick={(e) => handleInteraction(e, onLike)}
                   sx={{ 
                     p: 0,
                     color: recipe.isLiked ? 'secondary.main' : 'text.disabled',
@@ -175,6 +214,13 @@ const RecipeCard = ({ recipe, onLike }: RecipeCardProps) => {
           </Box>
         </CardContent>
       </Card>
+
+      <AddToPlannerModal 
+        open={isPlannerOpen} 
+        onClose={() => setIsPlannerOpen(false)}
+        recipeId={recipe.id}
+        recipeTitle={recipe.title}
+      />
     </motion.div>
   );
 };

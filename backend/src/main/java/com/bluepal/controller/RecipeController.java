@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @RestController
 @RequestMapping("/api")
 public class RecipeController {
@@ -110,15 +110,27 @@ public class RecipeController {
 
     // ─── User Profile Lists ─────────────────────────────────────────────────────
     @GetMapping("/users/{username}/recipes")
-    public ResponseEntity<List<RecipeResponse>> getUserRecipes(
-            @PathVariable("username") String username) {
-        return ResponseEntity.ok(recipeService.getUserRecipes(username, getCurrentUsername()));
+    public ResponseEntity<Map<String, Object>> getUserRecipes(
+            @PathVariable("username") String username,
+            @RequestParam(name = "cursor", required = false) String cursorStr,
+            @RequestParam(name = "size", defaultValue = "12") int size) {
+        
+        LocalDateTime cursor = (cursorStr != null && !cursorStr.isEmpty()) 
+                ? LocalDateTime.parse(cursorStr) 
+                : null;
+        return ResponseEntity.ok(recipeService.getUserRecipes(username, cursor, size, getCurrentUsername()));
     }
 
     @GetMapping("/users/{username}/liked-recipes")
-    public ResponseEntity<List<RecipeResponse>> getLikedRecipes(
-            @PathVariable("username") String username) {
-        return ResponseEntity.ok(recipeService.getUserLikedRecipes(username, getCurrentUsername()));
+    public ResponseEntity<Map<String, Object>> getLikedRecipes(
+            @PathVariable("username") String username,
+            @RequestParam(name = "cursor", required = false) String cursorStr,
+            @RequestParam(name = "size", defaultValue = "12") int size) {
+        
+        LocalDateTime cursor = (cursorStr != null && !cursorStr.isEmpty()) 
+                ? LocalDateTime.parse(cursorStr) 
+                : null;
+        return ResponseEntity.ok(recipeService.getUserLikedRecipes(username, cursor, size, getCurrentUsername()));
     }
 
     @GetMapping("/cloudinary/signature")

@@ -5,6 +5,9 @@ export interface ShoppingListItem {
   name: string;
   quantity: string;
   unit: string;
+  category: string;
+  recipeId?: number;
+  recipeTitle?: string;
   purchased: boolean;
 }
 
@@ -29,4 +32,7 @@ export const shoppingListService = {
   
   addFromRecipe: (recipeId: number) =>
     api.post(`/shopping-list/from-recipe/${recipeId}`).then(r => r.data),
+
+  addFromMealPlan: (startDate: string, endDate: string) =>
+    api.post(`/shopping-list/from-meal-plan`, null, { params: { startDate, endDate } }).then(r => r.data),
 };

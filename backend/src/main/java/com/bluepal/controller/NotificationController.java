@@ -49,14 +49,24 @@ public class NotificationController {
     }
 
     @GetMapping("/unread-count")
-    public ResponseEntity<Long> getUnreadCount() {
+    public ResponseEntity<?> getUnreadCount() {
+        System.out.println("DEBUG: Received request for /api/notifications/unread-count");
         String username = getCurrentUsername();
+        System.out.println("DEBUG: Current username for unread-count: " + username);
         if (username == null) return ResponseEntity.status(401).build();
 
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+        try {
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
-        return ResponseEntity.ok(notificationService.getUnreadCount(user));
+            long count = notificationService.getUnreadCount(user);
+            System.out.println("DEBUG: Unread count for " + username + " is " + count);
+            return ResponseEntity.ok(count);
+        } catch (Exception e) {
+            System.err.println("DEBUG ERROR in getUnreadCount:");
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(e.getMessage());
+        }
     }
 
     @PostMapping("/{id}/read")

@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { 
   Box, Stepper, Step, StepLabel, Button, 
   Typography, TextField, IconButton, 
-  CircularProgress, Alert, Grid
+  CircularProgress, Alert, Grid, MenuItem
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { recipeService } from '../../services/recipe.service';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
 import axios from 'axios';
 
 const steps = ['General Info', 'Ingredients', 'Cooking Steps'];
@@ -23,6 +25,7 @@ interface RecipeFormValues {
   additionalImages: string[];
   ingredients: { name: string; quantity: string; unit: string }[];
   steps: { stepNumber: number; instruction: string }[];
+  category: string;
 }
 
 interface CreateRecipeFormProps {
@@ -36,15 +39,19 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const queryClient = useQueryClient();
   const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<RecipeFormValues>({
     defaultValues: {
+      title: '',
+      description: '',
       ingredients: [{ name: '', quantity: '', unit: '' }],
       steps: [{ stepNumber: 1, instruction: '' }],
       prepTimeMinutes: 15,
       cookTimeMinutes: 30,
       servings: 4,
       imageUrl: '',
-      additionalImages: []
+      additionalImages: [],
+      category: 'VEG'
     }
   });
 
@@ -106,6 +113,9 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
       setError(null);
       setIsSubmitting(true);
       await recipeService.createRecipe(data);
+      toast.success('Culinary masterpiece shared with the world!');
+      queryClient.invalidateQueries({ queryKey: ['recipes'] });
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
       if (onSuccess) onSuccess();
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || err.response?.data || err.message || 'Failed to create recipe';
@@ -126,6 +136,34 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
               {...register('title', { required: 'Title is required' })}
               error={!!errors.title} helperText={errors.title?.message}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
+            />
+            <Controller
+              name="category"
+              control={control}
+              rules={{ required: 'Category is required' }}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  size="small"
+                  select
+                  fullWidth
+                  label="Category"
+                  error={!!errors.category}
+                  helperText={errors.category?.message}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
+                >
+                  <MenuItem value="VEG">Vegetarian</MenuItem>
+                  <MenuItem value="NON_VEG">Non-Vegetarian</MenuItem>
+                  <MenuItem value="BREAKFAST">Breakfast</MenuItem>
+                  <MenuItem value="BAKING">Baking</MenuItem>
+                  <MenuItem value="SEAFOOD">Seafood</MenuItem>
+                  <MenuItem value="HEALTHY">Healthy</MenuItem>
+                  <MenuItem value="ITALIAN">Italian</MenuItem>
+                  <MenuItem value="DESSERTS">Desserts</MenuItem>
+                  <MenuItem value="SNACK">Snack</MenuItem>
+                  <MenuItem value="DRINK">Drink</MenuItem>
+                </TextField>
+              )}
             />
             <TextField
               size="small"
@@ -207,7 +245,7 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
               
               <Grid container spacing={1}>
                 {additionalImages.map((url, index) => (
-                  <Grid item xs={4} key={index}>
+                  <Grid size={{ xs: 4 }} key={index}>
                     <Box sx={{ position: 'relative', pt: '100%' }}>
                       <Box 
                         component="img" src={url} 
@@ -254,6 +292,7 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
                 <Box key={field.id} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                   <TextField size="small" label="Name" sx={{ flex: 3 }} {...register(`ingredients.${index}.name` as const, { required: true })} />
                   <TextField size="small" label="Qty" sx={{ flex: 1 }} {...register(`ingredients.${index}.quantity` as const, { required: true })} />
+                  <TextField size="small" label="Unit" sx={{ flex: 1 }} {...register(`ingredients.${index}.unit` as const)} />
                   <IconButton onClick={() => removeIngredient(index)} color="error" size="small">
                     <DeleteIcon />
                   </IconButton>

@@ -1,6 +1,7 @@
 package com.bluepal.repository;
 
 import com.bluepal.entity.MealPlan;
+import com.bluepal.entity.Recipe;
 import com.bluepal.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -20,4 +21,6 @@ public interface MealPlanRepository extends JpaRepository<MealPlan, Long> {
             @Param("endDate") LocalDate endDate);
 
     List<MealPlan> findByUserAndPlannedDate(User user, LocalDate date);
+
+    void deleteByRecipe(Recipe recipe);
 }
