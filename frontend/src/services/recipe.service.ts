@@ -5,6 +5,7 @@ export interface Ingredient {
   name: string;
   quantity: string;
   unit: string;
+  category?: string;
 }
 
 export interface Step {
@@ -24,6 +25,10 @@ export interface RecipeSummary {
   servings: number;
   likeCount: number;
   commentCount: number;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fats?: number;
   isLiked: boolean;
   isBookmarked?: boolean;
   createdAt: string;
@@ -71,11 +76,11 @@ export const recipeService = {
   searchRecipes: (q: string): Promise<RecipeSummary[]> =>
     api.get(`/recipes/search`, { params: { q } }).then(r => r.data),
 
-  getUserRecipes: (username: string): Promise<RecipeSummary[]> =>
-    api.get(`/users/${username}/recipes`).then(r => r.data),
+  getUserRecipes: (username: string, cursor?: string, size = 12): Promise<CursorResponse<RecipeSummary>> =>
+    api.get(`/users/${username}/recipes`, { params: { cursor, size } }).then(r => r.data),
 
-  getUserLikedRecipes: (username: string): Promise<RecipeSummary[]> =>
-    api.get(`/users/${username}/liked-recipes`).then(r => r.data),
+  getUserLikedRecipes: (username: string, cursor?: string, size = 12): Promise<CursorResponse<RecipeSummary>> =>
+    api.get(`/users/${username}/liked-recipes`, { params: { cursor, size } }).then(r => r.data),
 
   likeRecipe: (id: number) =>
     api.post(`/recipes/${id}/like`).then(r => r.data),
@@ -96,4 +101,7 @@ export const recipeService = {
     api.get<{ signature: string; timestamp: string; apiKey: string; cloudName: string; folder: string }>(
       `/cloudinary/signature`, { params: { folder } }
     ).then(r => r.data),
+
+  getTrendingRecipes: (limit = 10): Promise<RecipeSummary[]> =>
+    api.get(`/recipes/trending`, { params: { limit } }).then(r => r.data),
 };

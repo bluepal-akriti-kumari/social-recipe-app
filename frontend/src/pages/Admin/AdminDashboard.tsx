@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { 
   Container, Box, Typography, Paper, Table, TableBody, TableCell, 
   TableContainer, TableHead, TableRow, Avatar, Chip, IconButton,
@@ -89,7 +88,7 @@ const AdminDashboard = () => {
 
         {/* Stats Grid */}
         <Grid container spacing={3} sx={{ mb: 6 }}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card className="glass-card" sx={{ borderRadius: 2 }}>
               <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ p: 1.5, bgcolor: 'primary.light', borderRadius: 1.5, display: 'flex' }}>
@@ -102,7 +101,7 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card className="glass-card" sx={{ borderRadius: 2 }}>
               <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ p: 1.5, bgcolor: 'secondary.light', borderRadius: 1.5, display: 'flex' }}>

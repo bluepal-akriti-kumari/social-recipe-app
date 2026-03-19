@@ -9,6 +9,8 @@ import AddIcon from '@mui/icons-material/Add';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { recipeService } from '../../services/recipe.service';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
 import axios from 'axios';
 
 const steps = ['General Info', 'Ingredients', 'Cooking Steps'];
@@ -37,6 +39,7 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const queryClient = useQueryClient();
   const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<RecipeFormValues>({
     defaultValues: {
       title: '',
@@ -110,6 +113,9 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
       setError(null);
       setIsSubmitting(true);
       await recipeService.createRecipe(data);
+      toast.success('Culinary masterpiece shared with the world!');
+      queryClient.invalidateQueries({ queryKey: ['recipes'] });
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
       if (onSuccess) onSuccess();
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || err.response?.data || err.message || 'Failed to create recipe';
@@ -239,7 +245,7 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
               
               <Grid container spacing={1}>
                 {additionalImages.map((url, index) => (
-                  <Grid item xs={4} key={index}>
+                  <Grid size={{ xs: 4 }} key={index}>
                     <Box sx={{ position: 'relative', pt: '100%' }}>
                       <Box 
                         component="img" src={url} 

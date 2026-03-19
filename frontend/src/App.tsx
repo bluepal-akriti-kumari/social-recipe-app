@@ -3,6 +3,7 @@ import { Box } from '@mui/material';
 import Navbar from './components/layout/Navbar';
 import MobileBottomNav from './components/layout/MobileBottomNav';
 import NotificationToaster from './components/notifications/NotificationToaster';
+import { Toaster } from 'react-hot-toast';
 import { useAuth } from './hooks/useAuth';
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
@@ -19,6 +20,8 @@ import AdminDashboard from './pages/Admin/AdminDashboard';
 import CommunitiesPage from './pages/Community/CommunitiesPage';
 import CommunityDetailPage from './pages/Community/CommunityDetailPage';
 import ImporterPage from './pages/Recipe/ImporterPage';
+import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/Auth/ResetPasswordPage';
 
 const PrivateRoute = () => {
   const { isAuthenticated } = useAuth();
@@ -47,6 +50,8 @@ const App = () => {
             <Route path="/profile/:username" element={<ProfilePage />} />
             <Route path="/communities" element={<CommunitiesPage />} />
             <Route path="/communities/:id" element={<CommunityDetailPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             {/* Protected Routes */}
             <Route element={<PrivateRoute />}>
@@ -66,6 +71,17 @@ const App = () => {
         </Box>
         <MobileBottomNav />
           <NotificationToaster />
+          <Toaster 
+            position="bottom-center"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#333',
+                color: '#fff',
+                borderRadius: '10px',
+              },
+            }}
+          />
           <CreateRecipeModal />
         </WebSocketProvider>
       </ModalProvider>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Container, Grid, Box, Typography, Avatar, 
@@ -15,7 +15,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SendIcon from '@mui/icons-material/Send';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
-import ShareIcon from '@mui/icons-material/Share';
+
 import DescriptionIcon from '@mui/icons-material/Description';
 import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
@@ -29,6 +29,92 @@ import { recipeService } from '../../services/recipe.service';
 import { shoppingListService } from '../../services/shoppingList.service';
 import AddToPlannerModal from './AddToPlannerModal';
 import { toast } from 'react-hot-toast';
+
+const CommentItem = ({ comment, index, onReply, onDelete, currentUser, isDeleting, depth = 0 }: any) => {
+  const navigate = useNavigate();
+  return (
+    <motion.div 
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.05 }}
+    >
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          p: 2.5, 
+          borderRadius: '12px', 
+          border: '1px solid rgba(0,0,0,0.03)', 
+          ml: depth > 0 ? 4 : 0, 
+          bgcolor: depth > 0 ? 'rgba(0,0,0,0.02)' : 'white',
+          position: 'relative',
+          '&:hover': { bgcolor: 'rgba(0,0,0,0.01)' }
+        }}
+      >
+        {depth > 0 && (
+          <Box sx={{ position: 'absolute', left: -20, top: 0, bottom: 20, width: '1px', bgcolor: 'divider' }} />
+        )}
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+          <Avatar 
+            src={comment.userProfilePictureUrl} 
+            sx={{ width: 40, height: 40, border: '2px solid white', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', cursor: 'pointer' }} 
+            onClick={() => navigate(`/profile/${comment.username}`)} 
+          />
+          <Box sx={{ flexGrow: 1 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+              <Typography sx={{ fontWeight: 900, fontSize: '0.95rem', cursor: 'pointer' }} onClick={() => navigate(`/profile/${comment.username}`)}>
+                {comment.username}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                {new Date(comment.createdAt).toLocaleDateString()}
+              </Typography>
+            </Box>
+            <Typography variant="body2" sx={{ color: 'text.primary', lineHeight: 1.6, mb: 1, fontSize: '0.95rem', fontWeight: 500 }}>
+              {comment.content}
+            </Typography>
+            <Stack direction="row" spacing={2}>
+              <Button 
+                size="small" 
+                startIcon={<ChatBubbleOutlineIcon sx={{ fontSize: '16px !important' }} />}
+                sx={{ p: 0, minWidth: 0, color: 'primary.main', fontWeight: 800, textTransform: 'none', '&:hover': { opacity: 0.8 } }} 
+                onClick={() => onReply({ id: comment.id, username: comment.username })}
+              >
+                Reply
+              </Button>
+              {currentUser && (currentUser.username === comment.username || 
+                currentUser.roles?.some((r: any) => r === 'ROLE_ADMIN' || r === 'ROLE_MODERATOR')) && (
+                <Button 
+                  size="small" 
+                  startIcon={isDeleting ? <CircularProgress size={12} /> : <DeleteOutlineIcon sx={{ fontSize: '16px !important' }} />}
+                  sx={{ p: 0, minWidth: 0, color: 'error.main', fontWeight: 800, textTransform: 'none', '&:hover': { opacity: 0.8 } }}
+                  onClick={() => onDelete(comment.id)}
+                  disabled={isDeleting}
+                >
+                  Delete
+                </Button>
+              )}
+            </Stack>
+          </Box>
+        </Box>
+      </Paper>
+      {comment.replies && comment.replies.length > 0 && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1.5 }}>
+          {comment.replies.map((reply: any, rIdx: number) => (
+            <CommentItem 
+              key={reply.id} 
+              comment={reply} 
+              index={rIdx} 
+              onReply={onReply} 
+              onDelete={onDelete} 
+              currentUser={currentUser}
+              isDeleting={isDeleting} // simplification: only one deleting at a time
+              depth={depth + 1}
+            />
+          ))}
+        </Box>
+      )}
+    </motion.div>
+  );
+};
 
 const RecipeDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -54,8 +140,7 @@ const RecipeDetailPage = () => {
   });
 
   const { 
-    data: comments = [], 
-    isLoading: isCommentsLoading 
+    data: comments = [] 
   } = useQuery({
     queryKey: ['recipes', recipeId, 'comments'],
     queryFn: () => recipeService.getComments(recipeId).then(res => res.content),
@@ -105,6 +190,12 @@ const RecipeDetailPage = () => {
   const deleteRecipeMutation = useMutation({
     mutationFn: () => recipeService.deleteRecipe(recipeId),
     onSuccess: () => {
+      // Remove specific queries for this recipe and its comments
+      queryClient.removeQueries({ queryKey: ['recipes', recipeId] });
+      queryClient.removeQueries({ queryKey: ['recipes', recipeId, 'comments'] });
+      // Invalidate general recipe lists (feed, trending, etc)
+      queryClient.invalidateQueries({ queryKey: ['recipes'] });
+      
       toast.success('Recipe deleted successfully');
       navigate('/feed');
     },
@@ -123,11 +214,6 @@ const RecipeDetailPage = () => {
     addCommentMutation.mutate(commentText);
   };
 
-  const handleAddToShopping = async () => {
-    if (!currentUser) return navigate('/login');
-    if (!recipeDetail) return;
-    addToShoppingMutation.mutate();
-  };
 
   const handleDeleteComment = async (commentId: number) => {
     if (window.confirm('Delete this comment?')) {
@@ -138,12 +224,6 @@ const RecipeDetailPage = () => {
   const handleBookmark = () => {
     if (!currentUser) return navigate('/login');
     bookmarkMutation.mutate();
-  };
-
-  const handleShare = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url);
-    toast.success('Recipe link copied to clipboard!');
   };
 
   const handleDeleteRecipe = () => {
@@ -161,10 +241,27 @@ const RecipeDetailPage = () => {
 
   if (recipeError || !recipeDetail) {
     return (
-      <Container maxWidth="md" sx={{ py: 6 }}>
-        <Alert severity="error">{(recipeError as any)?.message || 'Recipe not found'}</Alert>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} sx={{ mt: 2 }}>Back</Button>
-      </Container>
+      <Box className="bg-mesh" sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', py: 12 }}>
+        <Container maxWidth="sm">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <Paper elevation={0} className="glass-card" sx={{ p: 6, textAlign: 'center', borderRadius: '32px' }}>
+              <Typography variant="h2" sx={{ fontWeight: 950, mb: 2, color: 'primary.main' }}>404</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 800, mb: 2 }}>Recipe Not Found</Typography>
+              <Typography variant="body1" sx={{ color: 'text.secondary', mb: 4, fontWeight: 500 }}>
+                The culinary masterpiece you're looking for might have been removed or moved to a different kitchen.
+              </Typography>
+              <Button 
+                variant="contained" 
+                startIcon={<ArrowBackIcon />} 
+                onClick={() => navigate('/feed')}
+                sx={{ py: 1.5, px: 4, borderRadius: '12px', fontWeight: 900 }}
+              >
+                Back to Discovery
+              </Button>
+            </Paper>
+          </motion.div>
+        </Container>
+      </Box>
     );
   }
 
@@ -254,18 +351,6 @@ const RecipeDetailPage = () => {
                   }}
                 >
                   {recipeDetail?.isBookmarked ? <BookmarkIcon /> : <BookmarkBorderIcon />}
-                </IconButton>
-                <IconButton 
-                  size="large"
-                  onClick={handleShare}
-                  sx={{ 
-                    bgcolor: 'rgba(255,255,255,0.8)', 
-                    backdropFilter: 'blur(20px)',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
-                    '&:hover': { bgcolor: 'white', transform: 'translateY(-2px)' } 
-                  }}
-                >
-                  <ShareIcon />
                 </IconButton>
               </Box>
             </Box>
@@ -429,68 +514,17 @@ const RecipeDetailPage = () => {
                 </Box>
               </Paper>
               
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {comments.map((comment: any, index: number) => (
-                  <motion.div 
-                    key={comment.id || index}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <Paper 
-                      elevation={0} 
-                      sx={{ 
-                        p: 2.5, 
-                        borderRadius: '12px', 
-                        border: '1px solid rgba(0,0,0,0.03)', 
-                        ml: comment.parentId ? 6 : 0, 
-                        bgcolor: comment.parentId ? 'rgba(0,0,0,0.015)' : 'white',
-                        transition: 'transform 0.3s ease',
-                        '&:hover': { transform: 'translateX(8px)' }
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2.5 }}>
-                        <Avatar 
-                          src={comment.userProfilePictureUrl} 
-                          sx={{ width: 44, height: 44, border: '2px solid white', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', cursor: 'pointer' }} 
-                          onClick={() => navigate(`/profile/${comment.username}`)} 
-                        />
-                        <Box sx={{ flexGrow: 1 }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography sx={{ fontWeight: 900, fontSize: '1rem', cursor: 'pointer' }} onClick={() => navigate(`/profile/${comment.username}`)}>
-                              {comment.username}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                              {new Date(comment.createdAt).toLocaleDateString()}
-                            </Typography>
-                          </Box>
-                          <Typography variant="body2" sx={{ color: 'text.primary', lineHeight: 1.8, mb: 2, fontSize: '1rem', fontWeight: 500 }}>
-                            {comment.content}
-                          </Typography>
-                          <Button 
-                            size="small" 
-                            startIcon={<ChatBubbleOutlineIcon sx={{ fontSize: '18px !important' }} />}
-                            sx={{ p: 0, minWidth: 0, color: 'primary.main', fontWeight: 800, textTransform: 'none', '&:hover': { opacity: 0.8 } }} 
-                            onClick={() => setReplyingTo({ id: comment.id, username: comment.username })}
-                          >
-                            Reply
-                          </Button>
-                          {currentUser && ((currentUser as any).username === comment.username || 
-                            (currentUser as any).roles?.some((r: any) => r === 'ROLE_ADMIN' || r === 'ROLE_MODERATOR')) && (
-                            <Button 
-                              size="small" 
-                              startIcon={deleteCommentMutation.isPending && deleteCommentMutation.variables === comment.id ? <CircularProgress size={14} /> : <DeleteOutlineIcon sx={{ fontSize: '18px !important' }} />}
-                              sx={{ p: 0, minWidth: 0, color: 'error.main', fontWeight: 800, textTransform: 'none', ml: 2, '&:hover': { opacity: 0.8 } }}
-                              onClick={() => handleDeleteComment(comment.id)}
-                              disabled={deleteCommentMutation.isPending}
-                            >
-                              Delete
-                            </Button>
-                          )}
-                        </Box>
-                      </Box>
-                    </Paper>
-                  </motion.div>
+                  <CommentItem 
+                    key={comment.id} 
+                    comment={comment} 
+                    index={index}
+                    onReply={setReplyingTo}
+                    onDelete={handleDeleteComment}
+                    currentUser={currentUser}
+                    isDeleting={deleteCommentMutation.isPending && deleteCommentMutation.variables === comment.id}
+                  />
                 ))}
               </Box>
             </Box>
@@ -503,6 +537,30 @@ const RecipeDetailPage = () => {
                 className="glass-card"
                 sx={{ p: 3, borderRadius: '16px', mb: 3 }}
               >
+                {recipeDetail.calories && (
+                  <Paper 
+                    className="glass-card"
+                    sx={{ p: 3, borderRadius: '16px', mb: 3 }}
+                  >
+                    <Typography variant="h6" sx={{ fontWeight: 900, mb: 3, letterSpacing: '-0.02em' }}>Nutritional Overview</Typography>
+                    <Grid container spacing={2}>
+                      {[
+                        { label: 'Calories', value: `${recipeDetail.calories} kcal`, color: '#6366f1' },
+                        { label: 'Protein', value: `${recipeDetail.protein}g`, color: '#10b981' },
+                        { label: 'Carbs', value: `${recipeDetail.carbs}g`, color: '#f59e0b' },
+                        { label: 'Fats', value: `${recipeDetail.fats}g`, color: '#f43f5e' }
+                      ].map((macro) => (
+                        <Grid size={{ xs: 3 }} key={macro.label}>
+                          <Box sx={{ textAlign: 'center' }}>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, display: 'block', mb: 0.5, fontSize: '0.65rem' }}>{macro.label.toUpperCase()}</Typography>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 950, color: macro.color }}>{macro.value}</Typography>
+                          </Box>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Paper>
+                )}
+
                 <Typography variant="h6" sx={{ fontWeight: 900, mb: 4, letterSpacing: '-0.02em' }}>Kitchen Briefing</Typography>
                 <Grid container spacing={3}>
                   <Grid size={{ xs: 6 }}>

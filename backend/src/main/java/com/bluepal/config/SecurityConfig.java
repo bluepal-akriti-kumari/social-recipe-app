@@ -63,14 +63,14 @@ public class SecurityConfig {
                     .requestMatchers("/ws/**").permitAll()
                     .requestMatchers(org.springframework.http.HttpMethod.GET, 
                     	    "/api/feed/explore", 
-                    	    "/api/recipes/**", 
                     	    "/api/recipes/trending",
                     	    "/api/recipes/category/*",
-                    	    "/api/users/*",              // Permit profile viewing
+                    	    "/api/users/*",
                     	    "/api/users/*/recipes",
-                    	    "/api/users/*/liked-recipes", // Use * for single segments
-                    	    "/api/cloudinary/signature"   // Ensure signature endpoint is permitted
+                    	    "/api/users/*/liked-recipes",
+                    	    "/api/cloudinary/signature"
                     	).permitAll()
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/recipes/**").permitAll()
                     .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                     .anyRequest().authenticated()
             );

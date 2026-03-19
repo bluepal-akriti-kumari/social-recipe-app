@@ -202,16 +202,18 @@ const Navbar = () => {
               <Tooltip title="Create a Recipe">
                 <Button 
                   variant="contained" 
-                  color="secondary"
+                  color="primary"
                   startIcon={<AddCircleOutlineIcon />}
                   onClick={openCreateRecipeModal}
                   sx={{ 
-                    px: 3, 
-                    py: 1,
-                    borderRadius: 2,
+                    px: 1.8, 
+                    py: 0.6,
+                    borderRadius: '12px',
                     display: { xs: 'none', sm: 'flex' },
-                    boxShadow: 'none',
-                    '&:hover': { bgcolor: 'secondary.dark' }
+                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)',
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    '&:hover': { bgcolor: 'primary.dark' }
                   }}
                 >
                   Post Recipe

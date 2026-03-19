@@ -1,4 +1,4 @@
-import { Box, Typography, Card, CardMedia, IconButton, Container, alpha } from '@mui/material';
+import { Box, Typography, IconButton } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';

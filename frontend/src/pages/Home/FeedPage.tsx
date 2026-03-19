@@ -6,7 +6,6 @@ import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tansta
 import RecipeCard from '../../components/recipes/RecipeCard';
 import FeaturedRecipeCarousel from '../../components/discovery/FeaturedRecipeCarousel';
 import CategoryQuickBar from '../../components/discovery/CategoryQuickBar';
-import CommunitySidebar from '../../components/home/CommunitySidebar';
 import { recipeService } from '../../services/recipe.service';
 import { toast } from 'react-hot-toast';
 
@@ -157,7 +156,7 @@ const FeedPage = () => {
         )}
 
         <Grid container spacing={5}>
-          <Grid size={{ xs: 12, lg: searchQuery ? 12 : 8.5 }}>
+          <Grid size={{ xs: 12 }}>
             <AnimatePresence mode="popLayout">
               <Box 
                 sx={{ 
@@ -165,9 +164,9 @@ const FeedPage = () => {
                   gridTemplateColumns: { 
                     xs: '1fr', 
                     sm: 'repeat(2, 1fr)', 
-                    md: searchQuery ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
-                    lg: searchQuery ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)',
-                    xl: searchQuery ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)'
+                    md: 'repeat(3, 1fr)',
+                    lg: 'repeat(4, 1fr)',
+                    xl: 'repeat(5, 1fr)'
                   },
                   gap: { xs: 3, md: 5 } 
                 }}
@@ -210,12 +209,6 @@ const FeedPage = () => {
               </Box>
             )}
           </Grid>
-
-          {!searchQuery && (
-            <Grid size={{ lg: 3.5 }} sx={{ display: { xs: 'none', lg: 'block' } }}>
-              <CommunitySidebar />
-            </Grid>
-          )}
         </Grid>
       </Container>
     </Box>

@@ -38,7 +38,7 @@ const CategoryQuickBar = ({ selectedCategory, onSelect }: CategoryQuickBarProps)
         borderBottom: '1px solid rgba(0,0,0,0.05)'
       }}
     >
-      {CATEGORIES.map((cat, idx) => (
+      {CATEGORIES.map((cat) => (
         <motion.div
           key={cat.label}
           whileHover={{ scale: 1.05 }}
