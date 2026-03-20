@@ -37,17 +37,20 @@ public class InteractionController {
     private final com.bluepal.service.NotificationService notificationService;
 
     private final com.bluepal.service.interfaces.UserService userService;
+    private final com.bluepal.service.interfaces.RecipeService recipeService;
 
     public InteractionController(LikeRepository likeRepository, CommentRepository commentRepository,
                                  RecipeRepository recipeRepository, UserRepository userRepository,
                                  com.bluepal.service.NotificationService notificationService,
-                                 com.bluepal.service.interfaces.UserService userService) {
+                                 com.bluepal.service.interfaces.UserService userService,
+                                 com.bluepal.service.interfaces.RecipeService recipeService) {
         this.likeRepository = likeRepository;
         this.commentRepository = commentRepository;
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.userService = userService;
+        this.recipeService = recipeService;
     }
 
     private String getCurrentUsername() {
@@ -60,40 +63,13 @@ public class InteractionController {
 
     // ─── Like / Unlike Toggle ──────────────────────────────────────────────────
     @PostMapping("/recipes/{id}/like")
-    @Transactional
     public ResponseEntity<?> toggleLike(@PathVariable("id") Long id) {
         String username = getCurrentUsername();
         if (username == null) return ResponseEntity.status(401).body("Auth required");
 
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
-        Recipe recipe = recipeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
-
-        boolean alreadyLiked = likeRepository.existsByUserAndRecipe(user, recipe);
-
-        if (alreadyLiked) {
-            likeRepository.deleteByUserAndRecipe(user, recipe);
-            recipeRepository.decrementLikeCount(id);
-            return ResponseEntity.ok(Map.of("liked", false, "likeCount", Math.max(0, recipe.getLikeCount() - 1)));
-        } else {
-            likeRepository.save(Like.builder().user(user).recipe(recipe).build());
-            recipeRepository.incrementLikeCount(id);
-
-            // Send Notification
-            notificationService.createAndSendNotification(
-                    recipe.getAuthor(),
-                    user,
-                    com.bluepal.entity.NotificationType.LIKE,
-                    recipe.getId(),
-                    user.getUsername() + " liked your recipe: " + recipe.getTitle()
-            );
-
-            // Award reputation points for receiving a like (to the author)
-            userService.updateReputation(recipe.getAuthor().getUsername(), 5);
-
-            return ResponseEntity.ok(Map.of("liked", true, "likeCount", recipe.getLikeCount() + 1));
-        }
+        // Use the atomic service method instead of check-then-act logic here
+        Map<String, Object> result = recipeService.toggleLike(id, username);
+        return ResponseEntity.ok(result);
     }
 
     // ─── Comments ──────────────────────────────────────────────────────────────

@@ -50,9 +50,9 @@ public class UserControllerTest {
         response.setUsername("targetuser");
         response.setBio("Hello world");
 
-        when(userService.getUserProfile(eq("targetuser"), any())).thenReturn(response);
+        when(userService.getUserProfile(eq(1L), any())).thenReturn(response);
 
-        mockMvc.perform(get("/api/users/targetuser"))
+        mockMvc.perform(get("/api/users/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("targetuser"))
                 .andExpect(jsonPath("$.bio").value("Hello world"));
@@ -61,21 +61,21 @@ public class UserControllerTest {
     @Test
     @WithMockUser(username = "currentuser")
     void followUser_Success() throws Exception {
-        mockMvc.perform(post("/api/users/targetuser/follow")
+        mockMvc.perform(post("/api/users/1/follow")
                         .with(csrf()))
                 .andExpect(status().isOk());
 
-        verify(userService).toggleFollow("currentuser", "targetuser");
+        verify(userService).toggleFollow("currentuser", 1L);
     }
 
     @Test
     @WithMockUser(username = "currentuser")
     void unfollowUser_Success() throws Exception {
-        mockMvc.perform(delete("/api/users/targetuser/unfollow")
+        mockMvc.perform(delete("/api/users/1/unfollow")
                         .with(csrf()))
                 .andExpect(status().isOk());
 
-        verify(userService).unfollowUser("currentuser", "targetuser");
+        verify(userService).unfollowUser("currentuser", 1L);
     }
 
     @Test
@@ -100,7 +100,7 @@ public class UserControllerTest {
 
     @Test
     void followUser_Unauthenticated_Returns401() throws Exception {
-        mockMvc.perform(post("/api/users/targetuser/follow")
+        mockMvc.perform(post("/api/users/1/follow")
                         .with(csrf()))
                 .andExpect(status().isUnauthorized());
     }

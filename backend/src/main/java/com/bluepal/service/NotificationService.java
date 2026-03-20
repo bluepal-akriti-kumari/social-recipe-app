@@ -52,6 +52,7 @@ public class NotificationService {
         return NotificationResponse.builder()
                 .id(notification.getId())
                 .senderUsername(notification.getSender().getUsername())
+                .senderUserId(notification.getSender().getId())
                 .senderProfilePictureUrl(notification.getSender().getProfilePictureUrl())
                 .type(notification.getType())
                 .recipeId(notification.getRecipeId())

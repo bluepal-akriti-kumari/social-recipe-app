@@ -31,6 +31,8 @@ public class RecipeServiceImpl implements RecipeService {
 	private final RatingRepository ratingRepository;
 	private final com.bluepal.service.interfaces.RatingService ratingService;
 	private final com.bluepal.service.interfaces.BookmarkService bookmarkService;
+	private final com.bluepal.service.NotificationService notificationService;
+	private final com.bluepal.service.interfaces.UserService userService;
 
 	public RecipeServiceImpl(RecipeRepository recipeRepository, UserRepository userRepository,
 			NotificationRepository notificationRepository, MealPlanRepository mealPlanRepository,
@@ -38,7 +40,9 @@ public class RecipeServiceImpl implements RecipeService {
 			LikeRepository likeRepository, CommentRepository commentRepository, 
 			BookmarkRepository bookmarkRepository, RatingRepository ratingRepository,
 			com.bluepal.service.interfaces.RatingService ratingService,
-			@Lazy com.bluepal.service.interfaces.BookmarkService bookmarkService) {
+			@Lazy com.bluepal.service.interfaces.BookmarkService bookmarkService,
+			com.bluepal.service.NotificationService notificationService,
+			@Lazy com.bluepal.service.interfaces.UserService userService) {
 		this.recipeRepository = recipeRepository;
 		this.userRepository = userRepository;
 		this.notificationRepository = notificationRepository;
@@ -50,6 +54,8 @@ public class RecipeServiceImpl implements RecipeService {
 		this.ratingRepository = ratingRepository;
 		this.ratingService = ratingService;
 		this.bookmarkService = bookmarkService;
+		this.notificationService = notificationService;
+		this.userService = userService;
 	}
 
 	@Override
@@ -429,5 +435,43 @@ public class RecipeServiceImpl implements RecipeService {
 		} catch (IllegalArgumentException e) {
 			return Map.of("content", List.of(), "nextCursor", "");
 		}
+	}
+
+	@Override
+	@Transactional
+	public Map<String, Object> toggleLike(Long id, String username) {
+		User user = userRepository.findByUsername(username)
+				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+		Recipe recipe = recipeRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
+
+		long deletedCount = likeRepository.deleteByUserAndRecipe(user, recipe);
+		boolean liked;
+		int newLikeCount;
+
+		if (deletedCount > 0) {
+			recipeRepository.decrementLikeCount(id);
+			liked = false;
+			newLikeCount = Math.max(0, recipe.getLikeCount() - 1);
+		} else {
+			likeRepository.save(Like.builder().user(user).recipe(recipe).build());
+			recipeRepository.incrementLikeCount(id);
+			liked = true;
+			newLikeCount = recipe.getLikeCount() + 1;
+
+			// Send Notification
+			notificationService.createAndSendNotification(
+					recipe.getAuthor(),
+					user,
+					com.bluepal.entity.NotificationType.LIKE,
+					recipe.getId(),
+					user.getUsername() + " liked your recipe: " + recipe.getTitle()
+			);
+
+			// Award reputation points for receiving a like (to the author)
+			userService.updateReputation(recipe.getAuthor().getUsername(), 5);
+		}
+
+		return Map.of("liked", liked, "likeCount", newLikeCount);
 	}
 }
