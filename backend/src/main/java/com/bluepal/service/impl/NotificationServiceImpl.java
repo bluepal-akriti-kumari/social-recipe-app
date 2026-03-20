@@ -59,6 +59,7 @@ public class NotificationServiceImpl implements NotificationService {
         return NotificationResponse.builder()
                 .id(notification.getId())
                 .senderUsername(notification.getSender() != null ? notification.getSender().getUsername() : "System")
+                .senderUserId(notification.getSender() != null ? notification.getSender().getId() : null)
                 .senderProfilePictureUrl(notification.getSender() != null ? notification.getSender().getProfilePictureUrl() : null)
                 .type(notification.getType())
                 .recipeId(notification.getRecipeId())

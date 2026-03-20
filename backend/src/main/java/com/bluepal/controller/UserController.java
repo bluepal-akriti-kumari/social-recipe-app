@@ -26,35 +26,34 @@ public class UserController {
         return null;
     }
 
-    @GetMapping("/{username}")
-    public ResponseEntity<UserProfileResponse> getUserProfile(@PathVariable("username") String username) {
+    @GetMapping("/{id}")
+    public ResponseEntity<UserProfileResponse> getUserProfile(@PathVariable("id") Long id) {
         String currentUsername = getCurrentUsername();
-        UserProfileResponse response = userService.getUserProfile(username, currentUsername);
+        UserProfileResponse response = userService.getUserProfile(id, currentUsername);
         return ResponseEntity.ok(response);
     }
-    @PostMapping("/{username}/follow")
-    public ResponseEntity<?> followUser(@PathVariable("username") String username) {
+    @PostMapping("/{id}/follow")
+    public ResponseEntity<?> followUser(@PathVariable("id") Long id) {
         String currentUsername = getCurrentUsername();
         if (currentUsername == null) {
             return ResponseEntity.status(401).body("Authentication required");
         }
         
-        // Updated to use toggleFollow
-        userService.toggleFollow(currentUsername, username);
-        return ResponseEntity.ok("Follow status updated for " + username);
+        userService.toggleFollow(currentUsername, id);
+        return ResponseEntity.ok("Follow status updated for user ID " + id);
     }
     
     
 
-    @DeleteMapping("/{username}/unfollow")
-    public ResponseEntity<?> unfollowUser(@PathVariable("username") String username) {
+    @DeleteMapping("/{id}/unfollow")
+    public ResponseEntity<?> unfollowUser(@PathVariable("id") Long id) {
         String currentUsername = getCurrentUsername();
         if (currentUsername == null) {
             return ResponseEntity.status(401).body("Authentication required");
         }
         
-        userService.unfollowUser(currentUsername, username);
-        return ResponseEntity.ok("Successfully unfollowed user " + username);
+        userService.unfollowUser(currentUsername, id);
+        return ResponseEntity.ok("Successfully unfollowed user ID " + id);
     }
 
     @PutMapping("/me")

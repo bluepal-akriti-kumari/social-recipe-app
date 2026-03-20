@@ -235,10 +235,10 @@ public class RecipeServiceImpl implements RecipeService {
 
 	@Override
 	@Transactional(readOnly = true)
-	public Map<String, Object> getUserRecipes(String username, LocalDateTime cursor, int size, String currentUsername) {
+	public Map<String, Object> getUserRecipes(Long userId, LocalDateTime cursor, int size, String currentUsername) {
 		try {
-			User author = userRepository.findByUsername(username)
-					.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+			User author = userRepository.findById(userId)
+					.orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
 
 			Pageable limit = PageRequest.of(0, size);
 			List<Recipe> recipes;
@@ -249,7 +249,7 @@ public class RecipeServiceImpl implements RecipeService {
 				recipes = recipeRepository.findUserRecipesCursor(author, cursor, limit);
 			}
 
-			System.out.println("DEBUG: Found " + recipes.size() + " recipes for " + username);
+			System.out.println("DEBUG: Found " + recipes.size() + " recipes for user ID " + userId);
 
 			List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
 					.collect(Collectors.toList());
@@ -258,18 +258,17 @@ public class RecipeServiceImpl implements RecipeService {
 
 			return Map.of("content", content, "nextCursor", nextCursor);
 		} catch (Exception e) {
-			System.err.println("ERROR: Failed to fetch user recipes for " + username + ": " + e.getMessage());
-			e.printStackTrace();
+			System.err.println("ERROR: Failed to fetch user recipes for ID " + userId + ": " + e.getMessage());
 			return Map.of("content", List.of(), "nextCursor", "");
 		}
 	}
 
 	@Override
 	@Transactional(readOnly = true)
-	public Map<String, Object> getUserLikedRecipes(String username, LocalDateTime cursor, int size, String currentUsername) {
+	public Map<String, Object> getUserLikedRecipes(Long userId, LocalDateTime cursor, int size, String currentUsername) {
 		try {
-			User user = userRepository.findByUsername(username)
-					.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+			User user = userRepository.findById(userId)
+					.orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
 
 			Pageable limit = PageRequest.of(0, size);
 			List<Recipe> recipes;
@@ -287,7 +286,7 @@ public class RecipeServiceImpl implements RecipeService {
 
 			return Map.of("content", content, "nextCursor", nextCursor);
 		} catch (Exception e) {
-			System.err.println("ERROR: Failed to fetch liked recipes for " + username + ": " + e.getMessage());
+			System.err.println("ERROR: Failed to fetch liked recipes for ID " + userId + ": " + e.getMessage());
 			return Map.of("content", List.of(), "nextCursor", "");
 		}
 	}

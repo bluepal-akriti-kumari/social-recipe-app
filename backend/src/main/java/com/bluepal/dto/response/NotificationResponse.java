@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 public class NotificationResponse {
     private Long id;
     private String senderUsername;
+    private Long senderUserId;
     private String senderProfilePictureUrl;
     private NotificationType type;
     private Long recipeId;

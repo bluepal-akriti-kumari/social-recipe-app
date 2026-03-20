@@ -4,7 +4,7 @@ import {
   Container, Grid, Box, Typography, Avatar, 
   List, ListItem, ListItemText, ListItemIcon, 
   Paper, IconButton, TextField, Button, CircularProgress, 
-  Stack
+  Stack, Rating
 } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -57,11 +57,11 @@ const CommentItem = ({ comment, index, onReply, onDelete, currentUser, isDeletin
           <Avatar 
             src={comment.userProfilePictureUrl} 
             sx={{ width: 40, height: 40, border: '2px solid white', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', cursor: 'pointer' }} 
-            onClick={() => navigate(`/profile/${comment.username}`)} 
+            onClick={() => navigate(`/profile/${comment.userId}`)} 
           />
           <Box sx={{ flexGrow: 1 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-              <Typography sx={{ fontWeight: 900, fontSize: '0.95rem', cursor: 'pointer' }} onClick={() => navigate(`/profile/${comment.username}`)}>
+              <Typography sx={{ fontWeight: 900, fontSize: '0.95rem', cursor: 'pointer' }} onClick={() => navigate(`/profile/${comment.userId}`)}>
                 {comment.username}
               </Typography>
               <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
@@ -200,6 +200,15 @@ const RecipeDetailPage = () => {
       navigate('/feed');
     },
     onError: () => toast.error('Failed to delete recipe'),
+  });
+  
+  const rateMutation = useMutation({
+    mutationFn: (rating: number) => recipeService.rateRecipe(recipeId, rating),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recipes', recipeId] });
+      toast.success('Rating submitted!');
+    },
+    onError: () => toast.error('Failed to submit rating'),
   });
 
   // --- Handlers ---
@@ -354,9 +363,26 @@ const RecipeDetailPage = () => {
               </Box>
             </Box>
             
-            <Typography variant="h1" sx={{ fontWeight: 950, mb: 3, letterSpacing: '-0.04em', lineHeight: 1, fontSize: { xs: '2.5rem', md: '4.5rem' } }}>
+            <Typography variant="h1" sx={{ fontWeight: 950, mb: 1.5, letterSpacing: '-0.04em', lineHeight: 1, fontSize: { xs: '2.5rem', md: '4.5rem' } }}>
               {recipeDetail.title}
             </Typography>
+            
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Rating 
+                  value={recipeDetail.averageRating || 0} 
+                  precision={0.5} 
+                  readOnly 
+                  sx={{ color: 'primary.main' }}
+                />
+                <Typography sx={{ fontWeight: 900, color: 'text.primary', fontSize: '1.1rem' }}>
+                  {recipeDetail.averageRating?.toFixed(1) || '0.0'}
+                </Typography>
+              </Box>
+              <Typography sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                ({recipeDetail.ratingCount || 0} reviews)
+              </Typography>
+            </Box>
             <Box sx={{ mb: 3, display: 'flex', gap: 1 }}>
               {currentUser && recipeDetail.author.username === (currentUser as any).username && (
                 <Button
@@ -398,10 +424,10 @@ const RecipeDetailPage = () => {
               <Avatar 
                 src={recipeDetail.author.profilePictureUrl} 
                 sx={{ width: 64, height: 64, cursor: 'pointer', mr: 2.5, border: '3px solid white', boxShadow: '0 8px 20px rgba(0,0,0,0.1)' }}
-                onClick={() => navigate(`/profile/${recipeDetail.author.username}`)}
+                onClick={() => navigate(`/profile/${recipeDetail.author.id}`)}
               />
               <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 0.5, '&:hover': { color: 'primary.main' } }} onClick={() => navigate(`/profile/${recipeDetail.author.username}`)}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 0.5, '&:hover': { color: 'primary.main' } }} onClick={() => navigate(`/profile/${recipeDetail.author.id}`)}>
                   {recipeDetail.author.username}
                   {recipeDetail.author.isVerified && <VerifiedIcon sx={{ fontSize: 18, color: 'primary.main' }} />}
                 </Typography>
@@ -448,6 +474,38 @@ const RecipeDetailPage = () => {
                 {recipeDetail.description}
               </Typography>
             </Box>
+
+            {/* Rating Interaction */}
+            <Paper 
+              className="glass-card" 
+              sx={{ 
+                p: 4, 
+                borderRadius: '24px', 
+                mb: 8, 
+                bgcolor: 'rgba(99, 102, 241, 0.03)',
+                border: '1px solid rgba(99, 102, 241, 0.1)',
+                textAlign: 'center'
+              }}
+            >
+              <Typography variant="h5" sx={{ fontWeight: 900, mb: 1 }}>How was it?</Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, fontWeight: 600 }}>
+                {recipeDetail.userRating ? "You've rated this recipe" : "Give this recipe a star rating"}
+              </Typography>
+              <Rating 
+                size="large"
+                value={recipeDetail.userRating || 0}
+                onChange={(_, newValue) => {
+                  if (!currentUser) return navigate('/login');
+                  if (newValue) rateMutation.mutate(newValue);
+                }}
+                disabled={rateMutation.isPending}
+                sx={{ 
+                  fontSize: '3rem',
+                  '& .MuiRating-iconFilled': { color: 'primary.main' },
+                  '& .MuiRating-iconHover': { color: 'primary.main' }
+                }}
+              />
+            </Paper>
 
             {/* Social Section */}
             <Box id="comments" sx={{ mt: 10 }}>

@@ -31,6 +31,9 @@ export interface RecipeSummary {
   fats?: number;
   isLiked: boolean;
   isBookmarked?: boolean;
+  averageRating?: number;
+  ratingCount?: number;
+  userRating?: number;
   createdAt: string;
   author: {
     id: number;
@@ -55,10 +58,10 @@ export interface CursorResponse<T> {
 export const recipeService = {
   // Updated for Cursor-based Pagination
   getExploreFeed: (cursor?: string, category?: string, size = 12): Promise<CursorResponse<RecipeSummary>> =>
-    api.get(`/feed/explore`, { params: { cursor, category, size } }).then(r => r.data),
+    api.get(`/recipes/explore`, { params: { cursor, category, size } }).then(r => r.data),
 
   getPersonalizedFeed: (cursor?: string, size = 12): Promise<CursorResponse<RecipeSummary>> =>
-    api.get(`/feed/personalized`, { params: { cursor, size } }).then(r => r.data),
+    api.get(`/recipes/feed`, { params: { cursor, size } }).then(r => r.data),
 
   getRecipeById: (id: number): Promise<RecipeDetail> =>
     api.get(`/recipes/${id}`).then(r => r.data),
@@ -76,11 +79,11 @@ export const recipeService = {
   searchRecipes: (q: string): Promise<RecipeSummary[]> =>
     api.get(`/recipes/search`, { params: { q } }).then(r => r.data),
 
-  getUserRecipes: (username: string, cursor?: string, size = 12): Promise<CursorResponse<RecipeSummary>> =>
-    api.get(`/users/${username}/recipes`, { params: { cursor, size } }).then(r => r.data),
+  getUserRecipes: (userId: number, cursor?: string, size = 12): Promise<CursorResponse<RecipeSummary>> =>
+    api.get(`/users/${userId}/recipes`, { params: { cursor, size } }).then(r => r.data),
 
-  getUserLikedRecipes: (username: string, cursor?: string, size = 12): Promise<CursorResponse<RecipeSummary>> =>
-    api.get(`/users/${username}/liked-recipes`, { params: { cursor, size } }).then(r => r.data),
+  getUserLikedRecipes: (userId: number, cursor?: string, size = 12): Promise<CursorResponse<RecipeSummary>> =>
+    api.get(`/users/${userId}/liked-recipes`, { params: { cursor, size } }).then(r => r.data),
 
   likeRecipe: (id: number) =>
     api.post(`/recipes/${id}/like`).then(r => r.data),
@@ -104,4 +107,7 @@ export const recipeService = {
 
   getTrendingRecipes: (limit = 10): Promise<RecipeSummary[]> =>
     api.get(`/recipes/trending`, { params: { limit } }).then(r => r.data),
+
+  rateRecipe: (id: number, rating: number) =>
+    api.post(`/recipes/${id}/rating`, { rating }).then(r => r.data),
 };

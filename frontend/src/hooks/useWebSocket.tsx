@@ -7,6 +7,7 @@ import { useAuth } from './useAuth';
 interface Notification {
   id: number;
   senderUsername: string;
+  senderUserId?: number;
   senderProfilePictureUrl: string;
   type: 'LIKE' | 'COMMENT' | 'FOLLOW';
   recipeId?: number;

@@ -35,8 +35,8 @@ public class RecipeController {
         return null;
     }
 
-    // ─── Explore Feed (Updated to Cursor-based) ────────────────────────────────
-    @GetMapping("/feed/explore")
+    // ─── Feeds (Aligned with Spec) ─────────────────────────────────────────────
+    @GetMapping("/recipes/explore")
     public ResponseEntity<Map<String, Object>> getExploreFeed(
             @RequestParam(name = "cursor", required = false) String cursorStr,
             @RequestParam(name = "size", defaultValue = "12") int size,
@@ -65,8 +65,8 @@ public class RecipeController {
         return ResponseEntity.ok(recipeService.getRecipesByCategory(category, getCurrentUsername(), limit));
     }
 
-    // ─── Personalized Feed (Updated to Cursor-based) ───────────────────────────
-    @GetMapping("/feed/personalized")
+    // ─── Personalized Feed (Aligned with Spec) ────────────────────────────────
+    @GetMapping("/recipes/feed")
     public ResponseEntity<Map<String, Object>> getPersonalizedFeed(
             @RequestParam(name = "cursor", required = false) String cursorStr,
             @RequestParam(name = "size", defaultValue = "12") int size) {
@@ -108,29 +108,29 @@ public class RecipeController {
         return ResponseEntity.noContent().build();
     }
 
-    // ─── User Profile Lists ─────────────────────────────────────────────────────
-    @GetMapping("/users/{username}/recipes")
+    // ─── User Profile Lists (Aligned with Spec) ────────────────────────────────
+    @GetMapping("/users/{id}/recipes")
     public ResponseEntity<Map<String, Object>> getUserRecipes(
-            @PathVariable("username") String username,
+            @PathVariable("id") Long id,
             @RequestParam(name = "cursor", required = false) String cursorStr,
             @RequestParam(name = "size", defaultValue = "12") int size) {
         
         LocalDateTime cursor = (cursorStr != null && !cursorStr.isEmpty()) 
                 ? LocalDateTime.parse(cursorStr) 
                 : null;
-        return ResponseEntity.ok(recipeService.getUserRecipes(username, cursor, size, getCurrentUsername()));
+        return ResponseEntity.ok(recipeService.getUserRecipes(id, cursor, size, getCurrentUsername()));
     }
 
-    @GetMapping("/users/{username}/liked-recipes")
+    @GetMapping("/users/{id}/liked-recipes")
     public ResponseEntity<Map<String, Object>> getLikedRecipes(
-            @PathVariable("username") String username,
+            @PathVariable("id") Long id,
             @RequestParam(name = "cursor", required = false) String cursorStr,
             @RequestParam(name = "size", defaultValue = "12") int size) {
         
         LocalDateTime cursor = (cursorStr != null && !cursorStr.isEmpty()) 
                 ? LocalDateTime.parse(cursorStr) 
                 : null;
-        return ResponseEntity.ok(recipeService.getUserLikedRecipes(username, cursor, size, getCurrentUsername()));
+        return ResponseEntity.ok(recipeService.getUserLikedRecipes(id, cursor, size, getCurrentUsername()));
     }
 
     @GetMapping("/cloudinary/signature")

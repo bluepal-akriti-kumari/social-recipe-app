@@ -48,7 +48,7 @@ const App = () => {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/feed" element={<FeedPage />} />
             <Route path="/recipes/:id" element={<RecipeDetailPage />} />
-            <Route path="/profile/:username" element={<ProfilePage />} />
+            <Route path="/profile/:id" element={<ProfilePage />} />
             <Route path="/communities" element={<CommunitiesPage />} />
             <Route path="/communities/:id" element={<CommunityDetailPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />

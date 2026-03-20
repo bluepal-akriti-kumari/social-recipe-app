@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Card, CardContent, CardMedia, Typography, 
-  Box, Avatar, IconButton, Chip 
+  Box, Avatar, IconButton, Chip, Rating
 } from '@mui/material';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import { motion } from 'framer-motion';
@@ -124,7 +124,15 @@ const RecipeCard = ({ recipe, onLike, onBookmark }: RecipeCardProps) => {
 
         <CardContent sx={{ p: 2, pb: '16px !important', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
           {/* Author */}
-          <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box 
+            sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (recipe.author?.id) {
+                navigate(`/profile/${recipe.author.id}`);
+              }
+            }}
+          >
             <Avatar 
               src={recipe.author?.profilePictureUrl} 
               sx={{ width: 22, height: 22, border: '1px solid #eee' }}
@@ -157,6 +165,19 @@ const RecipeCard = ({ recipe, onLike, onBookmark }: RecipeCardProps) => {
           >
             {recipe.title}
           </Typography>
+
+          <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Rating 
+              value={recipe.averageRating || 0} 
+              precision={0.5} 
+              readOnly 
+              size="small" 
+              sx={{ color: 'primary.main', fontSize: '1rem' }}
+            />
+            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+              {recipe.averageRating?.toFixed(1) || '0.0'}
+            </Typography>
+          </Box>
 
           <Typography 
             variant="body2" 
