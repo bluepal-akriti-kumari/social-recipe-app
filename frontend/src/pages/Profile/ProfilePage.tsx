@@ -20,7 +20,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 
 const ProfilePage = () => {
-  const { username } = useParams<{ username: string }>();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
@@ -35,9 +35,9 @@ const ProfilePage = () => {
     isLoading: isProfileLoading, 
     error: profileError 
   } = useQuery({
-    queryKey: ['profiles', username],
-    queryFn: () => userService.getProfile(username!),
-    enabled: !!username,
+    queryKey: ['profiles', id],
+    queryFn: () => userService.getProfile(Number(id)),
+    enabled: !!id,
   });
 
   const [recipes, setRecipes] = useState<any[]>([]);
@@ -47,23 +47,23 @@ const ProfilePage = () => {
     isLoading: isRecipesLoading,
     isFetching: isRecipesFetching
   } = useQuery({
-    queryKey: ['profiles', username, 'recipes', activeTab],
+    queryKey: ['profiles', id, 'recipes', activeTab],
     queryFn: async () => {
       const data = activeTab === 0 
-        ? await recipeService.getUserRecipes(username!) 
-        : await recipeService.getUserLikedRecipes(username!);
+        ? await recipeService.getUserRecipes(Number(id)) 
+        : await recipeService.getUserLikedRecipes(Number(id));
       setRecipes(data.content);
       setNextCursor(data.nextCursor);
       return data;
     },
-    enabled: !!username && !!profile,
+    enabled: !!id && !!profile,
   });
 
   const handleLoadMore = async () => {
     if (!nextCursor) return;
     const data = activeTab === 0 
-      ? await recipeService.getUserRecipes(username!, nextCursor) 
-      : await recipeService.getUserLikedRecipes(username!, nextCursor);
+      ? await recipeService.getUserRecipes(Number(id!), nextCursor) 
+      : await recipeService.getUserLikedRecipes(Number(id!), nextCursor);
     setRecipes(prev => [...prev, ...data.content]);
     setNextCursor(data.nextCursor);
   };
@@ -71,10 +71,10 @@ const ProfilePage = () => {
   // --- Mutations ---
   const followMutation = useMutation({
     mutationFn: () => profile?.isFollowing 
-      ? userService.unfollowUser(username!) 
-      : userService.followUser(username!),
+      ? userService.unfollowUser(Number(id)) 
+      : userService.followUser(Number(id)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profiles', username] });
+      queryClient.invalidateQueries({ queryKey: ['profiles', id] });
     },
   });
 
@@ -83,7 +83,7 @@ const ProfilePage = () => {
   const likeMutation = useMutation({
     mutationFn: (id: number) => recipeService.likeRecipe(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profiles', username, 'recipes'] });
+      queryClient.invalidateQueries({ queryKey: ['profiles', id, 'recipes'] });
       queryClient.invalidateQueries({ queryKey: ['recipes'] });
     },
     onError: () => toast.error('Failed to update like'),
@@ -92,7 +92,7 @@ const ProfilePage = () => {
   const bookmarkMutation = useMutation({
     mutationFn: (id: number) => recipeService.bookmarkRecipe(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profiles', username, 'recipes'] });
+      queryClient.invalidateQueries({ queryKey: ['profiles', id, 'recipes'] });
       queryClient.invalidateQueries({ queryKey: ['recipes'] });
     },
     onError: () => toast.error('Failed to update bookmark'),

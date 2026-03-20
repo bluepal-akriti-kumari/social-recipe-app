@@ -15,6 +15,7 @@ public class CommentResponse {
     private Long id;
     private String content;
     private String username;
+    private Long userId;
     private String userProfilePictureUrl;
     private Long parentId;
     private java.time.LocalDateTime createdAt;

@@ -285,6 +285,7 @@ const Navbar = () => {
                         onClick={() => {
                           markAsRead(notif.id);
                           if (notif.recipeId) navigate(`/recipes/${notif.recipeId}`);
+                          else if (notif.senderUserId) navigate(`/profile/${notif.senderUserId}`);
                           else navigate(`/profile/${notif.senderUsername}`);
                           handleNotifClose();
                         }}
@@ -365,7 +366,7 @@ const Navbar = () => {
                 }}
               >
                 <MenuItem 
-                  onClick={() => { navigate(`/profile/${user?.username}`); handleClose(); }}
+                  onClick={() => { navigate(`/profile/${user?.id}`); handleClose(); }}
                   sx={{ borderRadius: '12px', py: 1.5, fontWeight: 700 }}
                 >
                   My Profile

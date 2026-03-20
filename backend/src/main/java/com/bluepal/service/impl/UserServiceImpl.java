@@ -35,9 +35,21 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
+        return buildProfileResponse(user, currentUsername);
+    }
+
+    @Override
+    public UserProfileResponse getUserProfile(Long id, String currentUsername) {
+        System.out.println("DEBUG: Fetching profile for ID " + id + " (current: " + currentUsername + ")");
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
+
+        return buildProfileResponse(user, currentUsername);
+    }
+
+    private UserProfileResponse buildProfileResponse(User user, String currentUsername) {
         boolean isFollowing = false;
         if (currentUsername != null) {
-            System.out.println("DEBUG: Checking if " + currentUsername + " follows " + username);
             Optional<User> currentUserOpt = userRepository.findByUsername(currentUsername);
             if (currentUserOpt.isPresent()) {
                 isFollowing = followRepository.existsByFollowerAndFollowing(currentUserOpt.get(), user);
@@ -93,11 +105,24 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void unfollowUser(String followerUsername, String followingUsername) {
-        User follower = userRepository.findByUsername(followerUsername)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", followerUsername));
-        
         User following = userRepository.findByUsername(followingUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", followingUsername));
+        
+        performUnfollow(followerUsername, following);
+    }
+
+    @Override
+    @Transactional
+    public void unfollowUser(String followerUsername, Long followingId) {
+        User following = userRepository.findById(followingId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", followingId));
+        
+        performUnfollow(followerUsername, following);
+    }
+
+    private void performUnfollow(String followerUsername, User following) {
+        User follower = userRepository.findByUsername(followerUsername)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", followerUsername));
 
         Optional<Follow> followOpt = followRepository.findByFollowerAndFollowing(follower, following);
         
@@ -120,27 +145,36 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void toggleFollow(String followerUsername, String followingUsername) {
-        if (followerUsername.equals(followingUsername)) {
-            throw new IllegalArgumentException("Users cannot follow themselves");
-        }
-
-        User follower = userRepository.findByUsername(followerUsername)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", followerUsername));
-        
         User following = userRepository.findByUsername(followingUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", followingUsername));
+        
+        performToggleFollow(followerUsername, following);
+    }
+
+    @Override
+    @Transactional
+    public void toggleFollow(String followerUsername, Long followingId) {
+        User following = userRepository.findById(followingId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", followingId));
+        
+        performToggleFollow(followerUsername, following);
+    }
+
+    private void performToggleFollow(String followerUsername, User following) {
+        User follower = userRepository.findByUsername(followerUsername)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", followerUsername));
+
+        if (follower.getId().equals(following.getId())) {
+            throw new IllegalArgumentException("Users cannot follow themselves");
+        }
 
         Optional<Follow> existingFollow = followRepository.findByFollowerAndFollowing(follower, following);
 
         if (existingFollow.isPresent()) {
-            // Logic for Unfollowing
             followRepository.delete(existingFollow.get());
-            
-            // Sync counts and prevent negative numbers
             following.setFollowerCount(Math.max(0, following.getFollowerCount() - 1));
             follower.setFollowingCount(Math.max(0, follower.getFollowingCount() - 1));
         } else {
-            // Logic for Following
             Follow newFollow = Follow.builder()
                     .follower(follower)
                     .following(following)
@@ -150,7 +184,6 @@ public class UserServiceImpl implements UserService {
             following.setFollowerCount(following.getFollowerCount() + 1);
             follower.setFollowingCount(follower.getFollowingCount() + 1);
 
-            // Send Notification
             notificationService.createAndSendNotification(
                     following,
                     follower,
@@ -160,7 +193,6 @@ public class UserServiceImpl implements UserService {
             );
         }
 
-        // Persist updated counts to the database
         userRepository.save(following);
         userRepository.save(follower);
     }

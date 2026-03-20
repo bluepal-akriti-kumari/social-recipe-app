@@ -187,6 +187,7 @@ public class InteractionController {
                 .id(comment.getId())
                 .content(comment.getContent())
                 .username(comment.getUser().getUsername())
+                .userId(comment.getUser().getId())
                 .userProfilePictureUrl(comment.getUser().getProfilePictureUrl())
                 .parentId(comment.getParent() != null ? comment.getParent().getId() : null)
                 .createdAt(comment.getCreatedAt())
