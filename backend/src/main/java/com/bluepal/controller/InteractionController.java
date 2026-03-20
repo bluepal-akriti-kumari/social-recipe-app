@@ -70,16 +70,11 @@ public class InteractionController {
         Recipe recipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
 
-        boolean alreadyLiked = likeRepository.existsByUserAndRecipe(user, recipe);
+        likeRepository.toggleLikeAtomic(user.getId(), recipe.getId());
+        boolean isLiked = likeRepository.existsByUserAndRecipe(user, recipe);
 
-        if (alreadyLiked) {
-            likeRepository.deleteByUserAndRecipe(user, recipe);
-            recipeRepository.decrementLikeCount(id);
-            return ResponseEntity.ok(Map.of("liked", false, "likeCount", Math.max(0, recipe.getLikeCount() - 1)));
-        } else {
-            likeRepository.save(Like.builder().user(user).recipe(recipe).build());
+        if (isLiked) {
             recipeRepository.incrementLikeCount(id);
-
             // Send Notification
             notificationService.createAndSendNotification(
                     recipe.getAuthor(),
@@ -88,11 +83,12 @@ public class InteractionController {
                     recipe.getId(),
                     user.getUsername() + " liked your recipe: " + recipe.getTitle()
             );
-
-            // Award reputation points for receiving a like (to the author)
+            // Award reputation points
             userService.updateReputation(recipe.getAuthor().getUsername(), 5);
-
             return ResponseEntity.ok(Map.of("liked", true, "likeCount", recipe.getLikeCount() + 1));
+        } else {
+            recipeRepository.decrementLikeCount(id);
+            return ResponseEntity.ok(Map.of("liked", false, "likeCount", Math.max(0, recipe.getLikeCount() - 1)));
         }
     }
 

@@ -17,8 +17,9 @@ The application follows a modern decoupled architecture:
 ## 📂 Core Entities & Schema
 
 ### User Management
-- **User**: Stores credentials, profile info, and reputation points.
+- **User**: Stores credentials, profile info, reputation points, and enabled status.
 - **Follow**: Manages chef-follower relationships.
+- **VerificationToken**: Handles secure email verification flow before account activation.
 - **PasswordResetToken**: Handles secure password recovery flows.
 
 ### Recipe System
@@ -43,8 +44,9 @@ The application follows a modern decoupled architecture:
 ## 📡 API Reference
 
 ### Authentication (`/api/auth`)
-- `POST /register`: Create a new account.
-- `POST /login`: Generate JWT token.
+- `POST /register`: Create a new account (initially disabled).
+- `GET /verify-registration`: Verify email using unique token.
+- `POST /login`: Generate JWT token (checked for verification status).
 - `POST /forgot-password`: Send 6-digit reset code.
 - `POST /reset-password`: Update password using code.
 - `POST /change-password`: Update password for logged-in users.

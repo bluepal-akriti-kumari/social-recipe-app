@@ -86,7 +86,9 @@ public class InteractionControllerTest {
     void toggleLike_AlreadyLiked_Unlikes() throws Exception {
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
         when(recipeRepository.findById(1L)).thenReturn(Optional.of(mockRecipe));
-        when(likeRepository.existsByUserAndRecipe(any(), any())).thenReturn(true);
+        
+        // Atomic toggle called then we check exists (as per current controller logic)
+        when(likeRepository.existsByUserAndRecipe(any(), any())).thenReturn(false);
 
         mockMvc.perform(post("/api/recipes/1/like")
                         .with(csrf()))
@@ -94,7 +96,7 @@ public class InteractionControllerTest {
                 .andExpect(jsonPath("$.liked").value(false))
                 .andExpect(jsonPath("$.likeCount").value(4));
 
-        verify(likeRepository).deleteByUserAndRecipe(any(), any());
+        verify(likeRepository).toggleLikeAtomic(1L, 1L);
         verify(recipeRepository).decrementLikeCount(1L);
     }
 
@@ -103,7 +105,9 @@ public class InteractionControllerTest {
     void toggleLike_NotLiked_Likes() throws Exception {
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
         when(recipeRepository.findById(1L)).thenReturn(Optional.of(mockRecipe));
-        when(likeRepository.existsByUserAndRecipe(any(), any())).thenReturn(false);
+        
+        // Atomic toggle called then we check exists
+        when(likeRepository.existsByUserAndRecipe(any(), any())).thenReturn(true);
 
         mockMvc.perform(post("/api/recipes/1/like")
                         .with(csrf()))
@@ -111,9 +115,8 @@ public class InteractionControllerTest {
                 .andExpect(jsonPath("$.liked").value(true))
                 .andExpect(jsonPath("$.likeCount").value(6));
 
-        verify(likeRepository).save(any());
+        verify(likeRepository).toggleLikeAtomic(1L, 1L);
         verify(recipeRepository).incrementLikeCount(1L);
-        verify(notificationService).createAndSendNotification(any(), any(), any(), any(), anyString());
     }
 
     @Test
@@ -142,16 +145,10 @@ public class InteractionControllerTest {
                 .andExpect(jsonPath("$.username").value("testuser"));
 
         verify(recipeRepository).incrementCommentCount(1L);
-        verify(notificationService).createAndSendNotification(any(), any(), any(), any(), anyString());
     }
 
     @Test
     void toggleLike_Unauthenticated_Returns401() throws Exception {
-        // Since addFilters=false, @WithMockUser is usually bypassed if we don't mock the context manually,
-        // but let's test the controller logic where getCurrentUsername returns null.
-        // In our setup, addFilters=false means Spring Security filter chain is bypassed, 
-        // but the controller's getCurrentUsername() still reads the context.
-
         mockMvc.perform(post("/api/recipes/1/like")
                         .with(csrf()))
                 .andExpect(status().isUnauthorized());

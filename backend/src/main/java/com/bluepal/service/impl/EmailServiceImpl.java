@@ -10,7 +10,8 @@ public class EmailServiceImpl {
 
     private final JavaMailSender mailSender;
 
-    public EmailServiceImpl(@org.springframework.beans.factory.annotation.Autowired(required = false) JavaMailSender mailSender) {
+    public EmailServiceImpl(
+            @org.springframework.beans.factory.annotation.Autowired(required = false) JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
 
@@ -28,6 +29,25 @@ public class EmailServiceImpl {
                 + "Your 6-Digit OTP is: " + token + "\n\n"
                 + "Please use this code in the application to reset your password. It will expire in 24 hours.\n"
                 + "If you did not request this, you can safely ignore this email.");
+        mailSender.send(message);
+    }
+
+    public void sendVerificationEmail(String to, String token) {
+        if (mailSender == null) {
+            System.err.println("Mail sender not configured. Cannot send verification email to: " + to);
+            return;
+        }
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom("aakritikumarikhg@gmail.com");
+        message.setTo(to);
+        message.setSubject("Verify Your Email - CulinarIO");
+        // Update URL to match frontend deployment or localhost
+        String verificationUrl = "http://localhost:5173/verify-email?token=" + token;
+        message.setText("Hello,\n\n"
+                + "Thank you for registering with CulinarIO! Please click the link below to verify your email address:\n\n"
+                + verificationUrl + "\n\n"
+                + "This link will expire in 24 hours.\n"
+                + "If you did not register for an account, you can safely ignore this email.");
         mailSender.send(message);
     }
 }
