@@ -13,6 +13,7 @@ export interface UserProfile {
   isVerified?: boolean;
   reputationPoints?: number;
   reputationLevel?: string;
+  recipeCount?: number;
 }
 
 export const userService = {

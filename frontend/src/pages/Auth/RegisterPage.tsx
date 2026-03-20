@@ -89,7 +89,12 @@ const RegisterPage = () => {
                   <TextField
                     fullWidth
                     placeholder="Chef_Explorer"
-                    {...register('username', { required: 'Username is required', minLength: { value: 3, message: 'Min 3 chars' } })}
+                    {...register('username', { 
+                      required: 'Username is required', 
+                      minLength: { value: 3, message: 'Username must be at least 3 characters' },
+                      maxLength: { value: 20, message: 'Username cannot exceed 20 characters' },
+                      pattern: { value: /^[a-zA-Z][a-zA-Z0-9_]*$/, message: 'Must start with a letter (A-Z)' }
+                    })}
                     error={!!errors.username}
                     helperText={errors.username?.message}
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'rgba(0,0,0,0.02)' } }}
@@ -105,7 +110,7 @@ const RegisterPage = () => {
                     placeholder="you@example.com"
                     {...register('email', { 
                       required: 'Email is required',
-                      pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email' }
+                      pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email format' }
                     })}
                     error={!!errors.email}
                     helperText={errors.email?.message}
@@ -121,7 +126,14 @@ const RegisterPage = () => {
                     fullWidth
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
-                    {...register('password', { required: 'Password is required', minLength: { value: 6, message: 'Min 6 chars' } })}
+                    {...register('password', { 
+                      required: 'Password is required', 
+                      minLength: { value: 8, message: 'Password must be at least 8 characters' },
+                      pattern: { 
+                        value: /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/,
+                        message: 'Requires uppercase, number, and special char'
+                      }
+                    })}
                     error={!!errors.password}
                     helperText={errors.password?.message}
                     InputProps={{
@@ -146,8 +158,8 @@ const RegisterPage = () => {
                     type="password"
                     placeholder="••••••••"
                     {...register('confirmPassword', {
-                      required: 'Confirm your password',
-                      validate: val => val === watch('password') || 'Passwords match error'
+                      required: 'Please confirm your password',
+                      validate: val => val === watch('password') || 'Passwords do not match'
                     })}
                     error={!!errors.confirmPassword}
                     helperText={errors.confirmPassword?.message}

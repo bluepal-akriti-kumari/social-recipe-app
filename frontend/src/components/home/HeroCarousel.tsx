@@ -61,7 +61,7 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ recipes }) => {
             left: 0,
             width: '100%',
             height: '100%',
-            background: 'linear-gradient(to right, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)',
+            background: 'linear-gradient(to right, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 100%)',
           }
         }}
       />

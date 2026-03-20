@@ -18,6 +18,9 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import BlockIcon from '@mui/icons-material/Block';
 import ScheduleIcon from '@mui/icons-material/Schedule';
+import AddIcon from '@mui/icons-material/Add';
+import MealPlannerDrawer from '../../components/planner/MealPlannerDrawer';
+import { isBefore, isToday, startOfDay } from 'date-fns';
 
 const MealPlannerPage = () => {
   const navigate = useNavigate();
@@ -25,6 +28,11 @@ const MealPlannerPage = () => {
   const [plans, setPlans] = useState<MealPlan[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Modal states
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedType, setSelectedType] = useState<string | undefined>(undefined);
 
   const fetchPlans = async () => {
     setLoading(true);
@@ -83,33 +91,58 @@ const MealPlannerPage = () => {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 6 }}>
         <Box>
-          <Typography variant="h2" sx={{ fontWeight: 950, letterSpacing: '-0.04em' }}>
-            Culinary Calendar
+          <Typography variant="h3" className="premium-header" sx={{ fontSize: '2.5rem', mb: 0.5 }}>
+            Meal Flow
           </Typography>
-          <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-            Curate your weekly gastronomic journey
+          <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+            Engineer your week's culinary trajectory
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Button 
             variant="contained" 
-            startIcon={<ShoppingCartIcon />}
-            onClick={handleGenerateShoppingList}
+            startIcon={<AddIcon />}
+            onClick={() => {
+                setSelectedDate(new Date());
+                setSelectedType('DINNER');
+                setIsAddModalOpen(true);
+            }}
             sx={{ 
                 borderRadius: '14px', 
                 fontWeight: 900, 
-                px: 3, 
+                px: 3.5, 
+                py: 1.5,
                 bgcolor: 'primary.main',
-                boxShadow: '0 8px 20px rgba(99, 102, 241, 0.2)'
+                boxShadow: '0 10px 25px rgba(99, 102, 241, 0.25)',
+                textTransform: 'none',
+                fontSize: '0.95rem',
+                '&:hover': { transform: 'translateY(-2px)', bgcolor: 'primary.dark' }
             }}
           >
-            Generate Shopping List
+            Create Plan
           </Button>
-          <Box className="glass" sx={{ p: 1, borderRadius: '20px', display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Button 
+            variant="outlined" 
+            startIcon={<ShoppingCartIcon />}
+            onClick={handleGenerateShoppingList}
+            sx={{ 
+                borderRadius: '16px', 
+                fontWeight: 900, 
+                px: 3, 
+                py: 1.2,
+                color: 'text.primary',
+                borderColor: 'divider',
+                textTransform: 'none',
+                '&:hover': { bgcolor: 'rgba(0,0,0,0.03)', borderColor: 'text.primary' }
+            }}
+          >
+            Shopping List
+          </Button>
+          <Box sx={{ p: 0.8, borderRadius: '18px', display: 'flex', alignItems: 'center', bgcolor: '#f1f5f9', border: '1px solid #e2e8f0' }}>
             <IconButton onClick={() => setCurrentDate(addDays(currentDate, -7))}>
               <ChevronLeftIcon />
             </IconButton>
-            <Typography variant="h6" sx={{ fontWeight: 800, minWidth: 150, textAlign: 'center' }}>
+            <Typography variant="body2" sx={{ fontWeight: 800, minWidth: 120, textAlign: 'center' }}>
               {format(currentDate, 'MMMM yyyy')}
             </Typography>
             <IconButton onClick={() => setCurrentDate(addDays(currentDate, 7))}>
@@ -129,36 +162,39 @@ const MealPlannerPage = () => {
         const dayStr = format(day, 'yyyy-MM-dd');
         const dayPlans = plans.filter(p => p.plannedDate === dayStr);
         const totalCalories = dayPlans.reduce((sum, p) => sum + (p.calories || 0), 0);
-        const totalProtein = dayPlans.reduce((sum, p) => sum + (p.protein || 0), 0);
-        const totalCarbs = dayPlans.reduce((sum, p) => sum + (p.carbs || 0), 0);
-        const totalFats = dayPlans.reduce((sum, p) => sum + (p.fats || 0), 0);
 
         days.push(
           <Grid size={1} key={i}>
-            <Box sx={{ textAlign: 'center', py: 2 }}>
-                <Typography variant="caption" sx={{ fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'primary.main' }}>
-                {format(day, 'EEE')}
+            <Box sx={{ 
+                textAlign: 'center', 
+                py: 2.5, 
+                borderRadius: '20px 20px 0 0',
+                bgcolor: isToday(day) ? '#eef2ff' : '#ffffff',
+                border: isToday(day) ? '1px solid' : 'none',
+                borderColor: '#e2e8f0'
+            }}>
+                <Typography variant="caption" sx={{ fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: isToday(day) ? 'primary.main' : 'text.disabled' }}>
+                    {format(day, 'EEE')}
                 </Typography>
-                <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                {format(day, 'd')}
+                <Typography variant="h5" sx={{ fontWeight: 950, color: isToday(day) ? 'primary.main' : '#1e293b', mt: 0.5 }}>
+                    {format(day, 'd')}
                 </Typography>
                 {totalCalories > 0 && (
-                    <Box>
-                      <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block' }}>
-                          {totalCalories} kcal
-                      </Typography>
-                      <Stack direction="row" spacing={0.5} justifyContent="center" sx={{ mt: 0.5 }}>
-                        <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 900, color: '#10b981' }}>P:{Math.round(totalProtein)}g</Typography>
-                        <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 900, color: '#f59e0b' }}>C:{Math.round(totalCarbs)}g</Typography>
-                        <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 900, color: '#f43f5e' }}>F:{Math.round(totalFats)}g</Typography>
-                      </Stack>
+                    <Box sx={{ mt: 1 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', bgcolor: '#f1f5f9', px: 1, py: 0.2, borderRadius: 1 }}>
+                            {totalCalories} kcal
+                        </Typography>
                     </Box>
                 )}
             </Box>
           </Grid>
         );
     }
-    return <Grid container spacing={2} columns={7} sx={{ mb: 2 }}>{days}</Grid>;
+    return <Grid container spacing={2} columns={7} sx={{ mb: 0 }}>{days}</Grid>;
+  };
+
+  const isPastDay = (date: Date) => {
+    return isBefore(startOfDay(date), startOfDay(new Date()));
   };
 
   const renderCells = () => {
@@ -173,13 +209,12 @@ const MealPlannerPage = () => {
         rows.push(
             <Grid size={1} key={i}>
                 <Paper 
-                    className="glass-card" 
+                    className="premium-card" 
                     sx={{ 
-                        minHeight: 400, 
-                        p: 2, 
-                        borderRadius: '24px',
-                        bgcolor: isSameDay(day, new Date()) ? 'rgba(99, 102, 241, 0.03)' : 'transparent',
-                        border: isSameDay(day, new Date()) ? '2px solid rgba(99, 102, 241, 0.2)' : '1px solid rgba(0,0,0,0.05)'
+                        minHeight: 500, 
+                        p: 2.5, 
+                        bgcolor: isSameDay(day, new Date()) ? '#f5f7ff' : '#ffffff',
+                        border: isSameDay(day, new Date()) ? '2px solid #ccd1ff' : '1px solid #f1f5f9'
                     }}
                 >
                     <Stack spacing={2}>
@@ -193,76 +228,93 @@ const MealPlannerPage = () => {
                                     {meal ? (
                                         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
                                             <Card sx={{ 
-                                                borderRadius: '16px', 
+                                                borderRadius: '20px', 
                                                 overflow: 'hidden', 
-                                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)', 
+                                                boxShadow: '0 8px 20px rgba(0,0,0,0.04)', 
                                                 position: 'relative',
-                                                opacity: meal.status === 'SKIPPED' ? 0.5 : 1,
-                                                filter: meal.status === 'SKIPPED' ? 'grayscale(100%)' : 'none',
-                                                border: meal.status === 'EATEN' ? '2px solid #10b981' : 'none'
+                                                border: '1px solid',
+                                                borderColor: meal.status === 'EATEN' ? 'success.light' : '#f1f5f9',
+                                                opacity: meal.status === 'SKIPPED' ? 0.6 : 1,
+                                                bgcolor: 'background.paper',
+                                                '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 28px rgba(0,0,0,0.08)' },
+                                                transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
                                             }}>
-                                                <CardMedia component="img" height="60" image={meal.recipeImageUrl} />
-                                                <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
-                                                    <Typography variant="body2" sx={{ fontWeight: 800, fontSize: '0.75rem', lineHeight: 1.1, mb: 1, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                                <CardMedia component="img" height="70" image={meal.recipeImageUrl} />
+                                                <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                                                    <Typography variant="body2" sx={{ fontWeight: 900, fontSize: '0.75rem', lineHeight: 1.2, mb: 1, height: 32, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                                                         {meal.recipeTitle}
                                                     </Typography>
                                                     
-                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <Stack direction="row" spacing={0.5}>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                                                        <Stack direction="row" spacing={0.2} sx={{ bgcolor: '#f1f5f9', borderRadius: '10px', p: 0.2 }}>
                                                             <IconButton 
                                                                 size="small" 
                                                                 onClick={() => handleStatusChange(meal.id, 'EATEN')}
-                                                                sx={{ p: 0.5, color: meal.status === 'EATEN' ? 'success.main' : 'text.disabled' }}
+                                                                sx={{ p: 0.4, color: meal.status === 'EATEN' ? 'success.main' : 'text.disabled' }}
                                                             >
-                                                                <CheckCircleOutlineIcon sx={{ fontSize: 16 }} />
+                                                                <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
                                                             </IconButton>
                                                             <IconButton 
                                                                 size="small" 
                                                                 onClick={() => handleStatusChange(meal.id, 'SKIPPED')}
-                                                                sx={{ p: 0.5, color: meal.status === 'SKIPPED' ? 'error.main' : 'text.disabled' }}
+                                                                sx={{ p: 0.4, color: meal.status === 'SKIPPED' ? 'error.main' : 'text.disabled' }}
                                                             >
-                                                                <BlockIcon sx={{ fontSize: 16 }} />
+                                                                <BlockIcon sx={{ fontSize: 14 }} />
                                                             </IconButton>
                                                             <IconButton 
                                                                 size="small" 
                                                                 onClick={() => handleStatusChange(meal.id, 'PLANNED')}
-                                                                sx={{ p: 0.5, color: meal.status === 'PLANNED' ? 'primary.main' : 'text.disabled' }}
+                                                                sx={{ p: 0.4, color: meal.status === 'PLANNED' ? 'primary.main' : 'text.disabled' }}
                                                             >
-                                                                <ScheduleIcon sx={{ fontSize: 16 }} />
+                                                                <ScheduleIcon sx={{ fontSize: 14 }} />
                                                             </IconButton>
                                                         </Stack>
                                                         <IconButton 
                                                             size="small" 
                                                             onClick={(e) => { e.stopPropagation(); handleDelete(meal.id); }}
-                                                            sx={{ p: 0.5, color: 'text.disabled', '&:hover': { color: 'error.main' } }}
+                                                            sx={{ p: 0.5, color: 'text.disabled', '&:hover': { color: 'error.main', bgcolor: '#fee2e2' } }}
                                                         >
-                                                            <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                                                            <DeleteOutlineIcon sx={{ fontSize: 14 }} />
                                                         </IconButton>
                                                     </Box>
                                                 </CardContent>
                                                 {meal.calories && (
-                                                    <Box sx={{ position: 'absolute', top: 5, left: 5, bgcolor: 'rgba(0,0,0,0.6)', color: 'white', px: 0.8, py: 0.2, borderRadius: 1 }}>
-                                                        <Typography variant="caption" sx={{ fontSize: '0.6rem', fontWeight: 900 }}>{meal.calories} cal</Typography>
+                                                    <Box sx={{ position: 'absolute', top: 6, left: 6, bgcolor: '#000000', color: 'white', px: 1, py: 0.3, borderRadius: '8px' }}>
+                                                        <Typography variant="caption" sx={{ fontSize: '0.6rem', fontWeight: 950 }}>{meal.calories} cal</Typography>
                                                     </Box>
                                                 )}
                                             </Card>
                                         </motion.div>
                                     ) : (
-                                        <Box 
-                                            sx={{ 
-                                                height: 80, 
-                                                border: '2px dashed rgba(0,0,0,0.05)', 
-                                                borderRadius: '16px', 
-                                                display: 'flex', 
-                                                alignItems: 'center', 
-                                                justifyContent: 'center',
-                                                cursor: 'pointer',
-                                                '&:hover': { bgcolor: 'rgba(0,0,0,0.02)', borderColor: 'primary.light' }
-                                            }}
-                                            onClick={() => navigate('/')}
-                                        >
-                                            <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 700 }}>+ Plan</Typography>
-                                        </Box>
+                                        !isPastDay(day) && (
+                                            <Box 
+                                                sx={{ 
+                                                    height: 60, 
+                                                    border: '1.5px dashed', 
+                                                    borderColor: '#e2e8f0',
+                                                    borderRadius: '16px', 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    justifyContent: 'center',
+                                                    cursor: 'pointer',
+                                                    color: 'text.disabled',
+                                                    transition: 'all 0.2s ease',
+                                                    '&:hover': { 
+                                                        bgcolor: '#f5f7ff', 
+                                                        borderColor: 'primary.light',
+                                                        color: 'primary.main',
+                                                        transform: 'scale(1.02)'
+                                                    }
+                                                }}
+                                                onClick={() => {
+                                                    setSelectedDate(day);
+                                                    setSelectedType(type);
+                                                    setIsAddModalOpen(true);
+                                                }}
+                                            >
+                                                <AddIcon sx={{ fontSize: 20 }} />
+                                            </Box>
+                                        )
                                     )}
                                 </Box>
                             );
@@ -291,6 +343,14 @@ const MealPlannerPage = () => {
           </Box>
         )}
       </Container>
+
+      <MealPlannerDrawer 
+        open={isAddModalOpen} 
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={fetchPlans}
+        initialDate={selectedDate}
+        initialType={selectedType}
+      />
     </Box>
   );
 };

@@ -57,6 +57,8 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
 
     // Optimized user recipe lists
     List<Recipe> findByAuthorOrderByCreatedAtDesc(User author, Pageable pageable);
+    
+    long countByAuthor(User author);
 
     @Query("SELECT r FROM Recipe r WHERE r.author = :author AND r.createdAt < :cursor ORDER BY r.createdAt DESC")
     List<Recipe> findUserRecipesCursor(@Param("author") User author, @Param("cursor") LocalDateTime cursor, Pageable pageable);
