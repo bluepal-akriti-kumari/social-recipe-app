@@ -37,7 +37,7 @@ const CommunityDetailPage = () => {
           src={communityInfo?.banner}
           sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
-        <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }} />
+        <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.6)' }} />
         <Container maxWidth="lg" sx={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', color: 'white' }}>
           <Button 
             startIcon={<ArrowBackIcon />} 

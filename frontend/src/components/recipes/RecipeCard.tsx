@@ -77,14 +77,14 @@ const RecipeCard = ({ recipe, onLike, onBookmark }: RecipeCardProps) => {
           {/* Overlay for Time */}
           <Box sx={{ 
             position: 'absolute', top: 12, left: 12,
-            px: 1.5, py: 0.5, borderRadius: 1,
-            bgcolor: 'rgba(255,255,255,0.9)',
-            backdropFilter: 'blur(4px)',
+            bgcolor: '#000000',
+            color: 'white',
+            px: 1, py: 0.3, borderRadius: '8px', zIndex: 1,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             display: 'flex', alignItems: 'center', gap: 0.75,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}>
-            <AccessTimeIcon sx={{ fontSize: 14, color: 'secondary.main' }} />
-            <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main' }}>
+            <AccessTimeIcon sx={{ fontSize: 14, color: 'white' }} />
+            <Typography variant="caption" sx={{ fontWeight: 700, color: 'white' }}>
               {(recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0)}m
             </Typography>
           </Box>
@@ -143,6 +143,7 @@ const RecipeCard = ({ recipe, onLike, onBookmark }: RecipeCardProps) => {
               fontWeight: 700, 
               lineHeight: 1.3,
               mb: 1,
+              minHeight: '2.6em', // Space for exactly 2 lines (1.3 line-height * 2)
               fontSize: '1.1rem',
               display: '-webkit-box',
               WebkitLineClamp: 2,
@@ -163,6 +164,7 @@ const RecipeCard = ({ recipe, onLike, onBookmark }: RecipeCardProps) => {
               color: 'text.secondary',
               mb: 2,
               display: '-webkit-box',
+              minHeight: '3em', 
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',

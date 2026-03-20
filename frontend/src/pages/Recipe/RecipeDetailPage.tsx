@@ -4,7 +4,7 @@ import {
   Container, Grid, Box, Typography, Avatar, 
   List, ListItem, ListItemText, ListItemIcon, 
   Paper, IconButton, TextField, Button, CircularProgress, 
-  Alert, alpha, Stack
+  alpha, Stack
 } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -343,8 +343,7 @@ const RecipeDetailPage = () => {
                   onClick={handleBookmark}
                   disabled={bookmarkMutation.isPending}
                   sx={{ 
-                    bgcolor: 'rgba(255,255,255,0.8)', 
-                    backdropFilter: 'blur(20px)',
+                    bgcolor: 'white',
                     boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
                     color: recipeDetail?.isBookmarked ? 'primary.main' : 'inherit',
                     '&:hover': { bgcolor: 'white', transform: 'translateY(-2px)' } 
@@ -418,7 +417,7 @@ const RecipeDetailPage = () => {
                   p: 1.5, 
                   px: 2, 
                   borderRadius: '8px', 
-                  bgcolor: recipeDetail.isLiked ? 'rgba(244, 63, 94, 0.1)' : 'rgba(0,0,0,0.03)',
+                  bgcolor: recipeDetail.isLiked ? '#fff1f2' : '#f8fafc',
                   transition: 'all 0.3s ease'
                 }}
               >
@@ -454,14 +453,14 @@ const RecipeDetailPage = () => {
             <Box id="comments" sx={{ mt: 10 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
                 <Typography variant="h4" sx={{ fontWeight: 950, letterSpacing: '-0.03em' }}>
-                  Community Talk <span style={{ color: alpha('#6366f1', 0.5), fontSize: '1.5rem' }}>({recipeDetail.commentCount})</span>
+                  Community Talk <span style={{ color: '#6366f1', fontSize: '1.5rem', opacity: 0.7 }}>({recipeDetail.commentCount})</span>
                 </Typography>
               </Box>
 
               <Paper className="glass" sx={{ p: 3, borderRadius: '12px', mb: 4 }}>
                 <Box component="form" onSubmit={handleCommentSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {replyingTo && (
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: alpha('#6366f1', 0.1), p: 1.5, borderRadius: '10px' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#eef2ff', p: 1.5, borderRadius: '10px' }}>
                       <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 800 }}>Replying to <b>@{replyingTo.username}</b></Typography>
                       <Button size="small" variant="text" color="primary" sx={{ p: 0, minWidth: 0, fontWeight: 800 }} onClick={() => setReplyingTo(null)}>Cancel</Button>
                     </Box>
@@ -564,7 +563,7 @@ const RecipeDetailPage = () => {
                 <Typography variant="h6" sx={{ fontWeight: 900, mb: 4, letterSpacing: '-0.02em' }}>Kitchen Briefing</Typography>
                 <Grid container spacing={3}>
                   <Grid size={{ xs: 6 }}>
-                    <Box sx={{ p: 3, borderRadius: '20px', bgcolor: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.1)' }}>
+                    <Box sx={{ p: 3, borderRadius: '20px', bgcolor: '#f5f7ff', border: '1px solid #e2e8f0' }}>
                       <AccessTimeIcon sx={{ color: 'primary.main', mb: 1.5, fontSize: 28 }} />
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, display: 'block', mb: 0.5, letterSpacing: '0.05em' }}>DURATION</Typography>
                       <Typography variant="h6" sx={{ fontWeight: 950 }}>
@@ -573,7 +572,7 @@ const RecipeDetailPage = () => {
                     </Box>
                   </Grid>
                   <Grid size={{ xs: 6 }}>
-                    <Box sx={{ p: 3, borderRadius: '20px', bgcolor: 'rgba(244, 63, 94, 0.08)', border: '1px solid rgba(244, 63, 94, 0.1)' }}>
+                    <Box sx={{ p: 3, borderRadius: '20px', bgcolor: '#fff5f5', border: '1px solid #fee2e2' }}>
                       <RestaurantIcon sx={{ color: 'secondary.main', mb: 1.5, fontSize: 28 }} />
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, display: 'block', mb: 0.5, letterSpacing: '0.05em' }}>PORTIONS</Typography>
                       <Typography variant="h6" sx={{ fontWeight: 950 }}>{recipeDetail.servings} people</Typography>
@@ -623,7 +622,7 @@ const RecipeDetailPage = () => {
                         primary={
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Typography sx={{ fontWeight: 800, fontSize: '1.05rem' }}>{ing.name}</Typography>
-                            <Typography sx={{ color: 'primary.main', fontWeight: 950, bgcolor: 'rgba(99, 102, 241, 0.08)', px: 1.5, py: 0.5, borderRadius: '10px', fontSize: '0.9rem' }}>
+                            <Typography sx={{ color: 'primary.main', fontWeight: 950, bgcolor: '#eef2ff', px: 1.5, py: 0.5, borderRadius: '10px', fontSize: '0.9rem' }}>
                               {ing.quantity} {ing.unit || ''}
                             </Typography>
                           </Box>

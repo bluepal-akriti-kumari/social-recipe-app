@@ -162,10 +162,10 @@ public class RecipeServiceImpl implements RecipeService {
 				.additionalImages(
 						recipe.getImages().stream().map(RecipeImage::getImageUrl).collect(Collectors.toList()))
 				.createdAt(recipe.getCreatedAt())
-				.author(RecipeResponse.AuthorDto.builder().id(recipe.getAuthor().getId())
+				.author(recipe.getAuthor() != null ? RecipeResponse.AuthorDto.builder().id(recipe.getAuthor().getId())
 						.username(recipe.getAuthor().getUsername())
 						.isVerified(recipe.getAuthor().isVerified())
-						.profilePictureUrl(recipe.getAuthor().getProfilePictureUrl()).build())
+						.profilePictureUrl(recipe.getAuthor().getProfilePictureUrl()).build() : null)
 				.ingredients(recipe.getIngredients().stream()
 						.map(i -> RecipeResponse.IngredientDto.builder().id(i.getId()).name(i.getName())
 								.quantity(i.getQuantity()).unit(i.getUnit())
@@ -236,47 +236,60 @@ public class RecipeServiceImpl implements RecipeService {
 	@Override
 	@Transactional(readOnly = true)
 	public Map<String, Object> getUserRecipes(String username, LocalDateTime cursor, int size, String currentUsername) {
-		User author = userRepository.findByUsername(username)
-				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+		try {
+			User author = userRepository.findByUsername(username)
+					.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
-		Pageable limit = PageRequest.of(0, size);
-		List<Recipe> recipes;
+			Pageable limit = PageRequest.of(0, size);
+			List<Recipe> recipes;
 
-		if (cursor == null) {
-			recipes = recipeRepository.findByAuthorOrderByCreatedAtDesc(author, limit);
-		} else {
-			recipes = recipeRepository.findUserRecipesCursor(author, cursor, limit);
+			if (cursor == null) {
+				recipes = recipeRepository.findByAuthorOrderByCreatedAtDesc(author, limit);
+			} else {
+				recipes = recipeRepository.findUserRecipesCursor(author, cursor, limit);
+			}
+
+			System.out.println("DEBUG: Found " + recipes.size() + " recipes for " + username);
+
+			List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
+					.collect(Collectors.toList());
+
+			String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
+
+			return Map.of("content", content, "nextCursor", nextCursor);
+		} catch (Exception e) {
+			System.err.println("ERROR: Failed to fetch user recipes for " + username + ": " + e.getMessage());
+			e.printStackTrace();
+			return Map.of("content", List.of(), "nextCursor", "");
 		}
-
-		List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
-				.collect(Collectors.toList());
-
-		String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
-
-		return Map.of("content", content, "nextCursor", nextCursor);
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public Map<String, Object> getUserLikedRecipes(String username, LocalDateTime cursor, int size, String currentUsername) {
-		User user = userRepository.findByUsername(username)
-				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+		try {
+			User user = userRepository.findByUsername(username)
+					.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
-		Pageable limit = PageRequest.of(0, size);
-		List<Recipe> recipes;
+			Pageable limit = PageRequest.of(0, size);
+			List<Recipe> recipes;
 
-		if (cursor == null) {
-			recipes = recipeRepository.findLikedRecipesByUser(user, limit);
-		} else {
-			recipes = recipeRepository.findLikedRecipesCursor(user, cursor, limit);
+			if (cursor == null) {
+				recipes = recipeRepository.findLikedRecipesByUser(user, limit);
+			} else {
+				recipes = recipeRepository.findLikedRecipesCursor(user, cursor, limit);
+			}
+
+			List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
+					.collect(Collectors.toList());
+
+			String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
+
+			return Map.of("content", content, "nextCursor", nextCursor);
+		} catch (Exception e) {
+			System.err.println("ERROR: Failed to fetch liked recipes for " + username + ": " + e.getMessage());
+			return Map.of("content", List.of(), "nextCursor", "");
 		}
-
-		List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
-				.collect(Collectors.toList());
-
-		String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
-
-		return Map.of("content", content, "nextCursor", nextCursor);
 	}
 
 	@Override
@@ -299,6 +312,15 @@ public class RecipeServiceImpl implements RecipeService {
 		recipe.setProtein(request.getProtein());
 		recipe.setCarbs(request.getCarbs());
 		recipe.setFats(request.getFats());
+
+		// Update category safely
+		if (request.getCategory() != null && !request.getCategory().isBlank()) {
+			try {
+				recipe.setCategory(RecipeCategory.valueOf(request.getCategory().trim().toUpperCase()));
+			} catch (IllegalArgumentException e) {
+				// Keep existing if invalid
+			}
+		}
 
 		// Simple clear and re-add for ingredients/steps (can be optimized)
 		new java.util.ArrayList<>(recipe.getIngredients()).forEach(recipe::removeIngredient);

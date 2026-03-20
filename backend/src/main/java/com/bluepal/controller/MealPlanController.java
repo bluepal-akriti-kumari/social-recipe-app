@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -24,9 +25,18 @@ public class MealPlanController {
     private final MealPlanService mealPlanService;
     private final UserRepository userRepository;
 
+    private String getCurrentUsername() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated() && !authentication.getPrincipal().equals("anonymousUser")) {
+            return authentication.getName();
+        }
+        return null;
+    }
+
     @PostMapping
-    public ResponseEntity<MealPlanResponse> addMealPlan(@RequestBody MealPlanRequest request, Authentication authentication) {
-        User user = userRepository.findByUsername(authentication.getName())
+    public ResponseEntity<MealPlanResponse> addMealPlan(@RequestBody MealPlanRequest request) {
+        String username = getCurrentUsername();
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         return ResponseEntity.ok(mealPlanService.addMealPlan(user, request));
@@ -35,10 +45,10 @@ public class MealPlanController {
     @PutMapping("/{id}")
     public ResponseEntity<MealPlanResponse> updateMealPlan(
             @PathVariable Long id,
-            @RequestBody MealPlanRequest request,
-            Authentication authentication) {
+            @RequestBody MealPlanRequest request) {
         
-        User user = userRepository.findByUsername(authentication.getName())
+        String username = getCurrentUsername();
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         return ResponseEntity.ok(mealPlanService.updateMealPlan(id, request, user));
@@ -47,18 +57,19 @@ public class MealPlanController {
     @GetMapping
     public ResponseEntity<List<MealPlanResponse>> getMealPlans(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            Authentication authentication) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         
-        User user = userRepository.findByUsername(authentication.getName())
+        String username = getCurrentUsername();
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         return ResponseEntity.ok(mealPlanService.getMealPlans(user, startDate, endDate));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteMealPlan(@PathVariable Long id, Authentication authentication) {
-        User user = userRepository.findByUsername(authentication.getName())
+    public ResponseEntity<Void> deleteMealPlan(@PathVariable Long id) {
+        String username = getCurrentUsername();
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         mealPlanService.deleteMealPlan(id, user);

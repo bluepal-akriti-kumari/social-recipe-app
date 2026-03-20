@@ -98,13 +98,12 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, prof
       sx={{ 
         display: 'flex', 
         alignItems: 'center', 
-        justifyContent: 'center',
-        backdropFilter: 'blur(8px)' 
+        justifyContent: 'center'
       }}
     >
       <Box sx={{ 
         width: { xs: '95%', sm: 500 }, 
-        bgcolor: 'rgba(255, 255, 255, 0.98)', 
+        bgcolor: '#ffffff', 
         borderRadius: 2, 
         overflow: 'hidden',
         boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
@@ -124,10 +123,9 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, prof
             component="label"
             sx={{ 
               position: 'absolute', top: 20, right: 20, 
-              bgcolor: 'rgba(255,255,255,0.85)', 
-              backdropFilter: 'blur(10px)',
+              bgcolor: '#ffffff', 
               boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
-              '&:hover': { bgcolor: 'white', transform: 'scale(1.1)' },
+              '&:hover': { bgcolor: '#f8fafc', transform: 'scale(1.1)' },
               transition: 'all 0.3s ease'
             }}
           >
@@ -139,10 +137,9 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, prof
             onClick={onClose} 
             sx={{ 
               position: 'absolute', top: 20, left: 20, 
-              bgcolor: 'rgba(0,0,0,0.3)', 
+              bgcolor: '#1e293b', 
               color: 'white', 
-              backdropFilter: 'blur(10px)',
-              '&:hover': { bgcolor: 'rgba(0,0,0,0.5)', transform: 'rotate(90deg)' },
+              '&:hover': { bgcolor: '#0f172a', transform: 'rotate(90deg)' },
               transition: 'all 0.3s ease'
             }}
           >
@@ -215,7 +212,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, prof
               mb: 4, 
               '& .MuiOutlinedInput-root': { 
                 borderRadius: 1.5,
-                bgcolor: 'rgba(0,0,0,0.01)',
+                bgcolor: '#f8fafc',
                 fontWeight: 500,
                 '& fieldset': { borderColor: 'rgba(0,0,0,0.1)' },
               },
@@ -259,7 +256,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ open, onClose, prof
                 borderRadius: 1.5, 
                 fontWeight: 800, 
                 color: 'text.secondary',
-                '&:hover': { bgcolor: 'rgba(0,0,0,0.03)', color: 'text.primary' }
+                '&:hover': { bgcolor: '#f1f5f9', color: 'text.primary' }
               }}
             >
               Cancel

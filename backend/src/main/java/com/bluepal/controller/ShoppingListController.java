@@ -9,6 +9,7 @@ import com.bluepal.service.interfaces.ShoppingListService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,9 +23,18 @@ public class ShoppingListController {
     private final ShoppingListService shoppingListService;
     private final UserRepository userRepository;
 
+    private String getCurrentUsername() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated() && !authentication.getPrincipal().equals("anonymousUser")) {
+            return authentication.getName();
+        }
+        return null;
+    }
+
     @PostMapping
-    public ResponseEntity<ShoppingListItemResponse> addItem(@RequestBody ShoppingListItemRequest request, Authentication authentication) {
-        User user = userRepository.findByUsername(authentication.getName())
+    public ResponseEntity<ShoppingListItemResponse> addItem(@RequestBody ShoppingListItemRequest request) {
+        String username = getCurrentUsername();
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         ShoppingListItem item = shoppingListService.addItem(user, request.getName(), request.getQuantity(), request.getUnit(), null);
@@ -32,8 +42,9 @@ public class ShoppingListController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ShoppingListItemResponse>> getItems(Authentication authentication) {
-        User user = userRepository.findByUsername(authentication.getName())
+    public ResponseEntity<List<ShoppingListItemResponse>> getItems() {
+        String username = getCurrentUsername();
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         List<ShoppingListItem> items = shoppingListService.getItems(user);
@@ -41,8 +52,9 @@ public class ShoppingListController {
     }
 
     @PatchMapping("/{id}/toggle")
-    public ResponseEntity<ShoppingListItemResponse> togglePurchased(@PathVariable Long id, Authentication authentication) {
-        User user = userRepository.findByUsername(authentication.getName())
+    public ResponseEntity<ShoppingListItemResponse> togglePurchased(@PathVariable Long id) {
+        String username = getCurrentUsername();
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         ShoppingListItem item = shoppingListService.togglePurchased(id, user);
@@ -50,8 +62,9 @@ public class ShoppingListController {
     }
 
     @DeleteMapping("/checked")
-    public ResponseEntity<Void> deleteCheckedItems(Authentication authentication) {
-        User user = userRepository.findByUsername(authentication.getName())
+    public ResponseEntity<Void> deleteCheckedItems() {
+        String username = getCurrentUsername();
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         shoppingListService.deleteCheckedItems(user);
@@ -59,8 +72,9 @@ public class ShoppingListController {
     }
 
     @PostMapping("/from-recipe/{recipeId}")
-    public ResponseEntity<Void> addFromRecipe(@PathVariable Long recipeId, Authentication authentication) {
-        User user = userRepository.findByUsername(authentication.getName())
+    public ResponseEntity<Void> addFromRecipe(@PathVariable Long recipeId) {
+        String username = getCurrentUsername();
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         shoppingListService.addIngredientsFromRecipe(recipeId, user);
@@ -70,10 +84,10 @@ public class ShoppingListController {
     @PostMapping("/from-meal-plan")
     public ResponseEntity<Void> addFromMealPlan(
             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate startDate,
-            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate endDate,
-            Authentication authentication) {
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate endDate) {
         
-        User user = userRepository.findByUsername(authentication.getName())
+        String username = getCurrentUsername();
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         shoppingListService.addIngredientsFromMealPlan(user, startDate, endDate);

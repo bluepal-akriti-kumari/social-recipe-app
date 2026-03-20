@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
   Box, Card, Typography, Avatar, 
-  IconButton, alpha, useTheme 
+  IconButton 
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -23,7 +23,6 @@ interface Notification {
 
 const NotificationToaster = () => {
   const [notification, setNotification] = useState<Notification | null>(null);
-  const theme = useTheme();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -86,9 +85,8 @@ const NotificationToaster = () => {
                 alignItems: 'center',
                 gap: 2,
                 cursor: 'pointer',
-                background: 'rgba(255, 255, 255, 0.95)',
-                backdropFilter: 'blur(10px)',
-                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
                 boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
                 borderRadius: '20px',
                 position: 'relative',

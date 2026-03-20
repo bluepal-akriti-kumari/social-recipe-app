@@ -15,8 +15,8 @@ import { motion } from 'framer-motion';
 import { recipeService } from '../../services/recipe.service';
 import RecipeCard from '../../components/recipes/RecipeCard';
 import EditProfileModal from '../../components/profile/EditProfileModal';
+import { userService } from '../../services/user.service';
 import { useAuth } from '../../hooks/useAuth';
-import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 
 const ProfilePage = () => {
@@ -36,7 +36,7 @@ const ProfilePage = () => {
     error: profileError 
   } = useQuery({
     queryKey: ['profiles', username],
-    queryFn: () => api.get(`/users/${username}`).then(res => res.data),
+    queryFn: () => userService.getProfile(username!),
     enabled: !!username,
   });
 
@@ -71,8 +71,8 @@ const ProfilePage = () => {
   // --- Mutations ---
   const followMutation = useMutation({
     mutationFn: () => profile?.isFollowing 
-      ? api.delete(`/users/${username}/follow`) 
-      : api.post(`/users/${username}/follow`),
+      ? userService.unfollowUser(username!) 
+      : userService.followUser(username!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles', username] });
     },
@@ -267,7 +267,7 @@ const ProfilePage = () => {
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Following</Typography>
                 </Box>
                 <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="h5" sx={{ fontWeight: 950 }}>{recipes.length}</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 950 }}>{profile.recipeCount || 0}</Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recipes</Typography>
                 </Box>
               </Box>
@@ -311,7 +311,7 @@ const ProfilePage = () => {
             {isRecipesLoading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 15 }}>
                 <Box sx={{ position: 'relative', display: 'flex' }}>
-                  <CircularProgress size={60} thickness={4} sx={{ color: 'rgba(99, 102, 241, 0.1)' }} />
+                  <CircularProgress size={60} thickness={4} sx={{ color: '#eef2ff' }} />
                   <CircularProgress size={60} thickness={4} sx={{ color: 'primary.main', position: 'absolute', left: 0, '& .MuiCircularProgress-circle': { strokeLinecap: 'round' } }} />
                 </Box>
               </Box>
@@ -335,6 +335,7 @@ const ProfilePage = () => {
                       initial={{ opacity: 0, y: 30 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1, duration: 0.6 }}
+                      style={{ height: '100%', display: 'flex' }}
                     >
                       <RecipeCard 
                         recipe={recipe} 
@@ -394,7 +395,7 @@ const ProfilePage = () => {
                       borderWidth: '2px',
                       transform: 'scale(1.05) translateY(-5px)',
                       boxShadow: '0 12px 24px rgba(99, 102, 241, 0.15)',
-                      bgcolor: 'rgba(99, 102, 241, 0.05)'
+                      bgcolor: '#f5f7ff'
                     }
                   }}
                 >
@@ -413,7 +414,7 @@ const ProfilePage = () => {
         PaperProps={{
           sx: {
             width: { xs: '100%', sm: 400 },
-            bgcolor: 'transparent',
+            bgcolor: '#ffffff',
             boxShadow: 'none',
             border: 'none',
           }

@@ -38,9 +38,12 @@ const AddToPlannerModal = ({ open, onClose, recipeId, recipeTitle }: AddToPlanne
 
   return (
     <Modal open={open} onClose={onClose}>
-      <Box className="glass-modal" sx={{
+      <Box sx={{
         position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-        width: 450, p: 4, borderRadius: '24px', outline: 'none'
+        width: 450, p: 4, borderRadius: '24px', outline: 'none',
+        bgcolor: '#ffffff',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+        border: '1px solid #f1f5f9'
       }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h5" sx={{ fontWeight: 900 }}>Plan this Meal</Typography>

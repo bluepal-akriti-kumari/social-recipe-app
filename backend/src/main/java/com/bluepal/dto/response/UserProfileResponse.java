@@ -21,4 +21,5 @@ public class UserProfileResponse {
     private Boolean isVerified;
     private Integer reputationPoints;
     private String reputationLevel;
+    private Integer recipeCount;
 }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { 
   Box, Container, Typography, TextField, Button, 
   Paper, List, ListItem, ListItemText, ListItemIcon,
-  CircularProgress, alpha, Alert
+  CircularProgress, Alert
 } from '@mui/material';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import ContentPasteIcon from '@mui/icons-material/ContentPaste';
@@ -95,7 +95,7 @@ const ImporterPage = () => {
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                 >
-                  <Box sx={{ p: 3, bgcolor: alpha('#6366f1', 0.05), borderRadius: 3 }}>
+                  <Box sx={{ p: 3, bgcolor: '#f5f7ff', borderRadius: 3 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
                       <CircularProgress size={24} thickness={6} />
                       <Typography sx={{ fontWeight: 800, color: 'primary.main' }}>
