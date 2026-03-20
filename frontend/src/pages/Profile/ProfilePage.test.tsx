@@ -31,13 +31,15 @@ import { recipeService } from '../../services/recipe.service';
 import '@testing-library/jest-dom';
 
 const mockUser = {
+  id: 1,
   username: 'testchef',
   profilePictureUrl: 'test.jpg',
   followerCount: 100,
   followingCount: 50,
   bio: 'Test Bio',
   isVerified: true,
-  isFollowing: false
+  isFollowing: false,
+  recipeCount: 0
 };
 
 describe('ProfilePage', () => {
@@ -61,9 +63,9 @@ describe('ProfilePage', () => {
     const testQueryClient = createTestQueryClient();
     render(
       <QueryClientProvider client={testQueryClient}>
-        <MemoryRouter initialEntries={['/profile/testchef']}>
+        <MemoryRouter initialEntries={['/profile/1']}>
           <Routes>
-            <Route path="/profile/:username" element={<ProfilePage />} />
+            <Route path="/profile/:id" element={<ProfilePage />} />
           </Routes>
         </MemoryRouter>
       </QueryClientProvider>
@@ -79,9 +81,9 @@ describe('ProfilePage', () => {
     
     render(
       <QueryClientProvider client={testQueryClient}>
-        <MemoryRouter initialEntries={['/profile/testchef']}>
+        <MemoryRouter initialEntries={['/profile/1']}>
           <Routes>
-            <Route path="/profile/:username" element={<ProfilePage />} />
+            <Route path="/profile/:id" element={<ProfilePage />} />
           </Routes>
         </MemoryRouter>
       </QueryClientProvider>
@@ -96,9 +98,9 @@ describe('ProfilePage', () => {
     
     render(
       <QueryClientProvider client={testQueryClient}>
-        <MemoryRouter initialEntries={['/profile/testchef']}>
+        <MemoryRouter initialEntries={['/profile/1']}>
           <Routes>
-            <Route path="/profile/:username" element={<ProfilePage />} />
+            <Route path="/profile/:id" element={<ProfilePage />} />
           </Routes>
         </MemoryRouter>
       </QueryClientProvider>

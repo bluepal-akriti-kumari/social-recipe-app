@@ -44,14 +44,14 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     @Query("SELECT r FROM Recipe r WHERE r.category = :category AND r.createdAt < :cursor ORDER BY r.createdAt DESC")
     List<Recipe> findExploreCursorWithCategory(@Param("category") com.bluepal.entity.RecipeCategory category, @Param("cursor") LocalDateTime cursor, Pageable pageable);
 
-    // Full-text search for recipes using ILIKE across title, description, username, and ingredients
+    // Optimized full-text search using GIN indexes and tsvector
     @Query(value = "SELECT DISTINCT r.* FROM recipes r " +
            "LEFT JOIN users u ON r.author_id = u.id " +
            "LEFT JOIN ingredients i ON r.id = i.recipe_id " +
-           "WHERE r.title ILIKE CONCAT('%', :query, '%') " +
-           "   OR r.description ILIKE CONCAT('%', :query, '%') " +
+           "WHERE to_tsvector('english', r.title) @@ plainto_tsquery('english', :query) " +
+           "   OR to_tsvector('english', r.description) @@ plainto_tsquery('english', :query) " +
            "   OR u.username ILIKE CONCAT('%', :query, '%') " +
-           "   OR i.name ILIKE CONCAT('%', :query, '%') " +
+           "   OR to_tsvector('english', i.name) @@ plainto_tsquery('english', :query) " +
            "ORDER BY r.created_at DESC", nativeQuery = true)
     List<Recipe> searchRecipesFullText(@Param("query") String query);
 

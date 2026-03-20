@@ -47,6 +47,8 @@ CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 JWT_SECRET=your_secure_jwt_secret
+MAIL_USERNAME=your_gmail@gmail.com
+MAIL_PASSWORD=your_app_password
 ```
 
 ### Running with Docker
