@@ -34,7 +34,7 @@ const MobileBottomNav = () => {
         display: { xs: 'block', sm: 'none' },
         zIndex: 1000,
         borderRadius: 0,
-        borderTop: '1px solid rgba(226, 232, 240, 0.8)',
+        borderTop: '1px solid #e2e8f0',
         boxShadow: '0 -4px 12px rgba(0,0,0,0.03)'
       }} 
       elevation={3}

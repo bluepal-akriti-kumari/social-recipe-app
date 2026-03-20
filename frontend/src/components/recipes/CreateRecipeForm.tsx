@@ -133,7 +133,11 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
             <TextField
               size="small"
               fullWidth label="Recipe Title" placeholder="Give your masterpiece a name"
-              {...register('title', { required: 'Title is required' })}
+              {...register('title', { 
+                required: 'Title is required',
+                minLength: { value: 3, message: 'Title too short' },
+                maxLength: { value: 100, message: 'Title too long' }
+               })}
               error={!!errors.title} helperText={errors.title?.message}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
             />
@@ -175,19 +179,40 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
               <TextField 
                 size="small"
                 fullWidth type="number" label="Prep (min)"
-                {...register('prepTimeMinutes', { valueAsNumber: true })}
+                {...register('prepTimeMinutes', { 
+                  valueAsNumber: true,
+                  required: 'Required',
+                  min: { value: 0, message: 'Min 0' },
+                  max: { value: 1440, message: 'Max 24h' }
+                })}
+                error={!!errors.prepTimeMinutes}
+                helperText={errors.prepTimeMinutes?.message}
                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
               />
               <TextField 
                 size="small"
                 fullWidth type="number" label="Cook (min)"
-                {...register('cookTimeMinutes', { valueAsNumber: true })}
+                {...register('cookTimeMinutes', { 
+                  valueAsNumber: true,
+                  required: 'Required',
+                  min: { value: 0, message: 'Min 0' },
+                  max: { value: 1440, message: 'Max 24h' }
+                })}
+                error={!!errors.cookTimeMinutes}
+                helperText={errors.cookTimeMinutes?.message}
                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
               />
               <TextField 
                 size="small"
                 fullWidth type="number" label="Servings"
-                {...register('servings', { valueAsNumber: true })}
+                {...register('servings', { 
+                   valueAsNumber: true,
+                   required: 'Required',
+                   min: { value: 1, message: 'Min 1' },
+                   max: { value: 100, message: 'Max 100' }
+                })}
+                error={!!errors.servings}
+                helperText={errors.servings?.message}
                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
               />
             </Box>

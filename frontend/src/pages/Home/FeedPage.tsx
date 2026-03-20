@@ -149,7 +149,7 @@ const FeedPage = () => {
           <Alert 
             severity="error" 
             variant="outlined" 
-            sx={{ mb: 6, borderRadius: 4, bgcolor: 'rgba(254, 242, 242, 0.6)', backdropFilter: 'blur(10px)' }}
+            sx={{ mb: 6, borderRadius: 4, bgcolor: '#fff1f2' }}
           >
             {currentError}
           </Alert>
@@ -178,6 +178,7 @@ const FeedPage = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: (index % 8) * 0.1 }}
                     layout
+                    style={{ height: '100%', display: 'flex' }}
                   >
                     <RecipeCard 
                       recipe={recipe} 
@@ -202,7 +203,7 @@ const FeedPage = () => {
             ) : null}
 
             {!currentLoading && displayFeed.length === 0 && !currentError && (
-              <Box sx={{ textAlign: 'center', py: 15, borderRadius: 8, border: '2px dashed rgba(226, 232, 240, 0.8)' }}>
+              <Box sx={{ textAlign: 'center', py: 15, borderRadius: 8, border: '2px dashed #e2e8f0' }}>
                 <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.secondary' }}>
                   No culinary treasures found.
                 </Typography>

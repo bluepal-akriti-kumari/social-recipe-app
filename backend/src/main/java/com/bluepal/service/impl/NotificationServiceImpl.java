@@ -58,8 +58,8 @@ public class NotificationServiceImpl implements NotificationService {
     private NotificationResponse mapToResponse(Notification notification) {
         return NotificationResponse.builder()
                 .id(notification.getId())
-                .senderUsername(notification.getSender().getUsername())
-                .senderProfilePictureUrl(notification.getSender().getProfilePictureUrl())
+                .senderUsername(notification.getSender() != null ? notification.getSender().getUsername() : "System")
+                .senderProfilePictureUrl(notification.getSender() != null ? notification.getSender().getProfilePictureUrl() : null)
                 .type(notification.getType())
                 .recipeId(notification.getRecipeId())
                 .message(notification.getMessage())

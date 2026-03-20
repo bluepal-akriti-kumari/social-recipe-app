@@ -1,4 +1,4 @@
-import { Box, Chip, alpha } from '@mui/material';
+import { Box, Chip } from '@mui/material';
 import { motion } from 'framer-motion';
 import LocalPizzaIcon from '@mui/icons-material/LocalPizza';
 import SpaIcon from '@mui/icons-material/Spa';
@@ -31,11 +31,10 @@ const CategoryQuickBar = ({ selectedCategory, onSelect }: CategoryQuickBarProps)
         overflowX: 'auto', 
         scrollbarWidth: 'none', 
         '&::-webkit-scrollbar': { display: 'none' },
+        bgcolor: '#ffffff',
         position: 'sticky', top: 64, zIndex: 10,
-        bgcolor: 'rgba(255,255,255,0.8)',
-        backdropFilter: 'blur(20px)',
         mx: { xs: -2, md: 0 }, px: { xs: 2, md: 0 },
-        borderBottom: '1px solid rgba(0,0,0,0.05)'
+        borderBottom: '1px solid #e2e8f0'
       }}
     >
       {CATEGORIES.map((cat) => (
@@ -56,7 +55,7 @@ const CategoryQuickBar = ({ selectedCategory, onSelect }: CategoryQuickBarProps)
               border: selectedCategory === cat.value ? 'none' : '1px solid rgba(0,0,0,0.08)',
               boxShadow: selectedCategory === cat.value ? '0 8px 24px rgba(99, 102, 241, 0.25)' : 'none',
               '&:hover': {
-                bgcolor: selectedCategory === cat.value ? 'primary.main' : alpha('#6366f1', 0.05),
+                bgcolor: selectedCategory === cat.value ? 'primary.main' : '#f1f5f9',
                 borderColor: 'primary.main',
               },
               '& .MuiChip-icon': {

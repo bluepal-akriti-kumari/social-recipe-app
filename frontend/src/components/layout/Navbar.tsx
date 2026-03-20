@@ -1,7 +1,7 @@
 import { 
   AppBar, Toolbar, Typography, Button, Avatar, 
   Box, IconButton, Menu, MenuItem, InputBase, 
-  alpha, styled, Container, Tooltip 
+  styled, Container, Tooltip 
 } from '@mui/material';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
@@ -22,9 +22,9 @@ import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket';
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
   borderRadius: '24px',
-  backgroundColor: alpha(theme.palette.text.primary, 0.05),
+  backgroundColor: '#f1f5f9',
   '&:hover': {
-    backgroundColor: alpha(theme.palette.text.primary, 0.08),
+    backgroundColor: '#e2e8f0',
   },
   marginRight: theme.spacing(2),
   marginLeft: 0,
@@ -91,9 +91,8 @@ const Navbar = () => {
     <AppBar 
       position="fixed" 
       sx={{ 
-        background: scrolled ? 'rgba(255, 255, 255, 0.6)' : 'transparent',
-        backdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
-        borderBottom: scrolled ? '1px solid rgba(255, 255, 255, 0.5)' : 'none',
+        background: '#ffffff',
+        borderBottom: scrolled ? '1px solid #e2e8f0' : 'none',
         transition: 'all 0.5s cubic-bezier(0.165, 0.84, 0.44, 1)',
         pt: scrolled ? 0 : 1,
         boxShadow: scrolled ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
@@ -137,8 +136,8 @@ const Navbar = () => {
             <Search 
               sx={{ 
                 display: { xs: 'none', md: 'flex' },
-                bgcolor: scrolled ? 'rgba(0,0,0,0.03)' : 'white',
-                border: scrolled ? '1px solid rgba(0,0,0,0.05)' : '1px solid rgba(0,0,0,0.08)',
+                bgcolor: scrolled ? '#f1f5f9' : '#ffffff',
+                border: '1px solid #e2e8f0',
                 boxShadow: scrolled ? 'none' : '0 4px 12px rgba(0,0,0,0.03)',
                 borderRadius: '18px',
                 px: 1
@@ -210,7 +209,7 @@ const Navbar = () => {
                     py: 0.6,
                     borderRadius: '12px',
                     display: { xs: 'none', sm: 'flex' },
-                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)',
+                    border: '1px solid #e2e8f0',
                     textTransform: 'none',
                     fontWeight: 700,
                     '&:hover': { bgcolor: 'primary.dark' }
@@ -253,7 +252,7 @@ const Navbar = () => {
                     maxHeight: 520,
                     borderRadius: '24px', 
                     boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
-                    border: '1px solid rgba(226, 232, 240, 0.8)',
+                    border: '1px solid #e2e8f0',
                     overflow: 'hidden'
                   }
                 }}
@@ -296,8 +295,7 @@ const Navbar = () => {
                           mb: 0.5,
                           gap: 2, 
                           transition: 'all 0.2s ease',
-                          bgcolor: notif.read ? 'transparent' : 'rgba(99, 102, 241, 0.05)',
-                          '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.08)' }
+                          bgcolor: notif.read ? '#ffffff' : '#f5f7ff',
                         }}
                       >
                         <Avatar 
@@ -333,7 +331,7 @@ const Navbar = () => {
                   transition: 'all 0.3s ease',
                   '&:hover': { 
                     borderColor: 'primary.light',
-                    bgcolor: 'rgba(99, 102, 241, 0.05)',
+                    bgcolor: '#f5f7ff',
                     transform: 'translateY(-2px)'
                   } 
                 }}
@@ -361,7 +359,7 @@ const Navbar = () => {
                     minWidth: 220, 
                     borderRadius: '20px', 
                     boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
-                    border: '1px solid rgba(226, 232, 240, 0.8)',
+                    border: '1px solid #e2e8f0',
                     p: 1
                   }
                 }}

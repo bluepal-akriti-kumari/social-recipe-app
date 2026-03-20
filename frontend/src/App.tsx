@@ -22,6 +22,7 @@ import CommunityDetailPage from './pages/Community/CommunityDetailPage';
 import ImporterPage from './pages/Recipe/ImporterPage';
 import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/Auth/ResetPasswordPage';
+import RecipeEditPage from './pages/Recipe/RecipeEditPage';
 
 const PrivateRoute = () => {
   const { isAuthenticated } = useAuth();
@@ -59,6 +60,7 @@ const App = () => {
               <Route path="/shopping" element={<ShoppingListPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/import" element={<ImporterPage />} />
+              <Route path="/recipes/:id/edit" element={<RecipeEditPage />} />
             </Route>
 
             <Route element={<AdminRoute />}>

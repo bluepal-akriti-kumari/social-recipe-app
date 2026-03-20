@@ -16,12 +16,15 @@ import java.util.Optional;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final com.bluepal.repository.RecipeRepository recipeRepository;
     private final FollowRepository followRepository;
     private final com.bluepal.service.NotificationService notificationService;
 
-    public UserServiceImpl(UserRepository userRepository, FollowRepository followRepository,
+    public UserServiceImpl(UserRepository userRepository, com.bluepal.repository.RecipeRepository recipeRepository,
+                           FollowRepository followRepository,
                            com.bluepal.service.NotificationService notificationService) {
         this.userRepository = userRepository;
+        this.recipeRepository = recipeRepository;
         this.followRepository = followRepository;
         this.notificationService = notificationService;
     }
@@ -41,6 +44,8 @@ public class UserServiceImpl implements UserService {
             }
         }
 
+        long recipeCount = recipeRepository.countByAuthor(user);
+
         return UserProfileResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
@@ -53,6 +58,7 @@ public class UserServiceImpl implements UserService {
                 .isVerified(user.isVerified())
                 .reputationPoints(user.getReputationPoints())
                 .reputationLevel(user.getReputationLevel())
+                .recipeCount((int) recipeCount)
                 .build();
     }
 
