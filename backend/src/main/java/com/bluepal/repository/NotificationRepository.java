@@ -14,5 +14,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Page<Notification> findByRecipientOrderByCreatedAtDesc(User recipient, Pageable pageable);
     List<Notification> findByRecipientAndReadOrderByCreatedAtDesc(User recipient, boolean read);
     long countByRecipientAndRead(User recipient, boolean read);
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
     void deleteByRecipeId(Long recipeId);
 }

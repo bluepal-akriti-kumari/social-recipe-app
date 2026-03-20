@@ -17,8 +17,10 @@ const CreateRecipeModal: React.FC = () => {
       fullWidth
       PaperProps={{
         sx: { 
-          borderRadius: 1.5,
-          p: 1
+          borderRadius: 4,
+          p: 1,
+          bgcolor: '#ffffff',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.1)'
         }
       }}
     >
