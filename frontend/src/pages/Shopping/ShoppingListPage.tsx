@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { 
   Container, Typography, Box, Paper, Checkbox, 
   Button, TextField, Stack, 
-  CircularProgress, Alert, Chip
+  CircularProgress, Alert, Chip, Grid
 } from '@mui/material';
+import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket';
 import { motion, AnimatePresence } from 'framer-motion';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import AddIcon from '@mui/icons-material/Add';
@@ -131,18 +132,22 @@ const ShoppingListPage = () => {
         ) : (
           <Stack spacing={4}>
             {error && <Alert severity="error">{error}</Alert>}
-            
-              <Stack spacing={3}>
+
+            <Stack spacing={3}>
                 {categories.map((cat) => (
                   <Box key={cat}>
-                    <Typography 
-                      variant="overline" 
-                      sx={{ 
-                        fontWeight: 900, 
-                        color: 'primary.main', 
+                    <Typography
+                      variant="overline"
+                      sx={{
+                        fontWeight: 900,
+                        color: 'primary.main',
                         letterSpacing: '0.1em',
                         display: 'flex',
                         alignItems: 'center',
+                        bgcolor: 'rgba(0,0,0,0.03)',
+                        p: 1.2,
+                        borderRadius: '14px',
+                        '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
                         gap: 1,
                         mb: 1.5,
                         px: 1
@@ -189,8 +194,32 @@ const ShoppingListPage = () => {
                   </Box>
                 ))}
                 {pendingItems.length === 0 && (
-                  <Paper className="glass" sx={{ borderRadius: '24px', p: 4, textAlign: 'center' }}>
-                    <Typography sx={{ color: 'text.disabled', fontStyle: 'italic' }}>Your pantry is well-stocked</Typography>
+                  <Paper sx={{ borderRadius: '32px', p: 8, textAlign: 'center', bgcolor: 'rgba(255,255,255,0.5)', border: '2px dashed #e2e8f0' }}>
+                    <Box sx={{ mb: 4, display: 'inline-flex', p: 3, borderRadius: '50%', bgcolor: '#f8fafc' }}>
+                      <ShoppingBasketIcon sx={{ fontSize: 48, color: 'text.disabled', opacity: 0.5 }} />
+                    </Box>
+                    <Typography variant="h4" sx={{ fontWeight: 900, mb: 2, letterSpacing: '-0.02em' }}>
+                      Your Pantry is Ready
+                    </Typography>
+                    <Typography variant="body1" sx={{ color: 'text.secondary', mb: 6, maxWidth: 500, mx: 'auto', fontWeight: 500, lineHeight: 1.6 }}>
+                      Start your culinary journey by adding ingredients manually above, or import them directly from your favorite recipes!
+                    </Typography>
+                    
+                    <Grid container spacing={3} sx={{ maxWidth: 700, mx: 'auto', textAlign: 'left' }}>
+                      {[
+                        { title: 'Import from Recipes', desc: 'Add ingredients from any recipe page with one click.', icon: '🛒' },
+                        { title: 'Meal Plan Sync', desc: 'Automatically gather everything needed for your entire week.', icon: '📅' },
+                        { title: 'Smart Aisle Layout', desc: 'We automatically group your items by category (Produce, Dairy, etc.).', icon: '🏷️' }
+                      ].map((feature) => (
+                        <Grid size={{ xs: 12, md: 4 }} key={feature.title}>
+                          <Box sx={{ p: 2.5, borderRadius: '16px', bgcolor: 'white', height: '100%', border: '1px solid #f1f5f9' }}>
+                            <Typography sx={{ fontSize: '1.5rem', mb: 1 }}>{feature.icon}</Typography>
+                            <Typography sx={{ fontWeight: 800, mb: 0.5, fontSize: '0.9rem' }}>{feature.title}</Typography>
+                            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 500, lineHeight: 1.4 }}>{feature.desc}</Typography>
+                          </Box>
+                        </Grid>
+                      ))}
+                    </Grid>
                   </Paper>
                 )}
               </Stack>

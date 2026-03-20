@@ -7,6 +7,7 @@ import com.bluepal.entity.NotificationType;
 import com.bluepal.entity.User;
 import com.bluepal.exception.ResourceNotFoundException;
 import com.bluepal.repository.FollowRepository;
+import com.bluepal.repository.RecipeRepository;
 import com.bluepal.repository.UserRepository;
 import com.bluepal.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +34,9 @@ public class UserServiceImplTest {
 
     @Mock
     private NotificationService notificationService;
+
+    @Mock
+    private RecipeRepository recipeRepository;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -66,6 +70,7 @@ public class UserServiceImplTest {
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(user));
         when(userRepository.findByUsername("follower")).thenReturn(Optional.of(follower));
         when(followRepository.existsByFollowerAndFollowing(follower, user)).thenReturn(true);
+        when(recipeRepository.countByAuthor(user)).thenReturn(5L);
 
         UserProfileResponse response = userService.getUserProfile("testuser", "follower");
 
