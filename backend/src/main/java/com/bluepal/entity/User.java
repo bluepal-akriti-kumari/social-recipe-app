@@ -61,6 +61,10 @@ public class User {
     private boolean isVerified = false;
 
     @Builder.Default
+    @Column(nullable = false)
+    private boolean enabled = true;
+
+    @Builder.Default
     @Column(name = "reputation_points", nullable = false)
     private Integer reputationPoints = 0;
 
