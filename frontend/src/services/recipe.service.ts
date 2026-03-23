@@ -57,8 +57,8 @@ export interface CursorResponse<T> {
 
 export const recipeService = {
   // Updated for Cursor-based Pagination
-  getExploreFeed: (cursor?: string, category?: string, size = 12): Promise<CursorResponse<RecipeSummary>> =>
-    api.get(`/recipes/explore`, { params: { cursor, category, size } }).then(r => r.data),
+  getExploreFeed: (cursor?: string, category?: string, size = 12, maxTime?: number, maxCalories?: number, sort = 'newest'): Promise<CursorResponse<RecipeSummary>> =>
+    api.get(`/recipes/explore`, { params: { cursor, category, size, maxTime, maxCalories, sort } }).then(r => r.data),
 
   getPersonalizedFeed: (cursor?: string, size = 12): Promise<CursorResponse<RecipeSummary>> =>
     api.get(`/recipes/feed`, { params: { cursor, size } }).then(r => r.data),

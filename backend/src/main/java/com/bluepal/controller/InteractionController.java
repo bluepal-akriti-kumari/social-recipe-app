@@ -38,16 +38,20 @@ public class InteractionController {
 
     private final com.bluepal.service.interfaces.UserService userService;
 
+    private final com.bluepal.service.impl.ModerationService moderationService;
+
     public InteractionController(LikeRepository likeRepository, CommentRepository commentRepository,
                                  RecipeRepository recipeRepository, UserRepository userRepository,
                                  com.bluepal.service.NotificationService notificationService,
-                                 com.bluepal.service.interfaces.UserService userService) {
+                                 com.bluepal.service.interfaces.UserService userService,
+                                 com.bluepal.service.impl.ModerationService moderationService) {
         this.likeRepository = likeRepository;
         this.commentRepository = commentRepository;
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.userService = userService;
+        this.moderationService = moderationService;
     }
 
     private String getCurrentUsername() {
@@ -176,6 +180,24 @@ public class InteractionController {
         
         commentRepository.delete(comment);
         return ResponseEntity.ok("Comment deleted successfully");
+    }
+
+    @PostMapping("/reports")
+    public ResponseEntity<?> reportContent(@RequestBody Map<String, Object> request) {
+        String username = getCurrentUsername();
+        if (username == null) return ResponseEntity.status(401).body("Auth required");
+
+        User reporter = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+
+        moderationService.reportContent(
+                reporter,
+                (String) request.get("reason"),
+                (String) request.get("targetType"),
+                Long.valueOf(request.get("targetId").toString())
+        );
+
+        return ResponseEntity.ok("Report submitted successfully");
     }
 
     private CommentResponse mapToCommentResponse(Comment comment) {

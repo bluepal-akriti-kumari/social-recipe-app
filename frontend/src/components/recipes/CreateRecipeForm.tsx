@@ -26,6 +26,7 @@ interface RecipeFormValues {
   ingredients: { name: string; quantity: string; unit: string }[];
   steps: { stepNumber: number; instruction: string }[];
   category: string;
+  isPublished: boolean;
 }
 
 interface CreateRecipeFormProps {
@@ -51,7 +52,8 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
       servings: 4,
       imageUrl: '',
       additionalImages: [],
-      category: 'VEG'
+      category: 'VEG',
+      isPublished: true
     }
   });
 
@@ -375,9 +377,32 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
           )}
           
           {activeStep === steps.length - 1 ? (
-            <Button type="submit" variant="contained" color="primary" disabled={isSubmitting} size="small" sx={{ borderRadius: 1.5 }}>
-              {isSubmitting ? <CircularProgress size={20} /> : 'Post Recipe'}
-            </Button>
+            <>
+              <Button 
+                variant="outlined" 
+                color="primary" 
+                disabled={isSubmitting} 
+                size="small" 
+                sx={{ borderRadius: 1.5 }}
+                onClick={() => {
+                  setValue('isPublished', false);
+                  handleSubmit(onSubmit)();
+                }}
+              >
+                Save as Draft
+              </Button>
+              <Button 
+                type="submit" 
+                variant="contained" 
+                color="primary" 
+                disabled={isSubmitting} 
+                size="small" 
+                sx={{ borderRadius: 1.5 }}
+                onClick={() => setValue('isPublished', true)}
+              >
+                {isSubmitting ? <CircularProgress size={20} /> : 'Post Recipe'}
+              </Button>
+            </>
           ) : (
             <Button variant="contained" onClick={handleNext} size="small" sx={{ borderRadius: 1.5 }}>Next</Button>
           )}

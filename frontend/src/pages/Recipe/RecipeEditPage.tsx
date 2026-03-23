@@ -33,6 +33,7 @@ interface RecipeFormValues {
   protein?: number;
   carbs?: number;
   fats?: number;
+  isPublished: boolean;
 }
 
 const RecipeEditPage: React.FC = () => {
@@ -61,7 +62,8 @@ const RecipeEditPage: React.FC = () => {
       servings: 4,
       imageUrl: '',
       additionalImages: [],
-      category: 'VEG'
+      category: 'VEG',
+      isPublished: true
     }
   });
 
@@ -89,7 +91,8 @@ const RecipeEditPage: React.FC = () => {
         calories: recipe.calories,
         protein: recipe.protein,
         carbs: recipe.carbs,
-        fats: recipe.fats
+        fats: recipe.fats,
+        isPublished: recipe.isPublished ?? true
       });
     }
   }, [recipe, reset]);
@@ -471,15 +474,30 @@ const RecipeEditPage: React.FC = () => {
             )}
             
             {activeStep === steps.length - 1 ? (
-              <Button 
-                type="submit" 
-                variant="contained" 
-                color="primary" 
-                disabled={isSubmitting} 
-                sx={{ borderRadius: 1.5, px: 4, py: 1, fontWeight: 800 }}
-              >
-                {isSubmitting ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Save Changes'}
-              </Button>
+              <>
+                <Button 
+                  variant="outlined" 
+                  color="primary" 
+                  disabled={isSubmitting} 
+                  sx={{ borderRadius: 1.5, px: 3, fontWeight: 800 }}
+                  onClick={() => {
+                    setValue('isPublished', false);
+                    handleSubmit(onSubmit)();
+                  }}
+                >
+                  Save as Draft
+                </Button>
+                <Button 
+                  type="submit" 
+                  variant="contained" 
+                  color="primary" 
+                  disabled={isSubmitting} 
+                  sx={{ borderRadius: 1.5, px: 4, py: 1, fontWeight: 800 }}
+                  onClick={() => setValue('isPublished', true)}
+                >
+                  {isSubmitting ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Publish Changes'}
+                </Button>
+              </>
             ) : (
               <Button 
                 variant="contained" 

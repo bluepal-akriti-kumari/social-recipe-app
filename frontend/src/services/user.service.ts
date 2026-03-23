@@ -28,4 +28,10 @@ export const userService = {
   
   updateProfile: (data: { bio?: string; profilePictureUrl?: string; coverPictureUrl?: string }) => 
     api.put<UserProfile>('/users/me', data).then(r => r.data),
+  
+  getFollowers: (id: number) => 
+    api.get<UserProfile[]>(`/users/${id}/followers`).then(r => r.data),
+  
+  getFollowing: (id: number) => 
+    api.get<UserProfile[]>(`/users/${id}/following`).then(r => r.data),
 };

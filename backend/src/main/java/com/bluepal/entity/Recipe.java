@@ -82,6 +82,10 @@ public class Recipe {
     @Column(name = "rating_count")
     private Integer ratingCount = 0;
 
+    @Builder.Default
+    @Column(name = "is_published", nullable = false)
+    private boolean isPublished = true;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

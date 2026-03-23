@@ -40,7 +40,10 @@ public class RecipeController {
     public ResponseEntity<Map<String, Object>> getExploreFeed(
             @RequestParam(name = "cursor", required = false) String cursorStr,
             @RequestParam(name = "size", defaultValue = "12") int size,
-            @RequestParam(name = "category", required = false) String category) {
+            @RequestParam(name = "category", required = false) String category,
+            @RequestParam(name = "maxTime", required = false) Integer maxTime,
+            @RequestParam(name = "maxCalories", required = false) Integer maxCalories,
+            @RequestParam(name = "sort", defaultValue = "newest") String sort) {
         
         LocalDateTime cursor = (cursorStr != null && !cursorStr.isEmpty()) 
                 ? LocalDateTime.parse(cursorStr) 
@@ -49,7 +52,7 @@ public class RecipeController {
         if (category != null && !category.isEmpty()) {
             return ResponseEntity.ok(recipeService.getExploreFeedCursorByCategory(category, cursor, size, getCurrentUsername()));
         }
-        return ResponseEntity.ok(recipeService.getExploreFeedCursor(cursor, size, getCurrentUsername()));
+        return ResponseEntity.ok(recipeService.getFilteredExploreFeed(cursor, size, category, maxTime, maxCalories, sort, getCurrentUsername()));
     }
 
     @GetMapping("/recipes/trending")

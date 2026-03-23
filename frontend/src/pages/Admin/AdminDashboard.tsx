@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { 
   Container, Box, Typography, Paper, Table, TableBody, TableCell, 
   TableContainer, TableHead, TableRow, Avatar, Chip, IconButton,
-  CircularProgress, Grid, Card, CardContent, Tooltip
+  CircularProgress, Grid, Card, CardContent, Tooltip,
+  Tabs, Tab
 } from '@mui/material';
+import FlagIcon from '@mui/icons-material/Flag';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
@@ -21,8 +25,19 @@ interface User {
   reputationPoints: number;
 }
 
+interface Report {
+  id: number;
+  reporter: { username: string };
+  reason: string;
+  targetType: string;
+  targetId: number;
+  resolved: boolean;
+  createdAt: string;
+}
+
 const AdminDashboard = () => {
   const queryClient = useQueryClient();
+  const [tabValue, setTabValue] = useState(0);
 
   // --- Data Fetching ---
   const { 
@@ -34,13 +49,22 @@ const AdminDashboard = () => {
   });
 
   const { 
-    data: stats = { totalUsers: 0, totalRecipes: 0 }, 
+    data: reports = [], 
+    isLoading: isReportsLoading 
+  } = useQuery({
+    queryKey: ['admin', 'reports'],
+    queryFn: () => api.get<Report[]>('/admin/reports').then(res => res.data),
+  });
+
+  const { 
+    data: stats = { totalUsers: 0, totalRecipes: 0, pendingReports: 0 }, 
     isLoading: isStatsLoading 
   } = useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: () => api.get<any>('/admin/stats').then(res => ({
       totalUsers: res.data.totalUsers || 0,
-      totalRecipes: res.data.totalRecipes || 0
+      totalRecipes: res.data.totalRecipes || 0,
+      pendingReports: res.data.pendingReports || 0
     })),
   });
 
@@ -65,6 +89,15 @@ const AdminDashboard = () => {
     onError: () => toast.error('Failed to update user role'),
   });
 
+  const resolveReportMutation = useMutation({
+    mutationFn: (id: number) => api.patch(`/admin/reports/${id}/resolve`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin'] });
+      toast.success('Report resolved');
+    },
+    onError: () => toast.error('Failed to resolve report'),
+  });
+
   const handleToggleVerify = (username: string) => toggleVerifyMutation.mutate(username);
   
   const handlePromoteAdmin = (username: string, currentRoles: string[]) => {
@@ -75,7 +108,8 @@ const AdminDashboard = () => {
     updateRolesMutation.mutate({ username, roles: newRoles });
   };
 
-  const isLoading = isUsersLoading || isStatsLoading;
+  const isLoading = isUsersLoading || isStatsLoading || isReportsLoading;
+  const handleTabChange = (_: any, newValue: number) => setTabValue(newValue);
 
   if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
 
@@ -114,10 +148,31 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Card className="glass-card" sx={{ borderRadius: 2 }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ p: 1.5, bgcolor: 'error.light', borderRadius: 1.5, display: 'flex' }}>
+                   <FlagIcon sx={{ color: 'error.main' }} />
+                </Box>
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 950 }}>{stats.pendingReports}</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>PENDING REPORTS</Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
 
-        {/* Users Table */}
-        <Paper className="glass-card" sx={{ borderRadius: 2, overflow: 'hidden' }}>
+        <Box sx={{ mb: 4, borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs value={tabValue} onChange={handleTabChange} sx={{ '& .MuiTab-root': { fontWeight: 900 } }}>
+            <Tab label="User Management" />
+            <Tab label="Reports & Moderation" />
+          </Tabs>
+        </Box>
+
+        {tabValue === 0 && (
+          /* Users Table */
+          <Paper className="glass-card" sx={{ borderRadius: 2, overflow: 'hidden' }}>
           <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
             <Typography variant="h6" sx={{ fontWeight: 900 }}>User Management</Typography>
           </Box>
@@ -189,6 +244,62 @@ const AdminDashboard = () => {
             </Table>
           </TableContainer>
         </Paper>
+        )}
+
+        {tabValue === 1 && (
+          /* Reports Table */
+          <Paper className="glass-card" sx={{ borderRadius: 2, overflow: 'hidden' }}>
+            <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+              <Typography variant="h6" sx={{ fontWeight: 900 }}>Pending Reports</Typography>
+            </Box>
+            <TableContainer>
+              <Table>
+                <TableHead sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 900 }}>Reporter</TableCell>
+                    <TableCell sx={{ fontWeight: 900 }}>Target</TableCell>
+                    <TableCell sx={{ fontWeight: 900 }}>Reason</TableCell>
+                    <TableCell sx={{ fontWeight: 900 }}>Date</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 900 }}>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {reports.map((report) => (
+                    <TableRow key={report.id} hover>
+                      <TableCell sx={{ fontWeight: 800 }}>{report.reporter.username}</TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={`${report.targetType} #${report.targetId}`} 
+                          size="small" 
+                          variant="outlined"
+                          sx={{ fontWeight: 800, fontSize: '0.65rem' }} 
+                        />
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>{report.reason}</TableCell>
+                      <TableCell variant="caption">{new Date(report.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell align="right">
+                        <IconButton 
+                          color="success" 
+                          onClick={() => resolveReportMutation.mutate(report.id)}
+                          disabled={resolveReportMutation.isPending}
+                        >
+                          <CheckCircleOutlineIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {reports.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                        No pending reports. Everything looks clean!
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        )}
       </Container>
     </Box>
   );
