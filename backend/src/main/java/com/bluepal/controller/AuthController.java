@@ -1,7 +1,6 @@
 package com.bluepal.controller;
 
 import com.bluepal.dto.request.LoginRequest;
-
 import com.bluepal.dto.request.RegisterRequest;
 import com.bluepal.dto.response.JwtResponse;
 import com.bluepal.entity.User;
@@ -17,19 +16,22 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.bluepal.dto.request.ForgotPasswordRequest;
 import com.bluepal.dto.request.ResetPasswordRequest;
 import com.bluepal.entity.PasswordResetToken;
+import com.bluepal.entity.VerificationToken;
 import com.bluepal.repository.PasswordResetTokenRepository;
+import com.bluepal.repository.VerificationTokenRepository;
 import com.bluepal.service.impl.EmailServiceImpl;
+
 import java.time.LocalDateTime;
 import java.security.SecureRandom;
 import java.util.UUID;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -40,17 +42,20 @@ public class AuthController {
         private final PasswordEncoder encoder;
         private final JwtUtils jwtUtils;
         private final PasswordResetTokenRepository passwordResetTokenRepository;
+        private final VerificationTokenRepository verificationTokenRepository;
         private final EmailServiceImpl emailService;
 
         public AuthController(AuthenticationManager authenticationManager, UserRepository userRepository,
                         PasswordEncoder encoder, JwtUtils jwtUtils,
                         PasswordResetTokenRepository passwordResetTokenRepository,
+                        VerificationTokenRepository verificationTokenRepository,
                         EmailServiceImpl emailService) {
                 this.authenticationManager = authenticationManager;
                 this.userRepository = userRepository;
                 this.encoder = encoder;
                 this.jwtUtils = jwtUtils;
                 this.passwordResetTokenRepository = passwordResetTokenRepository;
+                this.verificationTokenRepository = verificationTokenRepository;
                 this.emailService = emailService;
         }
 
@@ -62,9 +67,11 @@ public class AuthController {
                                                 loginRequest.getPassword()));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                
+                CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+
                 String jwt = jwtUtils.generateJwtToken(authentication);
 
-                CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
                 List<String> roles = userDetails.getAuthorities().stream()
                                 .map(GrantedAuthority::getAuthority)
                                 .collect(Collectors.toList());
@@ -77,6 +84,7 @@ public class AuthController {
         }
 
         @PostMapping("/register")
+        @Transactional
         public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest signUpRequest) {
                 try {
                         if (userRepository.existsByUsername(signUpRequest.getUsername())) {
@@ -96,15 +104,41 @@ public class AuthController {
                                         .username(signUpRequest.getUsername())
                                         .email(signUpRequest.getEmail())
                                         .password(encoder.encode(signUpRequest.getPassword()))
+                                        .enabled(true)
                                         .build();
 
                         userRepository.save(user);
-                        return ResponseEntity.ok("User registered successfully!");
+
+                        return ResponseEntity.ok("Registration successful! You can now log in.");
                 } catch (Exception e) {
                         System.err.println("Registration failed: " + e.getMessage());
                         e.printStackTrace();
                         return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
                 }
+        }
+
+        @GetMapping("/verify-registration")
+        @Transactional
+        public ResponseEntity<?> verifyRegistration(@RequestParam("token") String token) {
+                Optional<VerificationToken> tokenOpt = verificationTokenRepository.findByToken(token);
+                
+                if (tokenOpt.isEmpty()) {
+                        return ResponseEntity.badRequest().body("Error: Invalid verification token!");
+                }
+
+                VerificationToken verificationToken = tokenOpt.get();
+                if (verificationToken.isExpired()) {
+                        verificationTokenRepository.delete(verificationToken);
+                        return ResponseEntity.badRequest().body("Error: Verification token has expired!");
+                }
+
+                User user = verificationToken.getUser();
+                user.setEnabled(true);
+                userRepository.save(user);
+
+                verificationTokenRepository.delete(verificationToken);
+
+                return ResponseEntity.ok("Account verified successfully! You can now log in.");
         }
 
         @PostMapping("/change-password")

@@ -14,8 +14,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -49,6 +47,9 @@ public class AuthControllerTest {
     private PasswordResetTokenRepository passwordResetTokenRepository;
 
     @MockBean
+    private com.bluepal.repository.VerificationTokenRepository verificationTokenRepository;
+
+    @MockBean
     private EmailServiceImpl emailService;
 
     @MockBean
@@ -66,13 +67,14 @@ public class AuthControllerTest {
 
         when(userRepository.existsByUsername("newuser")).thenReturn(false);
         when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
+        when(userRepository.save(any())).thenAnswer(i -> i.getArguments()[0]);
 
         mockMvc.perform(post("/api/auth/register")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("User registered successfully!"));
+                .andExpect(content().string("Registration successful! You can now log in."));
     }
 
     @Test
