@@ -56,6 +56,9 @@ public class InteractionControllerTest {
     @MockBean
     private UserService userService;
 
+    @MockBean
+    private com.bluepal.service.impl.ModerationService moderationService;
+
     @Autowired
     private ObjectMapper objectMapper;
 
