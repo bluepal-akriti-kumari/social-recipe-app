@@ -151,7 +151,7 @@ public class RecipeServiceImplTest {
 
     @Test
     void getExploreFeed_Success() {
-        when(recipeRepository.findAllByOrderByCreatedAtDesc(any())).thenReturn(java.util.List.of(recipe));
+        when(recipeRepository.findAllByIsPublishedTrueOrderByCreatedAtDesc(any())).thenReturn(java.util.List.of(recipe));
 
         java.util.Map<String, Object> result = recipeService.getExploreFeedCursor(null, 10, null);
 
