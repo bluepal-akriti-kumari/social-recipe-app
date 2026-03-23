@@ -419,7 +419,7 @@ public class RecipeServiceImpl implements RecipeService {
 	@Transactional(readOnly = true)
 	public List<RecipeResponse> getRecipesByCategory(String category, String currentUsername, int limit) {
 		try {
-			com.bluepal.entity.RecipeCategory cat = com.bluepal.entity.RecipeCategory.valueOf(category.toUpperCase());
+			RecipeCategory cat = RecipeCategory.valueOf(category.toUpperCase());
 			Pageable pageable = PageRequest.of(0, limit);
 			return recipeRepository.findByCategoryAndIsPublishedTrueOrderByCreatedAtDesc(cat, pageable).stream()
 					.map(r -> this.mapToResponse(r, currentUsername)).collect(Collectors.toList());
