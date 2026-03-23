@@ -15,9 +15,10 @@ import { motion } from 'framer-motion';
 import { recipeService } from '../../services/recipe.service';
 import RecipeCard from '../../components/recipes/RecipeCard';
 import EditProfileModal from '../../components/profile/EditProfileModal';
-import { userService } from '../../services/user.service';
+import { userService, type UserProfile } from '../../services/user.service';
 import { useAuth } from '../../hooks/useAuth';
 import { toast } from 'react-hot-toast';
+import UserListModal from '../../components/profile/UserListModal';
 
 const ProfilePage = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +29,10 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPulseDrawerOpen, setIsPulseDrawerOpen] = useState(false);
+  const [isUserListModalOpen, setIsUserListModalOpen] = useState(false);
+  const [userListTitle, setUserListTitle] = useState('');
+  const [modalUsers, setModalUsers] = useState<UserProfile[]>([]);
+  const [isUserListLoading, setIsUserListLoading] = useState(false);
 
   // --- Data Fetching (React Query) ---
   const { 
@@ -52,6 +57,7 @@ const ProfilePage = () => {
       const data = activeTab === 0 
         ? await recipeService.getUserRecipes(Number(id)) 
         : await recipeService.getUserLikedRecipes(Number(id));
+      console.log('DEBUG: Fetched recipes data:', data);
       setRecipes(data.content);
       setNextCursor(data.nextCursor);
       return data;
@@ -100,6 +106,36 @@ const ProfilePage = () => {
 
   const handleLike = (id: number) => likeMutation.mutate(id);
   const handleBookmark = (id: number) => bookmarkMutation.mutate(id);
+
+  const handleShowFollowers = async () => {
+    if (!profile) return;
+    setUserListTitle('Followers');
+    setIsUserListModalOpen(true);
+    setIsUserListLoading(true);
+    try {
+      const data = await userService.getFollowers(Number(id));
+      setModalUsers(data);
+    } catch (err) {
+      toast.error('Failed to load followers');
+    } finally {
+      setIsUserListLoading(false);
+    }
+  };
+
+  const handleShowFollowing = async () => {
+    if (!profile) return;
+    setUserListTitle('Following');
+    setIsUserListModalOpen(true);
+    setIsUserListLoading(true);
+    try {
+      const data = await userService.getFollowing(Number(id));
+      setModalUsers(data);
+    } catch (err) {
+      toast.error('Failed to load following');
+    } finally {
+      setIsUserListLoading(false);
+    }
+  };
 
   if (isProfileLoading && !profile) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
@@ -258,11 +294,25 @@ const ProfilePage = () => {
               </Typography>
               
               <Box sx={{ display: 'flex', gap: { xs: 3, md: 5 }, justifyContent: { xs: 'center', md: 'flex-start' } }}>
-                <Box sx={{ textAlign: 'center' }}>
+                <Box 
+                  sx={{ 
+                    textAlign: 'center', 
+                    cursor: 'pointer',
+                    '&:hover': { opacity: 0.7 } 
+                  }}
+                  onClick={handleShowFollowers}
+                >
                   <Typography variant="h5" sx={{ fontWeight: 950 }}>{profile.followerCount}</Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Followers</Typography>
                 </Box>
-                <Box sx={{ textAlign: 'center' }}>
+                <Box 
+                  sx={{ 
+                    textAlign: 'center', 
+                    cursor: 'pointer',
+                    '&:hover': { opacity: 0.7 } 
+                  }}
+                  onClick={handleShowFollowing}
+                >
                   <Typography variant="h5" sx={{ fontWeight: 950 }}>{profile.followingCount}</Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Following</Typography>
                 </Box>
@@ -441,6 +491,14 @@ const ProfilePage = () => {
           profile={profile}
         />
       )}
+
+      <UserListModal
+        open={isUserListModalOpen}
+        onClose={() => setIsUserListModalOpen(false)}
+        title={userListTitle}
+        users={modalUsers}
+        isLoading={isUserListLoading}
+      />
     </Box>
   );
 };

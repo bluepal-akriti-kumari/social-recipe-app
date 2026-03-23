@@ -236,7 +236,9 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
         
-        user.setReputationPoints(user.getReputationPoints() + points);
+        Integer currentPoints = user.getReputationPoints();
+        if (currentPoints == null) currentPoints = 0;
+        user.setReputationPoints(currentPoints + points);
         
         // Update level based on points
         if (user.getReputationPoints() >= 5000) {
@@ -254,5 +256,24 @@ public class UserServiceImpl implements UserService {
         }
         
         userRepository.save(user);
+    }
+    @Override
+    public java.util.List<UserProfileResponse> getFollowers(Long userId, String currentUsername) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        
+        return followRepository.findByFollowing(user).stream()
+                .map(follow -> buildProfileResponse(follow.getFollower(), currentUsername))
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
+    public java.util.List<UserProfileResponse> getFollowing(Long userId, String currentUsername) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        
+        return followRepository.findByFollower(user).stream()
+                .map(follow -> buildProfileResponse(follow.getFollowing(), currentUsername))
+                .collect(java.util.stream.Collectors.toList());
     }
 }

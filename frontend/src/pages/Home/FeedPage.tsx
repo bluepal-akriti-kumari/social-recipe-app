@@ -6,6 +6,7 @@ import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tansta
 import RecipeCard from '../../components/recipes/RecipeCard';
 import FeaturedRecipeCarousel from '../../components/discovery/FeaturedRecipeCarousel';
 import CategoryQuickBar from '../../components/discovery/CategoryQuickBar';
+import FilterSidebar from '../../components/discovery/FilterSidebar';
 import { recipeService } from '../../services/recipe.service';
 import { toast } from 'react-hot-toast';
 
@@ -14,7 +15,17 @@ const FeedPage = () => {
   const queryClient = useQueryClient();
   const queryParams = new URLSearchParams(location.search);
   const searchQuery = queryParams.get('q');
-  const [selectedCategory, setSelectedCategory] = useState('');
+   const [selectedCategory, setSelectedCategory] = useState('');
+  const [filters, setFilters] = useState({
+    maxTime: 180,
+    maxCalories: 2000,
+    sort: 'newest'
+  });
+
+  const handleFilterReset = () => {
+    setFilters({ maxTime: 180, maxCalories: 2000, sort: 'newest' });
+    setSelectedCategory('');
+  };
 
   // --- Search Results (Static Query) ---
   const { 
@@ -36,8 +47,15 @@ const FeedPage = () => {
     isLoading: isExploreLoading,
     error: exploreError,
   } = useInfiniteQuery({
-    queryKey: ['recipes', 'explore', selectedCategory],
-    queryFn: ({ pageParam }) => recipeService.getExploreFeed(pageParam, selectedCategory),
+    queryKey: ['recipes', 'explore', selectedCategory, filters],
+    queryFn: ({ pageParam }) => recipeService.getExploreFeed(
+      pageParam, 
+      selectedCategory, 
+      12, 
+      filters.maxTime, 
+      filters.maxCalories, 
+      filters.sort
+    ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
     enabled: !searchQuery,
@@ -156,7 +174,16 @@ const FeedPage = () => {
         )}
 
         <Grid container spacing={5}>
-          <Grid size={{ xs: 12 }}>
+          <Grid size={{ md: 3 }} sx={{ display: { xs: 'none', md: 'block' } }}>
+            {!searchQuery && (
+              <FilterSidebar 
+                filters={filters} 
+                onFilterChange={setFilters} 
+                onReset={handleFilterReset} 
+              />
+            )}
+          </Grid>
+          <Grid size={{ xs: 12, md: searchQuery ? 12 : 9 }}>
             <AnimatePresence mode="popLayout">
               <Box 
                 sx={{ 
@@ -164,9 +191,9 @@ const FeedPage = () => {
                   gridTemplateColumns: { 
                     xs: '1fr', 
                     sm: 'repeat(2, 1fr)', 
-                    md: 'repeat(3, 1fr)',
-                    lg: 'repeat(4, 1fr)',
-                    xl: 'repeat(5, 1fr)'
+                    md: searchQuery ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+                    lg: searchQuery ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
+                    xl: searchQuery ? 'repeat(5, 1fr)' : 'repeat(4, 1fr)'
                   },
                   gap: { xs: 3, md: 5 } 
                 }}
