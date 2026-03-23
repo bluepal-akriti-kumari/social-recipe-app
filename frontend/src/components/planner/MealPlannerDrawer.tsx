@@ -8,10 +8,9 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import { mealPlanService } from '../../services/mealPlan.service';
 import { recipeService, type RecipeSummary } from '../../services/recipe.service';
-import { format, isPast, startOfDay, isBefore } from 'date-fns';
+import { format, startOfDay, isBefore } from 'date-fns';
 import { toast } from 'react-hot-toast';
 
 interface MealPlannerDrawerProps {

@@ -34,6 +34,7 @@ export interface RecipeSummary {
   averageRating?: number;
   ratingCount?: number;
   userRating?: number;
+  isPublished?: boolean;
   createdAt: string;
   author: {
     id: number;
