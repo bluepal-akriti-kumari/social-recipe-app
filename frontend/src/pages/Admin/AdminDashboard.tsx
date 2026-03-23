@@ -276,7 +276,7 @@ const AdminDashboard = () => {
                         />
                       </TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>{report.reason}</TableCell>
-                      <TableCell variant="caption">{new Date(report.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>{new Date(report.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell align="right">
                         <IconButton 
                           color="success" 

@@ -1,7 +1,7 @@
 import { 
   Box, Typography, Slider, FormControl, 
-  InputLabel, Select, MenuItem, Button, 
-  Divider, Chip, Stack
+  Select, MenuItem, Button, 
+  Divider, Stack
 } from '@mui/material';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 
