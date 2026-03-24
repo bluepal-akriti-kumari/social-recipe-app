@@ -12,7 +12,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.jpa.domain.Specification;
+import jakarta.persistence.criteria.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -91,6 +94,7 @@ public class RecipeServiceImpl implements RecipeService {
 				.imageUrl(request.getImageUrl()).prepTimeMinutes(request.getPrepTimeMinutes())
 				.cookTimeMinutes(request.getCookTimeMinutes()).servings(request.getServings()).author(author)
 				.category(category)
+				.isPublished(request.isPublished())
 				.calories(request.getCalories())
 				.protein(request.getProtein())
 				.carbs(request.getCarbs())
@@ -152,36 +156,43 @@ public class RecipeServiceImpl implements RecipeService {
 
 	// The Mapping Method that fixes your Compilation Error
 	private RecipeResponse mapToResponse(Recipe recipe, String currentUsername) {
-		boolean isLiked = checkIsLiked(recipe, currentUsername);
-		User currentUser = currentUsername != null ? userRepository.findByUsername(currentUsername).orElse(null) : null;
-		boolean isBookmarked = currentUser != null && bookmarkService.isBookmarked(currentUser, recipe.getId());
-		int userRating = currentUser != null ? ratingService.getUserRating(currentUser, recipe) : 0;
+		try {
+			boolean isLiked = checkIsLiked(recipe, currentUsername);
+			User currentUser = currentUsername != null ? userRepository.findByUsername(currentUsername).orElse(null) : null;
+			boolean isBookmarked = currentUser != null && bookmarkService.isBookmarked(currentUser, recipe.getId());
+			int userRating = currentUser != null ? ratingService.getUserRating(currentUser, recipe) : 0;
 
-		return RecipeResponse.builder().id(recipe.getId()).title(recipe.getTitle()).description(recipe.getDescription())
-				.imageUrl(recipe.getImageUrl()).prepTimeMinutes(recipe.getPrepTimeMinutes())
-				.cookTimeMinutes(recipe.getCookTimeMinutes()).servings(recipe.getServings())
-				.calories(recipe.getCalories()).protein(recipe.getProtein()).carbs(recipe.getCarbs()).fats(recipe.getFats())
-				.likeCount(recipe.getLikeCount()).commentCount(recipe.getCommentCount())
-				.averageRating(recipe.getAverageRating()).ratingCount(recipe.getRatingCount())
-				.category(recipe.getCategory() != null ? recipe.getCategory().name() : null).isLiked(isLiked)
+			return RecipeResponse.builder().id(recipe.getId()).title(recipe.getTitle()).description(recipe.getDescription())
+					.imageUrl(recipe.getImageUrl()).prepTimeMinutes(recipe.getPrepTimeMinutes())
+					.cookTimeMinutes(recipe.getCookTimeMinutes()).servings(recipe.getServings())
+					.calories(recipe.getCalories()).protein(recipe.getProtein()).carbs(recipe.getCarbs()).fats(recipe.getFats())
+					.likeCount(recipe.getLikeCount()).commentCount(recipe.getCommentCount())
+					.averageRating(recipe.getAverageRating()).ratingCount(recipe.getRatingCount())
+					.category(recipe.getCategory() != null ? recipe.getCategory().name() : null).isLiked(isLiked)
 				.isBookmarked(isBookmarked).userRating(userRating)
+				.isPublished(recipe.isPublished())
 				.additionalImages(
-						recipe.getImages().stream().map(RecipeImage::getImageUrl).collect(Collectors.toList()))
-				.createdAt(recipe.getCreatedAt())
-				.author(recipe.getAuthor() != null ? RecipeResponse.AuthorDto.builder().id(recipe.getAuthor().getId())
-						.username(recipe.getAuthor().getUsername())
-						.isVerified(recipe.getAuthor().isVerified())
-						.profilePictureUrl(recipe.getAuthor().getProfilePictureUrl()).build() : null)
-				.ingredients(recipe.getIngredients().stream()
-						.map(i -> RecipeResponse.IngredientDto.builder().id(i.getId()).name(i.getName())
-								.quantity(i.getQuantity()).unit(i.getUnit())
-								.category(i.getCategory() != null ? i.getCategory().name() : null).build())
-						.collect(Collectors.toList()))
-				.steps(recipe
-						.getSteps().stream().map(s -> RecipeResponse.StepDto.builder().id(s.getId())
-								.stepNumber(s.getStepNumber()).instruction(s.getInstruction()).build())
-						.collect(Collectors.toList()))
-				.build();
+							recipe.getImages().stream().map(RecipeImage::getImageUrl).collect(Collectors.toList()))
+					.createdAt(recipe.getCreatedAt())
+					.author(recipe.getAuthor() != null ? RecipeResponse.AuthorDto.builder().id(recipe.getAuthor().getId())
+							.username(recipe.getAuthor().getUsername())
+							.isVerified(recipe.getAuthor().isVerified())
+							.profilePictureUrl(recipe.getAuthor().getProfilePictureUrl()).build() : null)
+					.ingredients(recipe.getIngredients().stream()
+							.map(i -> RecipeResponse.IngredientDto.builder().id(i.getId()).name(i.getName())
+									.quantity(i.getQuantity()).unit(i.getUnit())
+									.category(i.getCategory() != null ? i.getCategory().name() : null).build())
+							.collect(Collectors.toList()))
+					.steps(recipe
+							.getSteps().stream().map(s -> RecipeResponse.StepDto.builder().id(s.getId())
+									.stepNumber(s.getStepNumber()).instruction(s.getInstruction()).build())
+							.collect(Collectors.toList()))
+					.build();
+		} catch (Exception e) {
+			System.err.println("CRITICAL ERROR in mapToResponse for recipe " + recipe.getId() + ": " + e.getMessage());
+			e.printStackTrace();
+			throw e;
+		}
 	}
 
 	@Override
@@ -200,9 +211,9 @@ public class RecipeServiceImpl implements RecipeService {
 			Pageable limit = PageRequest.of(0, size);
 
 			if (cursor == null) {
-				recipes = recipeRepository.findAllByOrderByCreatedAtDesc(limit);
+				recipes = recipeRepository.findAllByIsPublishedTrueOrderByCreatedAtDesc(limit);
 			} else {
-				recipes = recipeRepository.findExploreCursor(cursor, limit);
+				recipes = recipeRepository.findExploreCursorPublished(cursor, limit);
 			}
 
 			List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
@@ -249,10 +260,20 @@ public class RecipeServiceImpl implements RecipeService {
 			Pageable limit = PageRequest.of(0, size);
 			List<Recipe> recipes;
 
+			boolean isSelf = author.getUsername().equals(currentUsername);
+
 			if (cursor == null) {
-				recipes = recipeRepository.findByAuthorOrderByCreatedAtDesc(author, limit);
+				if (isSelf) {
+					recipes = recipeRepository.findByAuthorOrderByCreatedAtDesc(author, limit);
+				} else {
+					recipes = recipeRepository.findByAuthorAndIsPublishedTrueOrderByCreatedAtDesc(author, limit);
+				}
 			} else {
-				recipes = recipeRepository.findUserRecipesCursor(author, cursor, limit);
+				if (isSelf) {
+					recipes = recipeRepository.findUserRecipesCursor(author, cursor, limit);
+				} else {
+					recipes = recipeRepository.findUserRecipesCursorPublished(author, cursor, limit);
+				}
 			}
 
 			System.out.println("DEBUG: Found " + recipes.size() + " recipes for user ID " + userId);
@@ -264,8 +285,9 @@ public class RecipeServiceImpl implements RecipeService {
 
 			return Map.of("content", content, "nextCursor", nextCursor);
 		} catch (Exception e) {
-			System.err.println("ERROR: Failed to fetch user recipes for ID " + userId + ": " + e.getMessage());
-			return Map.of("content", List.of(), "nextCursor", "");
+			System.err.println("FATAL ERROR in getUserRecipes for ID " + userId + ": " + e.getMessage());
+			e.printStackTrace();
+			return Map.of("content", List.of(), "nextCursor", "", "error", e.getMessage());
 		}
 	}
 
@@ -326,6 +348,8 @@ public class RecipeServiceImpl implements RecipeService {
 				// Keep existing if invalid
 			}
 		}
+
+		recipe.setPublished(request.isPublished());
 
 		// Simple clear and re-add for ingredients/steps (can be optimized)
 		new java.util.ArrayList<>(recipe.getIngredients()).forEach(recipe::removeIngredient);
@@ -401,9 +425,9 @@ public class RecipeServiceImpl implements RecipeService {
 	@Transactional(readOnly = true)
 	public List<RecipeResponse> getRecipesByCategory(String category, String currentUsername, int limit) {
 		try {
-			com.bluepal.entity.RecipeCategory cat = com.bluepal.entity.RecipeCategory.valueOf(category.toUpperCase());
+			RecipeCategory cat = RecipeCategory.valueOf(category.toUpperCase());
 			Pageable pageable = PageRequest.of(0, limit);
-			return recipeRepository.findByCategoryOrderByCreatedAtDesc(cat, pageable).stream()
+			return recipeRepository.findByCategoryAndIsPublishedTrueOrderByCreatedAtDesc(cat, pageable).stream()
 					.map(r -> this.mapToResponse(r, currentUsername)).collect(Collectors.toList());
 		} catch (IllegalArgumentException e) {
 			return List.of(); // Return empty list for unknown category
@@ -421,9 +445,9 @@ public class RecipeServiceImpl implements RecipeService {
 			List<Recipe> recipes;
 
 			if (cursor == null) {
-				recipes = recipeRepository.findByCategoryOrderByCreatedAtDesc(cat, limit);
+				recipes = recipeRepository.findByCategoryAndIsPublishedTrueOrderByCreatedAtDesc(cat, limit);
 			} else {
-				recipes = recipeRepository.findExploreCursorWithCategory(cat, cursor, limit);
+				recipes = recipeRepository.findExploreCursorWithCategoryPublished(cat, cursor, limit);
 			}
 
 			List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
@@ -438,40 +462,69 @@ public class RecipeServiceImpl implements RecipeService {
 	}
 
 	@Override
-	@Transactional
-	public Map<String, Object> toggleLike(Long id, String username) {
-		User user = userRepository.findByUsername(username)
-				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
-		Recipe recipe = recipeRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
+	@Transactional(readOnly = true)
+	public Map<String, Object> getFilteredExploreFeed(LocalDateTime cursor, int size, String category, Integer maxTime,
+			Integer maxCalories, String sort, String currentUsername) {
+		try {
+			Specification<Recipe> spec = (root, query, cb) -> {
+				List<Predicate> predicates = new ArrayList<>();
+				
+				// Always only show published recipes in explore
+				predicates.add(cb.isTrue(root.get("isPublished")));
+				
+				if (cursor != null) {
+					predicates.add(cb.lessThan(root.get("createdAt"), cursor));
+				}
+				
+				if (category != null && !category.isEmpty() && !"all".equalsIgnoreCase(category)) {
+					try {
+						RecipeCategory cat = RecipeCategory.valueOf(category.trim().toUpperCase());
+						predicates.add(cb.equal(root.get("category"), cat));
+					} catch (IllegalArgumentException ignored) {}
+				}
+				
+				if (maxTime != null) {
+					// Combined prep + cook time (using coalesce to handle null values)
+					Expression<Integer> prep = cb.coalesce(root.get("prepTimeMinutes"), 0);
+					Expression<Integer> cook = cb.coalesce(root.get("cookTimeMinutes"), 0);
+					predicates.add(cb.lessThanOrEqualTo(cb.sum(prep, cook), maxTime));
+				}
+				
+				if (maxCalories != null) {
+					// Use coalesce to treat NULL calories as 0 for filtering purposes
+					predicates.add(cb.lessThanOrEqualTo(cb.coalesce(root.get("calories"), 0), maxCalories));
+				}
 
-		long deletedCount = likeRepository.deleteByUserAndRecipe(user, recipe);
-		boolean liked;
-		int newLikeCount;
+				// CRITICAL FIX: Only add orderBy if it's not a count query
+				if (query.getResultType() != Long.class && query.getResultType() != long.class) {
+					if ("trending".equalsIgnoreCase(sort)) {
+						Expression<Integer> likes = cb.coalesce(root.get("likeCount"), 0);
+						Expression<Integer> ratings = cb.coalesce(root.get("ratingCount"), 0);
+						query.orderBy(cb.desc(cb.sum(likes, ratings)));
+					} else if ("rating".equalsIgnoreCase(sort)) {
+						query.orderBy(cb.desc(cb.coalesce(root.get("averageRating"), 0.0)));
+					} else {
+						// Default to newest
+						query.orderBy(cb.desc(root.get("createdAt")));
+					}
+				}
+				
+				return cb.and(predicates.toArray(new Predicate[0]));
+			};
 
-		if (deletedCount > 0) {
-			recipeRepository.decrementLikeCount(id);
-			liked = false;
-			newLikeCount = Math.max(0, recipe.getLikeCount() - 1);
-		} else {
-			likeRepository.save(Like.builder().user(user).recipe(recipe).build());
-			recipeRepository.incrementLikeCount(id);
-			liked = true;
-			newLikeCount = recipe.getLikeCount() + 1;
+			Pageable limit = PageRequest.of(0, size);
+			List<Recipe> recipes = recipeRepository.findAll(spec, limit).getContent();
 
-			// Send Notification
-			notificationService.createAndSendNotification(
-					recipe.getAuthor(),
-					user,
-					com.bluepal.entity.NotificationType.LIKE,
-					recipe.getId(),
-					user.getUsername() + " liked your recipe: " + recipe.getTitle()
-			);
+			List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
+					.collect(Collectors.toList());
 
-			// Award reputation points for receiving a like (to the author)
-			userService.updateReputation(recipe.getAuthor().getUsername(), 5);
+			String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
+
+			return Map.of("content", content, "nextCursor", nextCursor);
+		} catch (Exception e) {
+			System.err.println("ERROR in getFilteredExploreFeed: " + e.getMessage());
+			e.printStackTrace();
+			return Map.of("content", List.of(), "nextCursor", "", "error", e.getMessage());
 		}
-
-		return Map.of("liked", liked, "likeCount", newLikeCount);
 	}
 }

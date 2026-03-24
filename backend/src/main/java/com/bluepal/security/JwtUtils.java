@@ -12,10 +12,10 @@ import java.util.Date;
 @Component
 public class JwtUtils {
 
-    @Value("${app.jwt.secret}")
+    @Value("${app.jwt.secret:akriti_recipe_project_secure_jwt_secret_2026}")
     private String jwtSecret;
 
-    @Value("${app.jwt.expirationMs}")
+    @Value("${app.jwt.expirationMs:86400000}")
     private int jwtExpirationMs;
 
     private Key key() {

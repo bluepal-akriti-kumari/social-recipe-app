@@ -65,4 +65,16 @@ public class UserController {
         UserProfileResponse response = userService.updateProfile(currentUsername, request);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/{id}/followers")
+    public ResponseEntity<java.util.List<UserProfileResponse>> getFollowers(@PathVariable("id") Long id) {
+        String currentUsername = getCurrentUsername();
+        return ResponseEntity.ok(userService.getFollowers(id, currentUsername));
+    }
+
+    @GetMapping("/{id}/following")
+    public ResponseEntity<java.util.List<UserProfileResponse>> getFollowing(@PathVariable("id") Long id) {
+        String currentUsername = getCurrentUsername();
+        return ResponseEntity.ok(userService.getFollowing(id, currentUsername));
+    }
 }

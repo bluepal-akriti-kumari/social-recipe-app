@@ -16,9 +16,11 @@ import java.util.Map;
 public class AdminController {
 
     private final UserRepository userRepository;
+    private final com.bluepal.service.impl.ModerationService moderationService;
 
-    public AdminController(UserRepository userRepository) {
+    public AdminController(UserRepository userRepository, com.bluepal.service.impl.ModerationService moderationService) {
         this.userRepository = userRepository;
+        this.moderationService = moderationService;
     }
 
     @GetMapping("/users")
@@ -48,6 +50,17 @@ public class AdminController {
         user.setVerified(!user.isVerified());
         userRepository.save(user);
         return ResponseEntity.ok("User verification toggled: " + user.isVerified());
+    }
+
+    @GetMapping("/reports")
+    public ResponseEntity<List<com.bluepal.entity.Report>> getPendingReports() {
+        return ResponseEntity.ok(moderationService.getPendingReports());
+    }
+
+    @PatchMapping("/reports/{id}/resolve")
+    public ResponseEntity<?> resolveReport(@PathVariable Long id) {
+        moderationService.resolveReport(id);
+        return ResponseEntity.ok("Report resolved");
     }
 
     @GetMapping("/stats")
