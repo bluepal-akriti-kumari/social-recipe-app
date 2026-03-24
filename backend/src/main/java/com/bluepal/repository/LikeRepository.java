@@ -29,7 +29,7 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
     @Modifying
     @Transactional
     @Query(value = "WITH deleted AS (DELETE FROM likes WHERE user_id = :userId AND recipe_id = :recipeId RETURNING id) " +
-                   "INSERT INTO likes (user_id, recipe_id, liked_at) " +
+                   "INSERT INTO likes (user_id, recipe_id, created_at) " +
                    "SELECT :userId, :recipeId, NOW() " +
                    "WHERE NOT EXISTS (SELECT 1 FROM deleted)", nativeQuery = true)
     void toggleLikeAtomic(@Param("userId") Long userId, @Param("recipeId") Long recipeId);

@@ -33,6 +33,7 @@ public class RecipeResponse {
     private Boolean isLiked; // true if current user has liked this recipe
     private Boolean isBookmarked;
     private Integer userRating; // Current user's rating for this recipe
+    private Boolean isPublished;
     private AuthorDto author;
     private List<IngredientDto> ingredients;
     private List<StepDto> steps;

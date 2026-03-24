@@ -41,6 +41,7 @@ public class RecipeRequest {
     private Double carbs;
     @PositiveOrZero(message = "Fats cannot be negative")
     private Double fats;
+    private boolean isPublished = true;
 
     @NotNull(message = "Category is required")
     private String category; // Maps to RecipeCategory enum

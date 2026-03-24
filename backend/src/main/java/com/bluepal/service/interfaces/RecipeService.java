@@ -12,6 +12,7 @@ public interface RecipeService {
     
     // Cursor-based feeds for Infinite Scroll
     Map<String, Object> getExploreFeedCursor(LocalDateTime cursor, int size, String currentUsername);
+    Map<String, Object> getFilteredExploreFeed(LocalDateTime cursor, int size, String category, Integer maxTime, Integer maxCalories, String sort, String currentUsername);
     Map<String, Object> getPersonalizedFeedCursor(String username, LocalDateTime cursor, int size);
     
     // Full-text search by ingredient

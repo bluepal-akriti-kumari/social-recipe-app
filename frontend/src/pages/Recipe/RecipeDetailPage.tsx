@@ -4,8 +4,10 @@ import {
   Container, Grid, Box, Typography, Avatar, 
   List, ListItem, ListItemText, ListItemIcon, 
   Paper, IconButton, TextField, Button, CircularProgress, 
-  Stack, Rating
+  Stack, Rating, Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
+import FlagIcon from '@mui/icons-material/Flag';
+import api from '../../services/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
@@ -30,7 +32,7 @@ import { shoppingListService } from '../../services/shoppingList.service';
 import AddToPlannerModal from './AddToPlannerModal';
 import { toast } from 'react-hot-toast';
 
-const CommentItem = ({ comment, index, onReply, onDelete, currentUser, isDeleting, depth = 0 }: any) => {
+const CommentItem = ({ comment, index, onReply, onDelete, onReport, currentUser, isDeleting, depth = 0 }: any) => {
   const navigate = useNavigate();
   return (
     <motion.div 
@@ -92,6 +94,16 @@ const CommentItem = ({ comment, index, onReply, onDelete, currentUser, isDeletin
                   Delete
                 </Button>
               )}
+              {currentUser && currentUser.username !== comment.username && (
+                <Button 
+                  size="small" 
+                  startIcon={<FlagIcon sx={{ fontSize: '16px !important' }} />}
+                  sx={{ p: 0, minWidth: 0, color: 'text.secondary', fontWeight: 800, textTransform: 'none', '&:hover': { color: 'error.main' } }}
+                  onClick={() => onReport({ type: 'COMMENT', id: comment.id })}
+                >
+                  Report
+                </Button>
+              )}
             </Stack>
           </Box>
         </Box>
@@ -105,6 +117,7 @@ const CommentItem = ({ comment, index, onReply, onDelete, currentUser, isDeletin
               index={rIdx} 
               onReply={onReply} 
               onDelete={onDelete} 
+              onReport={onReport}
               currentUser={currentUser}
               isDeleting={isDeleting} // simplification: only one deleting at a time
               depth={depth + 1}
@@ -127,6 +140,8 @@ const RecipeDetailPage = () => {
   const [replyingTo, setReplyingTo] = useState<{ id: number; username: string } | null>(null);
   const [isPlannerOpen, setIsPlannerOpen] = useState(false);
   const [activeImage, setActiveImage] = useState<string | null>(null);
+  const [reportData, setReportData] = useState<{ type: string; id: number } | null>(null);
+  const [reportReason, setReportReason] = useState('');
 
   // --- Data Fetching (UseQuery) ---
   const { 
@@ -211,6 +226,17 @@ const RecipeDetailPage = () => {
     onError: () => toast.error('Failed to submit rating'),
   });
 
+  const reportMutation = useMutation({
+    mutationFn: (data: { targetType: string; targetId: number; reason: string }) => 
+      api.post('/reports', data),
+    onSuccess: () => {
+      toast.success('Report submitted. Thank you!');
+      setReportData(null);
+      setReportReason('');
+    },
+    onError: () => toast.error('Failed to submit report'),
+  });
+
   // --- Handlers ---
   const handleLike = () => {
     if (!currentUser) return navigate('/login');
@@ -239,6 +265,15 @@ const RecipeDetailPage = () => {
     if (window.confirm('Are you sure you want to delete this recipe? This action cannot be undone.')) {
       deleteRecipeMutation.mutate();
     }
+  };
+
+  const handleReportSubmit = () => {
+    if (!reportReason.trim() || !reportData) return;
+    reportMutation.mutate({
+      targetType: reportData.type,
+      targetId: reportData.id,
+      reason: reportReason
+    });
   };
 
   // Image logic
@@ -347,6 +382,18 @@ const RecipeDetailPage = () => {
                   display: 'flex', gap: 2
                 }}
               >
+                <IconButton 
+                  size="large"
+                  onClick={() => setReportData({ type: 'RECIPE', id: recipeId })}
+                  sx={{ 
+                    bgcolor: 'white',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                    color: 'text.secondary',
+                    '&:hover': { bgcolor: 'white', color: 'error.main', transform: 'translateY(-2px)' } 
+                  }}
+                >
+                  <FlagIcon />
+                </IconButton>
                 <IconButton 
                   size="large"
                   onClick={handleBookmark}
@@ -579,6 +626,7 @@ const RecipeDetailPage = () => {
                     index={index}
                     onReply={setReplyingTo}
                     onDelete={handleDeleteComment}
+                    onReport={(data: any) => setReportData(data)}
                     currentUser={currentUser}
                     isDeleting={deleteCommentMutation.isPending && deleteCommentMutation.variables === comment.id}
                   />
@@ -738,6 +786,38 @@ const RecipeDetailPage = () => {
           recipeTitle={recipeDetail.title}
         />
       )}
+
+      {/* Report Dialog */}
+      <Dialog open={!!reportData} onClose={() => setReportData(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 900 }}>Report Content</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontWeight: 600 }}>
+            Help us understand what's wrong with this {reportData?.type.toLowerCase()}.
+          </Typography>
+          <TextField
+            autoFocus
+            multiline
+            rows={4}
+            fullWidth
+            placeholder="Reason for reporting..."
+            value={reportReason}
+            onChange={(e) => setReportReason(e.target.value)}
+            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button onClick={() => setReportData(null)} sx={{ fontWeight: 800 }}>Cancel</Button>
+          <Button 
+            onClick={handleReportSubmit} 
+            variant="contained" 
+            color="error" 
+            disabled={!reportReason.trim() || reportMutation.isPending}
+            sx={{ borderRadius: '10px', fontWeight: 900, px: 3 }}
+          >
+            {reportMutation.isPending ? 'Reporting...' : 'Submit Report'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
