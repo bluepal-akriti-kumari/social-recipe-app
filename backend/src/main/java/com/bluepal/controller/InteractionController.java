@@ -19,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,14 +38,15 @@ public class InteractionController {
     private final com.bluepal.service.NotificationService notificationService;
 
     private final com.bluepal.service.interfaces.UserService userService;
-
     private final com.bluepal.service.impl.ModerationService moderationService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public InteractionController(LikeRepository likeRepository, CommentRepository commentRepository,
                                  RecipeRepository recipeRepository, UserRepository userRepository,
                                  com.bluepal.service.NotificationService notificationService,
                                  com.bluepal.service.interfaces.UserService userService,
-                                 com.bluepal.service.impl.ModerationService moderationService) {
+                                 com.bluepal.service.impl.ModerationService moderationService,
+                                 SimpMessagingTemplate messagingTemplate) {
         this.likeRepository = likeRepository;
         this.commentRepository = commentRepository;
         this.recipeRepository = recipeRepository;
@@ -52,6 +54,7 @@ public class InteractionController {
         this.notificationService = notificationService;
         this.userService = userService;
         this.moderationService = moderationService;
+        this.messagingTemplate = messagingTemplate;
     }
 
     private String getCurrentUsername() {
@@ -89,9 +92,16 @@ public class InteractionController {
             );
             // Award reputation points
             userService.updateReputation(recipe.getAuthor().getUsername(), 5);
+
+            // Broadcast real-time stats
+            broadcastStats(id);
+            // Broadcast global activity
+            broadcastActivity(user.getUsername() + " liked '" + recipe.getTitle() + "'");
+
             return ResponseEntity.ok(Map.of("liked", true, "likeCount", recipe.getLikeCount() + 1));
         } else {
             recipeRepository.decrementLikeCount(id);
+            broadcastStats(id);
             return ResponseEntity.ok(Map.of("liked", false, "likeCount", Math.max(0, recipe.getLikeCount() - 1)));
         }
     }
@@ -106,6 +116,10 @@ public class InteractionController {
         String username = getCurrentUsername();
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+
+        if (user.isRestricted()) {
+            return ResponseEntity.status(403).body(null); // or handle error better in DTO if needed
+        }
         Recipe recipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
 
@@ -135,6 +149,11 @@ public class InteractionController {
 
         // Award reputation points for commenting
         userService.updateReputation(user.getUsername(), 10);
+
+        // Broadcast real-time stats
+        broadcastStats(id);
+        // Broadcast global activity
+        broadcastActivity(user.getUsername() + " commented on '" + recipe.getTitle() + "'");
 
         return ResponseEntity.ok(mapToCommentResponse(saved));
     }
@@ -179,6 +198,7 @@ public class InteractionController {
         recipeRepository.decrementCommentCount(recipe.getId());
         
         commentRepository.delete(comment);
+        broadcastStats(recipe.getId());
         return ResponseEntity.ok("Comment deleted successfully");
     }
 
@@ -213,5 +233,18 @@ public class InteractionController {
                         comment.getReplies().stream().map(this::mapToCommentResponse).collect(java.util.stream.Collectors.toList()) : 
                         new java.util.ArrayList<>())
                 .build();
+    }
+
+    private void broadcastStats(Long recipeId) {
+        Recipe recipe = recipeRepository.findById(recipeId).orElse(null);
+        if (recipe != null) {
+            messagingTemplate.convertAndSend("/topic/recipes/" + recipeId + "/stats", 
+                Map.of("recipeId", recipeId, "likeCount", recipe.getLikeCount(), "commentCount", recipe.getCommentCount()));
+        }
+    }
+
+    private void broadcastActivity(String message) {
+        messagingTemplate.convertAndSend("/topic/activity", 
+            Map.of("message", message, "timestamp", java.time.LocalDateTime.now().toString()));
     }
 }

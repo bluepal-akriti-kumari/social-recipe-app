@@ -42,6 +42,8 @@ public class RecipeRequest {
     @PositiveOrZero(message = "Fats cannot be negative")
     private Double fats;
     private boolean isPublished = true;
+    @com.fasterxml.jackson.annotation.JsonProperty("isPremium")
+    private boolean isPremium = false;
 
     @NotNull(message = "Category is required")
     private String category; // Maps to RecipeCategory enum

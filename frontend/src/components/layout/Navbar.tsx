@@ -13,11 +13,15 @@ import { useAuth } from '../../hooks/useAuth';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useModal } from '../../context/ModalContext';
 import { Badge } from '@mui/material';
+import { useMutation } from '@tanstack/react-query';
+import { userService } from '../../services/user.service';
+import { toast } from 'react-hot-toast';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import CommentIcon from '@mui/icons-material/Comment';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket';
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
@@ -49,6 +53,21 @@ const Navbar = () => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useWebSocket();
   const { openCreateRecipeModal } = useModal();
   const navigate = useNavigate();
+
+  const upgradeMutation = useMutation({
+    mutationFn: () => userService.upgradeToPremium(),
+    onSuccess: (res: any) => {
+      if (res?.url) {
+        window.location.href = res.url;
+      }
+    },
+    onError: (error: any) => {
+      const responseData = error.response?.data;
+      const errorMessage = responseData?.message || responseData?.error || (typeof responseData === 'string' ? responseData : 'Stripe Checkout failed. Please try again later.');
+      toast.error(errorMessage, { id: 'upgrade-error' });
+    },
+  });
+
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [notifAnchorEl, setNotifAnchorEl] = useState<null | HTMLElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -198,26 +217,52 @@ const Navbar = () => {
                 </IconButton>
               </Tooltip>
 
-              <Tooltip title="Create a Recipe">
-                <Button 
-                  variant="contained" 
-                  color="primary"
-                  startIcon={<AddCircleOutlineIcon />}
-                  onClick={openCreateRecipeModal}
-                  sx={{ 
-                    px: 1.8, 
-                    py: 0.6,
-                    borderRadius: '12px',
-                    display: { xs: 'none', sm: 'flex' },
-                    border: '1px solid #e2e8f0',
-                    textTransform: 'none',
-                    fontWeight: 700,
-                    '&:hover': { bgcolor: 'primary.dark' }
-                  }}
-                >
-                  Post Recipe
-                </Button>
-              </Tooltip>
+              {user && !(user as any).premium && (
+                <Tooltip title="Upgrade for Premium Recipes">
+                  <Button 
+                    variant="outlined" 
+                    onClick={() => upgradeMutation.mutate()}
+                    disabled={upgradeMutation.isPending}
+                    sx={{ 
+                      px: 2, 
+                      py: 0.6,
+                      borderRadius: '12px',
+                      display: { xs: 'none', lg: 'flex' },
+                      textTransform: 'none',
+                      fontWeight: 800,
+                      color: '#B8860B',
+                      borderColor: '#FFD700',
+                      bgcolor: 'rgba(255, 215, 0, 0.05)',
+                      '&:hover': { bgcolor: 'rgba(255, 215, 0, 0.1)', borderColor: '#DAA520' }
+                    }}
+                  >
+                    {upgradeMutation.isPending ? '💎 Upgrading...' : '💎 Premium @ ₹499'}
+                  </Button>
+                </Tooltip>
+              )}
+
+              {user && !(user as any).roles?.includes('ROLE_ADMIN') && (
+                <Tooltip title="Create a Recipe">
+                  <Button 
+                    variant="contained" 
+                    color="primary"
+                    startIcon={<AddCircleOutlineIcon />}
+                    onClick={openCreateRecipeModal}
+                    sx={{ 
+                      px: 1.8, 
+                      py: 0.6,
+                      borderRadius: '12px',
+                      display: { xs: 'none', sm: 'flex' },
+                      border: '1px solid #e2e8f0',
+                      textTransform: 'none',
+                      fontWeight: 700,
+                      '&:hover': { bgcolor: 'primary.dark' }
+                    }}
+                  >
+                    Post Recipe
+                  </Button>
+                </Tooltip>
+              )}
 
               <Tooltip title="Notifications">
                 <IconButton 
@@ -337,18 +382,33 @@ const Navbar = () => {
                   } 
                 }}
               >
-                <Avatar 
-                  src={user?.profilePictureUrl}
-                  sx={{ 
-                    width: 32, 
-                    height: 32, 
-                    fontWeight: 900, 
-                    fontSize: 14,
-                    boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
-                  }}
-                >
-                  {user?.username?.[0]?.toUpperCase()}
-                </Avatar>
+                <Box sx={{ position: 'relative' }}>
+                  <Avatar 
+                    src={user?.profilePictureUrl}
+                    sx={{ 
+                      width: 32, 
+                      height: 32, 
+                      fontWeight: 900, 
+                      fontSize: 14,
+                      boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    {user?.username?.[0]?.toUpperCase()}
+                  </Avatar>
+                  {user && (user as any).premium && (
+                    <Box 
+                      sx={{ 
+                        position: 'absolute', top: -4, right: -4, 
+                        bgcolor: '#FFD700', borderRadius: '50%', width: 16, height: 16,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        border: '2px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        zIndex: 1
+                      }}
+                    >
+                      <WorkspacePremiumIcon sx={{ fontSize: 10, color: 'white' }} />
+                    </Box>
+                  )}
+                </Box>
               </IconButton>
               <Menu 
                 anchorEl={anchorEl} 

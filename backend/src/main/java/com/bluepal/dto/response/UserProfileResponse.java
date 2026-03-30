@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Data
 @Builder
@@ -22,4 +23,7 @@ public class UserProfileResponse {
     private Integer reputationPoints;
     private String reputationLevel;
     private Integer recipeCount;
+    @JsonProperty("premium")
+    private Boolean premium;
+    private java.time.LocalDateTime premiumExpiryDate;
 }

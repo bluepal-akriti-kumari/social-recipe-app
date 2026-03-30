@@ -17,11 +17,19 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final com.bluepal.service.impl.ModerationService moderationService;
+    private final com.bluepal.service.interfaces.RecipeService recipeService;
 
-    public AdminController(UserRepository userRepository, com.bluepal.service.impl.ModerationService moderationService) {
+    public AdminController(UserRepository userRepository, 
+                           com.bluepal.service.impl.ModerationService moderationService,
+                           com.bluepal.service.interfaces.RecipeService recipeService,
+                           com.bluepal.repository.RecipeRepository recipeRepository) {
         this.userRepository = userRepository;
         this.moderationService = moderationService;
+        this.recipeService = recipeService;
+        this.recipeRepository = recipeRepository;
     }
+
+    private final com.bluepal.repository.RecipeRepository recipeRepository;
 
     @GetMapping("/users")
     public ResponseEntity<List<User>> getAllUsers() {
@@ -69,5 +77,49 @@ public class AdminController {
         // Since we don't have a RecipeRepository here, we'll just return userCount for now
         // or inject it. Let's keep it simple.
         return ResponseEntity.ok(Map.of("totalUsers", userCount));
+    }
+
+    @PatchMapping("/recipes/{id}/premium")
+    public ResponseEntity<?> toggleRecipePremium(@PathVariable Long id) {
+        com.bluepal.entity.Recipe recipe = recipeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
+        recipe.setPremium(!recipe.isPremium());
+        recipeRepository.save(recipe);
+        return ResponseEntity.ok("Recipe premium status toggled to: " + recipe.isPremium());
+    }
+
+    @GetMapping("/recipes")
+    public ResponseEntity<java.util.List<com.bluepal.entity.Recipe>> getAllRecipes() {
+        return ResponseEntity.ok(recipeRepository.findAll());
+    }
+
+    @PatchMapping("/recipes/{id}/status")
+    public ResponseEntity<?> toggleRecipeStatus(@PathVariable Long id) {
+        com.bluepal.entity.Recipe recipe = recipeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
+        
+        if (recipe.getStatus() == com.bluepal.entity.RecipeStatus.ACTIVE) {
+            recipe.setStatus(com.bluepal.entity.RecipeStatus.RESTRICTED);
+        } else {
+            recipe.setStatus(com.bluepal.entity.RecipeStatus.ACTIVE);
+        }
+        recipeRepository.save(recipe);
+        return ResponseEntity.ok("Recipe status updated to: " + recipe.getStatus());
+    }
+
+    @DeleteMapping("/recipes/{id}")
+    public ResponseEntity<?> deleteRecipe(@PathVariable Long id) {
+        recipeService.deleteRecipe(id, "admin"); // Assuming admin can delete any recipe
+        return ResponseEntity.ok("Recipe deleted successfully");
+    }
+
+    @PatchMapping("/users/{username}/restrict")
+    public ResponseEntity<?> toggleUserRestriction(@PathVariable String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+        
+        user.setRestricted(!user.isRestricted());
+        userRepository.save(user);
+        return ResponseEntity.ok("User restricted status toggled: " + user.isRestricted());
     }
 }

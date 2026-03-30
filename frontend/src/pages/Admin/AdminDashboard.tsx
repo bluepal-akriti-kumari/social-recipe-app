@@ -3,7 +3,8 @@ import {
   Container, Box, Typography, Paper, Table, TableBody, TableCell, 
   TableContainer, TableHead, TableRow, Avatar, Chip, IconButton,
   CircularProgress, Grid, Card, CardContent, Tooltip,
-  Tabs, Tab
+  Tabs, Tab,
+  Button
 } from '@mui/material';
 import FlagIcon from '@mui/icons-material/Flag';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -12,6 +13,7 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import PeopleIcon from '@mui/icons-material/People';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 
@@ -21,8 +23,19 @@ interface User {
   email: string;
   roles: string[];
   isVerified: boolean;
+  isRestricted: boolean; 
+  premium: boolean; // Renamed
   profilePictureUrl: string;
   reputationPoints: number;
+}
+
+interface Recipe {
+  id: number;
+  title: string;
+  status: 'ACTIVE' | 'RESTRICTED';
+  author: { username: string };
+  isPremium: boolean;
+  createdAt: string;
 }
 
 interface Report {
@@ -54,6 +67,14 @@ const AdminDashboard = () => {
   } = useQuery({
     queryKey: ['admin', 'reports'],
     queryFn: () => api.get<Report[]>('/admin/reports').then(res => res.data),
+  });
+
+  const { 
+    data: recipes = [], 
+    isLoading: isRecipesLoading 
+  } = useQuery({
+    queryKey: ['admin', 'recipes'],
+    queryFn: () => api.get<Recipe[]>('/admin/recipes').then(res => res.data),
   });
 
   const { 
@@ -98,6 +119,14 @@ const AdminDashboard = () => {
     onError: () => toast.error('Failed to resolve report'),
   });
 
+  const toggleRestrictUserMutation = useMutation({
+    mutationFn: (username: string) => api.patch(`/admin/users/${username}/restrict`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      toast.success('User restriction toggled');
+    },
+  });
+
   const handleToggleVerify = (username: string) => toggleVerifyMutation.mutate(username);
   
   const handlePromoteAdmin = (username: string, currentRoles: string[]) => {
@@ -108,7 +137,32 @@ const AdminDashboard = () => {
     updateRolesMutation.mutate({ username, roles: newRoles });
   };
 
-  const isLoading = isUsersLoading || isStatsLoading || isReportsLoading;
+  const toggleRecipeStatusMutation = useMutation({
+    mutationFn: (id: number) => api.patch(`/admin/recipes/${id}/status`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'recipes'] });
+      toast.success('Recipe status updated');
+    },
+  });
+
+  const toggleRecipePremiumMutation = useMutation({
+    mutationFn: (id: number) => api.patch(`/admin/recipes/${id}/premium`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'recipes'] });
+      toast.success('Recipe premium status updated');
+    },
+    onError: () => toast.error('Failed to update premium status'),
+  });
+
+  const deleteRecipeMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/admin/recipes/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'recipes'] });
+      toast.success('Recipe deleted');
+    },
+  });
+
+  const isLoading = isUsersLoading || isStatsLoading || isReportsLoading || isRecipesLoading;
   const handleTabChange = (_: any, newValue: number) => setTabValue(newValue);
 
   if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
@@ -166,6 +220,7 @@ const AdminDashboard = () => {
         <Box sx={{ mb: 4, borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={handleTabChange} sx={{ '& .MuiTab-root': { fontWeight: 900 } }}>
             <Tab label="User Management" />
+            <Tab label="Recipe Management" />
             <Tab label="Reports & Moderation" />
           </Tabs>
         </Box>
@@ -183,6 +238,7 @@ const AdminDashboard = () => {
                   <TableCell sx={{ fontWeight: 900 }}>User</TableCell>
                   <TableCell sx={{ fontWeight: 900 }}>Roles</TableCell>
                   <TableCell sx={{ fontWeight: 900 }}>Status</TableCell>
+                  <TableCell sx={{ fontWeight: 900 }}>Premium</TableCell>
                   <TableCell sx={{ fontWeight: 900 }}>Reputation</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 900 }}>Actions</TableCell>
                 </TableRow>
@@ -225,6 +281,18 @@ const AdminDashboard = () => {
                         sx={{ fontWeight: 800, fontSize: '0.65rem' }} 
                       />
                     </TableCell>
+                    <TableCell>
+                      {user.premium ? (
+                        <Chip 
+                          label="Premium" 
+                          size="small" 
+                          icon={<WorkspacePremiumIcon sx={{ fontSize: '14px !important', color: '#B8860B !important' }} />}
+                          sx={{ fontWeight: 900, bgcolor: 'rgba(255, 215, 0, 0.2)', color: '#B8860B', border: '1px solid #FFD700' }} 
+                        />
+                      ) : (
+                        <Typography variant="caption" color="text.disabled" sx={{ fontWeight: 700 }}>Basic</Typography>
+                      )}
+                    </TableCell>
                     <TableCell sx={{ fontWeight: 800 }}>{user.reputationPoints} pts</TableCell>
                     <TableCell align="right">
                       <Tooltip title={user.isVerified ? "Remove Verification" : "Verify User"}>
@@ -237,6 +305,11 @@ const AdminDashboard = () => {
                           <AdminPanelSettingsIcon />
                         </IconButton>
                       </Tooltip>
+                      <Tooltip title={user.isRestricted ? "Unrestrict User" : "Restrict User"}>
+                        <IconButton onClick={() => toggleRestrictUserMutation.mutate(user.username)} color="warning">
+                          <FlagIcon />
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -247,6 +320,82 @@ const AdminDashboard = () => {
         )}
 
         {tabValue === 1 && (
+          /* Recipes Table */
+          <Paper className="glass-card" sx={{ borderRadius: 2, overflow: 'hidden' }}>
+            <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+              <Typography variant="h6" sx={{ fontWeight: 900 }}>Recipe Management</Typography>
+            </Box>
+            <TableContainer>
+              <Table>
+                <TableHead sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 900 }}>Recipe</TableCell>
+                    <TableCell sx={{ fontWeight: 900 }}>Author</TableCell>
+                    <TableCell sx={{ fontWeight: 900 }}>Premium</TableCell>
+                    <TableCell sx={{ fontWeight: 900 }}>Status</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 900 }}>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {recipes.map((recipe) => (
+                    <TableRow key={recipe.id} hover>
+                      <TableCell sx={{ fontWeight: 800 }}>{recipe.title}</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>{recipe.author.username}</TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={recipe.isPremium ? "Premium" : "Standard"} 
+                          size="small" 
+                          variant={recipe.isPremium ? "filled" : "outlined"}
+                          sx={{ 
+                            fontWeight: 900, 
+                            bgcolor: recipe.isPremium ? '#FFD700' : 'transparent',
+                            color: recipe.isPremium ? 'black' : 'text.secondary',
+                            cursor: 'pointer'
+                          }} 
+                          onClick={() => toggleRecipePremiumMutation.mutate(recipe.id)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={recipe.status} 
+                          size="small" 
+                          color={recipe.status === 'ACTIVE' ? 'success' : 'error'}
+                          sx={{ fontWeight: 900 }} 
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        <Button 
+                          size="small" 
+                          variant="outlined" 
+                          color="warning" 
+                          sx={{ mr: 1, borderRadius: 1.5 }}
+                          onClick={() => toggleRecipeStatusMutation.mutate(recipe.id)}
+                        >
+                          {recipe.status === 'ACTIVE' ? 'Restrict' : 'Activate'}
+                        </Button>
+                        <Button 
+                          size="small" 
+                          variant="contained" 
+                          color="error"
+                          sx={{ borderRadius: 1.5 }}
+                          onClick={() => {
+                            if (window.confirm('Delete this recipe permanently?')) {
+                              deleteRecipeMutation.mutate(recipe.id);
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        )}
+
+        {tabValue === 2 && (
           /* Reports Table */
           <Paper className="glass-card" sx={{ borderRadius: 2, overflow: 'hidden' }}>
             <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>

@@ -1,15 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   Container, Box, Typography, Avatar, 
   Button, Paper, Tabs, Tab, CircularProgress, 
-  Alert, Grid, Drawer, IconButton, Tooltip
+  Alert, Grid, Drawer, IconButton, Tooltip, Chip
 } from '@mui/material';
 import CommunitySidebar from '../../components/home/CommunitySidebar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import EditIcon from '@mui/icons-material/Edit';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import VerifiedIcon from '@mui/icons-material/Verified';
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import HubIcon from '@mui/icons-material/Hub';
 import { motion } from 'framer-motion';
 import { recipeService } from '../../services/recipe.service';
@@ -19,6 +20,9 @@ import { userService, type UserProfile } from '../../services/user.service';
 import { useAuth } from '../../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import UserListModal from '../../components/profile/UserListModal';
+import { useDispatch } from 'react-redux';
+import { useRef } from 'react';
+import { upgradeSuccess, updateUser } from '../../features/auth/authSlice';
 
 const ProfilePage = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,12 +31,48 @@ const ProfilePage = () => {
   const { user: currentUser } = useAuth();
   
   const [activeTab, setActiveTab] = useState(0);
+  const dispatch = useDispatch();
+  const hasHandledUpgrade = useRef(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPulseDrawerOpen, setIsPulseDrawerOpen] = useState(false);
   const [isUserListModalOpen, setIsUserListModalOpen] = useState(false);
   const [userListTitle, setUserListTitle] = useState('');
   const [modalUsers, setModalUsers] = useState<UserProfile[]>([]);
   const [isUserListLoading, setIsUserListLoading] = useState(false);
+  
+  // Handle Stripe redirect params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const upgrade = params.get('upgrade');
+    const sessionId = params.get('session_id');
+    
+    if (hasHandledUpgrade.current) return;
+
+    if (upgrade === 'success') {
+      hasHandledUpgrade.current = true;
+      if (sessionId) {
+        userService.verifyPremiumSession(sessionId).then(() => {
+          // Refresh full user data to sync premium status
+          userService.getCurrentUser().then((freshUser) => {
+            dispatch(updateUser(freshUser));
+            toast.success('Congratulations! Your account is now synced. 💎', { id: 'upgrade-success' });
+          });
+          queryClient.invalidateQueries({ queryKey: ['profiles', id] });
+        }).catch(() => {
+          toast.error('Could not verify your premium session. Please contact support.', { id: 'upgrade-error' });
+        });
+      } else {
+        dispatch(upgradeSuccess());
+        toast.success('Congratulations! You are now a Premium Member. 💎', { id: 'upgrade-success' });
+        queryClient.invalidateQueries({ queryKey: ['profiles', id] });
+      }
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (upgrade === 'cancel') {
+      hasHandledUpgrade.current = true;
+      toast.error('Upgrade cancelled. No worries, you can try again later!', { id: 'upgrade-cancel' });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [id, queryClient]);
 
   // --- Data Fetching (React Query) ---
   const { 
@@ -231,8 +271,25 @@ const ProfilePage = () => {
                   <Typography variant="h2" sx={{ fontWeight: 950, letterSpacing: '-0.04em', color: 'text.primary', display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     {profile.username}
                   </Typography>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     {profile.reputationLevel || 'Executive Chef'} • {profile.reputationPoints || 1250} Rep
+                    {profile.premium && (
+                      <Chip 
+                        label="Premium Member" 
+                        size="small" 
+                        icon={<WorkspacePremiumIcon sx={{ fontSize: '14px !important', color: '#FFD700 !important' }} />}
+                        sx={{ 
+                          ml: 1, 
+                          height: 20, 
+                          fontSize: '0.65rem', 
+                          fontWeight: 900, 
+                          bgcolor: 'rgba(255, 215, 0, 0.15)', 
+                          color: '#B8860B',
+                          border: '1px solid #FFD700',
+                          '& .MuiChip-icon': { color: '#FFD700' }
+                        }} 
+                      />
+                    )}
                   </Typography>
                 </Box>
                 

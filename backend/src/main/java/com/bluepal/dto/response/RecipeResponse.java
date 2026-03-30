@@ -34,6 +34,9 @@ public class RecipeResponse {
     private Boolean isBookmarked;
     private Integer userRating; // Current user's rating for this recipe
     private Boolean isPublished;
+    private String content;
+    @com.fasterxml.jackson.annotation.JsonProperty("isPremium")
+    private Boolean isPremium;
     private AuthorDto author;
     private List<IngredientDto> ingredients;
     private List<StepDto> steps;

@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -32,6 +33,14 @@ public class User {
 
     @Column(nullable = false)
     private String password;
+
+    public String getPassword() {
+        return this.password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
 
     @Column(length = 500)
     private String bio;
@@ -71,6 +80,18 @@ public class User {
     @Column(name = "reputation_level", length = 50)
     private String reputationLevel;
 
+    @Builder.Default
+    @Column(name = "is_premium_user", nullable = false)
+    @JsonProperty("premium")
+    private boolean premium = false;
+
+    @Column(name = "premium_expiry_date")
+    private LocalDateTime premiumExpiryDate;
+
+    @Builder.Default
+    @Column(name = "is_restricted", nullable = false)
+    private boolean isRestricted = false;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -78,4 +99,37 @@ public class User {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @JsonProperty("premium")
+    public boolean isPremium() {
+        return this.premium;
+    }
+
+    public void setPremium(boolean premium) {
+        this.premium = premium;
+    }
+
+    public boolean hasActivePremium() {
+        // Log the state for debugging (helps identify sync issues)
+        System.out.println("DEBUG: [PremiumCheck] User: " + (this.username != null ? this.username : this.id));
+        System.out.println("DEBUG: [PremiumCheck] Roles: " + this.roles);
+        System.out.println("DEBUG: [PremiumCheck] Flag: " + this.premium + ", Expiry: " + this.premiumExpiryDate);
+        
+        // 1. ADMINS automatically have premium access (standard fail-safe)
+        if (this.roles != null && (this.roles.contains("ROLE_ADMIN") || this.roles.contains("ADMIN"))) {
+            return true;
+        }
+
+        // 2. EXPIRY-FIRST CHECK: If we have a future expiry date, they ARE premium
+        if (this.premiumExpiryDate != null) {
+            boolean isStillValid = this.premiumExpiryDate.isAfter(LocalDateTime.now());
+            if (isStillValid) {
+                // Self-healing: if date is valid but flag is false, we should treat as premium
+                return true; 
+            }
+        }
+
+        // 3. FALLBACK TO FLAG: Handle legacy or manually set users without expiry but with flag
+        return this.premium;
+    }
 }

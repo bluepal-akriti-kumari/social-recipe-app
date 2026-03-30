@@ -15,13 +15,15 @@ import java.util.Optional;
 @Repository
 public interface RatingRepository extends JpaRepository<Rating, Long> {
     Optional<Rating> findByUserAndRecipe(User user, Recipe recipe);
+    Optional<Rating> findFirstByUserAndRecipeOrderByCreatedAtDesc(User user, Recipe recipe);
+
     boolean existsByUserAndRecipe(User user, Recipe recipe);
-    
+
     long countByRecipe(Recipe recipe);
-    
+
     @Query("SELECT AVG(r.rating) FROM Rating r WHERE r.recipe = :recipe")
     Double getAverageRatingByRecipe(@Param("recipe") Recipe recipe);
-    
+
     @Modifying
     @Transactional
     void deleteByRecipe(Recipe recipe);

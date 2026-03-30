@@ -84,7 +84,9 @@ const recipeSlice = createSlice({
     fetchFailure(state, action: PayloadAction<any>) {
       state.loading = false;
       const payload = action.payload;
-      state.error = typeof payload === 'string' ? payload : (payload?.message || payload?.error || 'An error occurred');
+      state.error = typeof payload === 'string' 
+        ? payload 
+        : (payload?.message || payload?.error || 'An error occurred');
     },
     toggleLike(state, action: PayloadAction<number>) {
       const updateLike = (list: RecipeSummary[]) => {

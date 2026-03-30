@@ -61,6 +61,7 @@ public class SecurityConfig {
                 auth.requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/error").permitAll()
                     .requestMatchers("/ws/**").permitAll()
+                    .requestMatchers("/api/payments/webhook").permitAll()
                     .requestMatchers(org.springframework.http.HttpMethod.GET, 
                     	    "/api/feed/explore", 
                     	    "/api/recipes/trending",

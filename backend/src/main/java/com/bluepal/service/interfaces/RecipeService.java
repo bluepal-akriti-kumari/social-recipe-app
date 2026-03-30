@@ -28,4 +28,5 @@ public interface RecipeService {
 
     RecipeResponse updateRecipe(Long id, RecipeRequest request, String username);
     void deleteRecipe(Long id, String username);
+    void markAsPremium(Long id);
 }

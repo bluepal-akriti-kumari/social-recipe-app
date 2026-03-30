@@ -23,7 +23,7 @@ public class BookmarkServiceImpl implements BookmarkService {
 
     private final BookmarkRepository bookmarkRepository;
     private final RecipeRepository recipeRepository;
-    
+
     @Lazy
     private final RecipeService recipeService;
 
@@ -33,16 +33,16 @@ public class BookmarkServiceImpl implements BookmarkService {
         Recipe recipe = recipeRepository.findById(recipeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", recipeId));
 
-        bookmarkRepository.findByUserAndRecipe(user, recipe).ifPresentOrElse(
+        bookmarkRepository.findFirstByUserAndRecipeOrderByCreatedAtDesc(user, recipe).ifPresentOrElse(
                 bookmarkRepository::delete,
-                () -> bookmarkRepository.save(Bookmark.builder().user(user).recipe(recipe).build())
-        );
+                () -> bookmarkRepository.save(Bookmark.builder().user(user).recipe(recipe).build()));
     }
 
     @Override
     public boolean isBookmarked(User user, Long recipeId) {
         Recipe recipe = recipeRepository.findById(recipeId).orElse(null);
-        if (recipe == null) return false;
+        if (recipe == null)
+            return false;
         return bookmarkRepository.existsByUserAndRecipe(user, recipe);
     }
 

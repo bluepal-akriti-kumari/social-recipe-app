@@ -38,7 +38,7 @@ public class RecipeServiceImpl implements RecipeService {
 	public RecipeServiceImpl(RecipeRepository recipeRepository, UserRepository userRepository,
 			NotificationRepository notificationRepository, MealPlanRepository mealPlanRepository,
 			ShoppingListItemRepository shoppingListItemRepository,
-			LikeRepository likeRepository, CommentRepository commentRepository, 
+			LikeRepository likeRepository, CommentRepository commentRepository,
 			BookmarkRepository bookmarkRepository, RatingRepository ratingRepository,
 			com.bluepal.service.interfaces.RatingService ratingService,
 			@Lazy com.bluepal.service.interfaces.BookmarkService bookmarkService) {
@@ -69,6 +69,20 @@ public class RecipeServiceImpl implements RecipeService {
 		User author = userRepository.findByUsername(username)
 				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
+		if (author.isRestricted()) {
+			throw new org.springframework.security.access.AccessDeniedException(
+					"Your account is restricted. You cannot post recipes.");
+		}
+
+		if (request.isPremium()) {
+			boolean isPremium = author.hasActivePremium();
+			boolean isAdmin = author.getRoles().contains("ROLE_ADMIN");
+			if (!isPremium && !isAdmin) {
+				throw new com.bluepal.exception.PremiumRequiredException(
+						"You must be a premium member to create premium recipes.");
+			}
+		}
+
 		// --- Safety logic for Category ---
 		RecipeCategory category;
 		if (request.getCategory() == null || request.getCategory().isBlank()) {
@@ -89,6 +103,7 @@ public class RecipeServiceImpl implements RecipeService {
 				.cookTimeMinutes(request.getCookTimeMinutes()).servings(request.getServings()).author(author)
 				.category(category)
 				.isPublished(request.isPublished())
+				.isPremium(request.isPremium())
 				.calories(request.getCalories())
 				.protein(request.getProtein())
 				.carbs(request.getCarbs())
@@ -101,7 +116,8 @@ public class RecipeServiceImpl implements RecipeService {
 				if (ir.getCategory() != null) {
 					try {
 						ingCat = ShoppingCategory.valueOf(ir.getCategory().toUpperCase());
-					} catch (IllegalArgumentException ignored) {}
+					} catch (IllegalArgumentException ignored) {
+					}
 				}
 				recipe.addIngredient(Ingredient.builder()
 						.name(ir.getName())
@@ -144,7 +160,7 @@ public class RecipeServiceImpl implements RecipeService {
 	private boolean checkIsLiked(Recipe recipe, String username) {
 		if (username == null)
 			return false;
-		return userRepository.findByUsername(username).map(user -> likeRepository.existsByUserAndRecipe(user, recipe))
+		return userRepository.findFirstByUsername(username).map(user -> likeRepository.existsByUserAndRecipe(user, recipe))
 				.orElse(false);
 	}
 
@@ -152,26 +168,33 @@ public class RecipeServiceImpl implements RecipeService {
 	private RecipeResponse mapToResponse(Recipe recipe, String currentUsername) {
 		try {
 			boolean isLiked = checkIsLiked(recipe, currentUsername);
-			User currentUser = currentUsername != null ? userRepository.findByUsername(currentUsername).orElse(null) : null;
+			User currentUser = currentUsername != null ? userRepository.findFirstByUsername(currentUsername).orElse(null)
+					: null;
 			boolean isBookmarked = currentUser != null && bookmarkService.isBookmarked(currentUser, recipe.getId());
 			int userRating = currentUser != null ? ratingService.getUserRating(currentUser, recipe) : 0;
 
-			return RecipeResponse.builder().id(recipe.getId()).title(recipe.getTitle()).description(recipe.getDescription())
+			return RecipeResponse.builder().id(recipe.getId()).title(recipe.getTitle())
+					.description(recipe.getDescription())
 					.imageUrl(recipe.getImageUrl()).prepTimeMinutes(recipe.getPrepTimeMinutes())
 					.cookTimeMinutes(recipe.getCookTimeMinutes()).servings(recipe.getServings())
-					.calories(recipe.getCalories()).protein(recipe.getProtein()).carbs(recipe.getCarbs()).fats(recipe.getFats())
+					.calories(recipe.getCalories()).protein(recipe.getProtein()).carbs(recipe.getCarbs())
+					.fats(recipe.getFats())
 					.likeCount(recipe.getLikeCount()).commentCount(recipe.getCommentCount())
 					.averageRating(recipe.getAverageRating()).ratingCount(recipe.getRatingCount())
 					.category(recipe.getCategory() != null ? recipe.getCategory().name() : null).isLiked(isLiked)
-				.isBookmarked(isBookmarked).userRating(userRating)
-				.isPublished(recipe.isPublished())
-				.additionalImages(
+					.isBookmarked(isBookmarked).userRating(userRating)
+					.isPublished(recipe.isPublished())
+					.isPremium(recipe.isPremium())
+					.content(recipe.getContent()) // Map content field
+					.additionalImages(
 							recipe.getImages().stream().map(RecipeImage::getImageUrl).collect(Collectors.toList()))
 					.createdAt(recipe.getCreatedAt())
-					.author(recipe.getAuthor() != null ? RecipeResponse.AuthorDto.builder().id(recipe.getAuthor().getId())
-							.username(recipe.getAuthor().getUsername())
-							.isVerified(recipe.getAuthor().isVerified())
-							.profilePictureUrl(recipe.getAuthor().getProfilePictureUrl()).build() : null)
+					.author(recipe.getAuthor() != null
+							? RecipeResponse.AuthorDto.builder().id(recipe.getAuthor().getId())
+									.username(recipe.getAuthor().getUsername())
+									.isVerified(recipe.getAuthor().isVerified())
+									.profilePictureUrl(recipe.getAuthor().getProfilePictureUrl()).build()
+							: null)
 					.ingredients(recipe.getIngredients().stream()
 							.map(i -> RecipeResponse.IngredientDto.builder().id(i.getId()).name(i.getName())
 									.quantity(i.getQuantity()).unit(i.getUnit())
@@ -194,6 +217,46 @@ public class RecipeServiceImpl implements RecipeService {
 	public RecipeResponse getRecipeById(Long id, String currentUsername) {
 		Recipe recipe = recipeRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
+
+		if (recipe.getStatus() == RecipeStatus.RESTRICTED) {
+			User user = currentUsername != null ? userRepository.findByUsernameIgnoreCase(currentUsername).orElse(null)
+					: null;
+			boolean isAdmin = user != null && user.getRoles().contains("ROLE_ADMIN");
+			if (!isAdmin) {
+				throw new ResourceNotFoundException("Recipe", "id", id);
+			}
+		}
+
+		if (recipe.isPremium()) {
+			User user = currentUsername != null
+					? userRepository.findFirstByUsernameIgnoreCasePrioritizePremium(currentUsername).orElse(null)
+					: null;
+
+			// Author check (Robust: check both ID and Username with NULL GUARDS)
+			boolean isAuthor = false;
+			if (user != null && recipe.getAuthor() != null) {
+				isAuthor = (recipe.getAuthor().getId() != null && recipe.getAuthor().getId().equals(user.getId())) ||
+						(recipe.getAuthor().getUsername() != null
+								&& recipe.getAuthor().getUsername().equalsIgnoreCase(user.getUsername()));
+			}
+
+			// Admin check (now also checking ADMIN without ROLE_ prefix for safety)
+			boolean isAdmin = user != null && (user.getRoles().contains("ROLE_ADMIN") || user.getRoles().contains("ADMIN"));
+
+			// Premium check (leverages the improved User entity logic)
+			boolean isPremium = user != null && user.hasActivePremium();
+
+			System.out.println("DEBUG: [RecipeAccess] User matched: " + (user != null ? user.getUsername() + " (ID: " + user.getId() + ")" : "NONE"));
+			System.out.println("DEBUG: [RecipeAccess] isAuthor: " + isAuthor + ", isAdmin: " + isAdmin + ", isPremium: " + isPremium);
+
+			if (!isAdmin && !isAuthor && !isPremium) {
+				System.err.println("DEBUG: [RecipeAccess] ACCESS DENIED - ID: " + id + ", User: " + (user != null ? user.getUsername() : "null"));
+				throw new com.bluepal.exception.PremiumRequiredException(
+						"This is a premium recipe. Please upgrade to view.");
+			}
+			System.out.println("DEBUG: [RecipeAccess] ACCESS GRANTED");
+		}
+
 		return mapToResponse(recipe, currentUsername);
 	}
 
@@ -286,8 +349,18 @@ public class RecipeServiceImpl implements RecipeService {
 	}
 
 	@Override
+	@Transactional
+	public void markAsPremium(Long id) {
+		Recipe recipe = recipeRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
+		recipe.setPremium(true);
+		recipeRepository.save(recipe);
+	}
+
+	@Override
 	@Transactional(readOnly = true)
-	public Map<String, Object> getUserLikedRecipes(Long userId, LocalDateTime cursor, int size, String currentUsername) {
+	public Map<String, Object> getUserLikedRecipes(Long userId, LocalDateTime cursor, int size,
+			String currentUsername) {
 		try {
 			User user = userRepository.findById(userId)
 					.orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
@@ -323,6 +396,18 @@ public class RecipeServiceImpl implements RecipeService {
 			throw new RuntimeException("You are not authorized to update this recipe");
 		}
 
+		User user = userRepository.findByUsername(username)
+				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+
+		if (request.isPremium()) {
+			boolean isPremium = user.hasActivePremium();
+			boolean isAdmin = user.getRoles().contains("ROLE_ADMIN");
+			if (!isPremium && !isAdmin) {
+				throw new com.bluepal.exception.PremiumRequiredException(
+						"You must be a premium member to manage premium recipes.");
+			}
+		}
+
 		recipe.setTitle(request.getTitle());
 		recipe.setDescription(request.getDescription());
 		recipe.setImageUrl(request.getImageUrl());
@@ -344,6 +429,7 @@ public class RecipeServiceImpl implements RecipeService {
 		}
 
 		recipe.setPublished(request.isPublished());
+		recipe.setPremium(request.isPremium());
 
 		// Simple clear and re-add for ingredients/steps (can be optimized)
 		new java.util.ArrayList<>(recipe.getIngredients()).forEach(recipe::removeIngredient);
@@ -353,7 +439,8 @@ public class RecipeServiceImpl implements RecipeService {
 				if (ir.getCategory() != null) {
 					try {
 						ingCat = ShoppingCategory.valueOf(ir.getCategory().toUpperCase());
-					} catch (IllegalArgumentException ignored) {}
+					} catch (IllegalArgumentException ignored) {
+					}
 				}
 				recipe.addIngredient(Ingredient.builder()
 						.name(ir.getName())
@@ -394,7 +481,7 @@ public class RecipeServiceImpl implements RecipeService {
 		if (!isAuthor && !isModeratorOrAdmin) {
 			throw new RuntimeException("You are not authorized to delete this recipe");
 		}
-		
+
 		// Cascade delete related entities
 		likeRepository.deleteByRecipe(recipe);
 		commentRepository.deleteByRecipe(recipe);
@@ -462,28 +549,29 @@ public class RecipeServiceImpl implements RecipeService {
 		try {
 			Specification<Recipe> spec = (root, query, cb) -> {
 				List<Predicate> predicates = new ArrayList<>();
-				
+
 				// Always only show published recipes in explore
 				predicates.add(cb.isTrue(root.get("isPublished")));
-				
+
 				if (cursor != null) {
 					predicates.add(cb.lessThan(root.get("createdAt"), cursor));
 				}
-				
+
 				if (category != null && !category.isEmpty() && !"all".equalsIgnoreCase(category)) {
 					try {
 						RecipeCategory cat = RecipeCategory.valueOf(category.trim().toUpperCase());
 						predicates.add(cb.equal(root.get("category"), cat));
-					} catch (IllegalArgumentException ignored) {}
+					} catch (IllegalArgumentException ignored) {
+					}
 				}
-				
+
 				if (maxTime != null) {
 					// Combined prep + cook time (using coalesce to handle null values)
 					Expression<Integer> prep = cb.coalesce(root.get("prepTimeMinutes"), 0);
 					Expression<Integer> cook = cb.coalesce(root.get("cookTimeMinutes"), 0);
 					predicates.add(cb.lessThanOrEqualTo(cb.sum(prep, cook), maxTime));
 				}
-				
+
 				if (maxCalories != null) {
 					// Use coalesce to treat NULL calories as 0 for filtering purposes
 					predicates.add(cb.lessThanOrEqualTo(cb.coalesce(root.get("calories"), 0), maxCalories));
@@ -502,7 +590,7 @@ public class RecipeServiceImpl implements RecipeService {
 						query.orderBy(cb.desc(root.get("createdAt")));
 					}
 				}
-				
+
 				return cb.and(predicates.toArray(new Predicate[0]));
 			};
 

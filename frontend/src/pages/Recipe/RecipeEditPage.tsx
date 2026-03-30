@@ -3,7 +3,8 @@ import {
   Box, Stepper, Step, StepLabel, Button, 
   Typography, TextField, IconButton, 
   CircularProgress, Alert, Grid, MenuItem,
-  Container, Paper, Breadcrumbs, Link
+  Container, Paper, Breadcrumbs, Link,
+  FormControlLabel, Switch
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -21,6 +22,7 @@ const steps = ['General Info', 'Ingredients', 'Cooking Steps'];
 interface RecipeFormValues {
   title: string;
   description: string;
+  content: string;
   prepTimeMinutes: number;
   cookTimeMinutes: number;
   servings: number;
@@ -34,6 +36,7 @@ interface RecipeFormValues {
   carbs?: number;
   fats?: number;
   isPublished: boolean;
+  isPremium: boolean;
 }
 
 const RecipeEditPage: React.FC = () => {
@@ -55,6 +58,7 @@ const RecipeEditPage: React.FC = () => {
     defaultValues: {
       title: '',
       description: '',
+      content: '',
       ingredients: [{ name: '', quantity: '', unit: '' }],
       steps: [{ stepNumber: 1, instruction: '' }],
       prepTimeMinutes: 15,
@@ -63,7 +67,8 @@ const RecipeEditPage: React.FC = () => {
       imageUrl: '',
       additionalImages: [],
       category: 'VEG',
-      isPublished: true
+      isPublished: true,
+      isPremium: false
     }
   });
 
@@ -72,6 +77,7 @@ const RecipeEditPage: React.FC = () => {
       reset({
         title: recipe.title,
         description: recipe.description,
+        content: recipe.content || '',
         prepTimeMinutes: recipe.prepTimeMinutes,
         cookTimeMinutes: recipe.cookTimeMinutes,
         servings: recipe.servings,
@@ -92,7 +98,8 @@ const RecipeEditPage: React.FC = () => {
         protein: recipe.protein,
         carbs: recipe.carbs,
         fats: recipe.fats,
-        isPublished: recipe.isPublished ?? true
+        isPublished: recipe.isPublished ?? true,
+        isPremium: recipe.isPremium ?? false
       });
     }
   }, [recipe, reset]);
@@ -161,7 +168,8 @@ const RecipeEditPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['recipes'] });
       navigate(`/recipes/${id}`);
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || err.response?.data || err.message || 'Failed to update recipe';
+      const responseData = err.response?.data;
+      const errorMessage = responseData?.message || responseData?.error || (typeof responseData === 'string' ? responseData : err.message) || 'Failed to update recipe';
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -234,6 +242,34 @@ const RecipeEditPage: React.FC = () => {
               fullWidth multiline rows={3} label="The Story" placeholder="What's the inspiration behind this recipe?"
               {...register('description')}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
+            />
+            <TextField
+              size="small"
+              fullWidth multiline rows={6} label="Full Recipe Content" placeholder="Detailed instructions, tips, and secrets..."
+              {...register('content')}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
+            />
+            <Controller
+              name="isPremium"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={
+                    <Switch 
+                      {...field} 
+                      checked={field.value} 
+                      onChange={(e) => field.onChange(e.target.checked)}
+                      color="warning" 
+                    />
+                  }
+                  label={
+                    <Typography sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      💎 Premium Recipe
+                    </Typography>
+                  }
+                  sx={{ alignSelf: 'flex-start' }}
+                />
+              )}
             />
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField 

@@ -6,9 +6,11 @@ import SetMealIcon from '@mui/icons-material/SetMeal';
 import BakeryDiningIcon from '@mui/icons-material/BakeryDining';
 import CoffeeIcon from '@mui/icons-material/Coffee';
 import IcecreamIcon from '@mui/icons-material/Icecream';
+import PersonIcon from '@mui/icons-material/Person';
 
 const CATEGORIES = [
   { label: 'All Recipes', value: '', icon: null },
+  { label: 'My Recipes', value: 'OWN', icon: <PersonIcon sx={{ fontSize: 18 }} /> },
   { label: 'Healthy', value: 'HEALTHY', icon: <SpaIcon sx={{ fontSize: 18 }} /> },
   { label: 'Italian', value: 'ITALIAN', icon: <LocalPizzaIcon sx={{ fontSize: 18 }} /> },
   { label: 'Seafood', value: 'SEAFOOD', icon: <SetMealIcon sx={{ fontSize: 18 }} /> },

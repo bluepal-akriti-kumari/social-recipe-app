@@ -32,7 +32,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserProfileResponse getUserProfile(String username, String currentUsername) {
         System.out.println("DEBUG: Fetching profile for " + username + " (current: " + currentUsername + ")");
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
         return buildProfileResponse(user, currentUsername);
@@ -50,13 +50,15 @@ public class UserServiceImpl implements UserService {
     private UserProfileResponse buildProfileResponse(User user, String currentUsername) {
         boolean isFollowing = false;
         if (currentUsername != null) {
-            Optional<User> currentUserOpt = userRepository.findByUsername(currentUsername);
+            Optional<User> currentUserOpt = userRepository.findByUsernameIgnoreCase(currentUsername);
             if (currentUserOpt.isPresent()) {
                 isFollowing = followRepository.existsByFollowerAndFollowing(currentUserOpt.get(), user);
             }
         }
 
         long recipeCount = recipeRepository.countByAuthor(user);
+
+        boolean isPremium = user.hasActivePremium();
 
         return UserProfileResponse.builder()
                 .id(user.getId())
@@ -71,6 +73,8 @@ public class UserServiceImpl implements UserService {
                 .reputationPoints(user.getReputationPoints())
                 .reputationLevel(user.getReputationLevel())
                 .recipeCount((int) recipeCount)
+                .premium(isPremium)
+                .premiumExpiryDate(user.getPremiumExpiryDate())
                 .build();
     }
 
@@ -81,10 +85,10 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("Users cannot follow themselves");
         }
 
-        User follower = userRepository.findByUsername(followerUsername)
+        User follower = userRepository.findByUsernameIgnoreCase(followerUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", followerUsername));
         
-        User following = userRepository.findByUsername(followingUsername)
+        User following = userRepository.findByUsernameIgnoreCase(followingUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", followingUsername));
 
         if (!followRepository.existsByFollowerAndFollowing(follower, following)) {
@@ -105,7 +109,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void unfollowUser(String followerUsername, String followingUsername) {
-        User following = userRepository.findByUsername(followingUsername)
+        User following = userRepository.findByUsernameIgnoreCase(followingUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", followingUsername));
         
         performUnfollow(followerUsername, following);
@@ -121,7 +125,7 @@ public class UserServiceImpl implements UserService {
     }
 
     private void performUnfollow(String followerUsername, User following) {
-        User follower = userRepository.findByUsername(followerUsername)
+        User follower = userRepository.findByUsernameIgnoreCase(followerUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", followerUsername));
 
         Optional<Follow> followOpt = followRepository.findByFollowerAndFollowing(follower, following);
@@ -145,7 +149,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void toggleFollow(String followerUsername, String followingUsername) {
-        User following = userRepository.findByUsername(followingUsername)
+        User following = userRepository.findByUsernameIgnoreCase(followingUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", followingUsername));
         
         performToggleFollow(followerUsername, following);
@@ -161,7 +165,7 @@ public class UserServiceImpl implements UserService {
     }
 
     private void performToggleFollow(String followerUsername, User following) {
-        User follower = userRepository.findByUsername(followerUsername)
+        User follower = userRepository.findByUsernameIgnoreCase(followerUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", followerUsername));
 
         if (follower.getId().equals(following.getId())) {
@@ -200,7 +204,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserProfileResponse updateProfile(String username, com.bluepal.dto.request.UpdateProfileRequest request) {
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
         if (request.getBio() != null) {
@@ -227,13 +231,15 @@ public class UserServiceImpl implements UserService {
                 .isVerified(updatedUser.isVerified())
                 .reputationPoints(updatedUser.getReputationPoints())
                 .reputationLevel(updatedUser.getReputationLevel())
+                .premium(updatedUser.hasActivePremium())
+                .premiumExpiryDate(updatedUser.getPremiumExpiryDate())
                 .build();
     }
 
     @Override
     @Transactional
     public void updateReputation(String username, int points) {
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
         
         Integer currentPoints = user.getReputationPoints();

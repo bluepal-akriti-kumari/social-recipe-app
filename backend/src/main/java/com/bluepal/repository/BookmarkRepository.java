@@ -14,13 +14,16 @@ import java.util.Optional;
 @Repository
 public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
     List<Bookmark> findByUserOrderByCreatedAtDesc(User user);
+
     Optional<Bookmark> findByUserAndRecipe(User user, Recipe recipe);
+    Optional<Bookmark> findFirstByUserAndRecipeOrderByCreatedAtDesc(User user, Recipe recipe);
+
     boolean existsByUserAndRecipe(User user, Recipe recipe);
-    
+
     @Modifying
     @Transactional
     void deleteByUserAndRecipe(User user, Recipe recipe);
-    
+
     @Modifying
     @Transactional
     void deleteByRecipe(Recipe recipe);

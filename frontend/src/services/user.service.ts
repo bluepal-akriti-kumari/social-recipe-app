@@ -14,6 +14,7 @@ export interface UserProfile {
   reputationPoints?: number;
   reputationLevel?: string;
   recipeCount?: number;
+  premium?: boolean;
 }
 
 export const userService = {
@@ -34,4 +35,18 @@ export const userService = {
   
   getFollowing: (id: number) => 
     api.get<UserProfile[]>(`/users/${id}/following`).then(r => r.data),
+
+  likeRecipe: (id: number) =>
+    api.post(`/recipes/${id}/like`).then(r => r.data),
+
+  upgradeToPremium: () => 
+    api.post('/payments/create-checkout-session').then(r => r.data),
+
+  getCurrentUser: async () => {
+    const response = await api.get('/auth/me');
+    return response.data;
+  },
+
+  verifyPremiumSession: (sessionId: string) => 
+    api.get('/payments/verify-session?session_id=' + sessionId).then(r => r.data),
 };

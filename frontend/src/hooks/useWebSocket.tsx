@@ -16,11 +16,20 @@ interface Notification {
   createdAt: string;
 }
 
+interface RecipeStats {
+  likeCount: number;
+  commentCount: number;
+}
+
 interface WebSocketContextType {
   notifications: Notification[];
   unreadCount: number;
   markAsRead: (id: number) => void;
   markAllAsRead: () => void;
+  recipeStats: Record<number, RecipeStats>;
+  viewerCounts: Record<number, number>;
+  subscribeToRecipe: (id: number) => () => void;
+  latestActivity: string | null;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | null>(null);
@@ -37,7 +46,10 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
   const { user, isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [, setStompClient] = useState<Client | null>(null);
+  const [stompClient, setStompClient] = useState<Client | null>(null);
+  const [recipeStats, setRecipeStats] = useState<Record<number, RecipeStats>>({});
+  const [viewerCounts, setViewerCounts] = useState<Record<number, number>>({});
+  const [latestActivity, setLatestActivity] = useState<string | null>(null);
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -82,15 +94,23 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
         heartbeatOutgoing: 4000,
       });
 
-      client.onConnect = () => {
+        client.onConnect = () => {
         console.log('Connected to WebSocket');
+        
+        // 1. Personal Notifications
         client.subscribe(`/user/${user.username}/queue/notifications`, (message: any) => {
           const newNotification: Notification = JSON.parse(message.body);
           setNotifications((prev) => [newNotification, ...prev]);
           setUnreadCount((prev) => prev + 1);
-          
-          // Trigger a custom event for the toast
           window.dispatchEvent(new CustomEvent('new_notification', { detail: newNotification }));
+        });
+
+        // 2. Global Activity
+        client.subscribe('/topic/activity', (message: any) => {
+          const activity = JSON.parse(message.body);
+          setLatestActivity(activity.message);
+          // Hide after 5 seconds
+          setTimeout(() => setLatestActivity((prev) => prev === activity.message ? null : prev), 5000);
         });
       };
 
@@ -138,8 +158,32 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const subscribeToRecipe = useCallback((id: number) => {
+    if (!stompClient || !stompClient.connected) return () => {};
+
+    // Subscribe to stats
+    const statsSub = stompClient.subscribe(`/topic/recipes/${id}/stats`, (message: any) => {
+      const stats: RecipeStats & { recipeId: number } = JSON.parse(message.body);
+      setRecipeStats((prev) => ({ ...prev, [id]: { likeCount: stats.likeCount, commentCount: stats.commentCount } }));
+    });
+
+    // Subscribe to viewers
+    const viewerSub = stompClient.subscribe(`/topic/recipes/${id}/viewers`, (message: any) => {
+      const data = JSON.parse(message.body);
+      setViewerCounts((prev) => ({ ...prev, [id]: data.count }));
+    });
+
+    return () => {
+      statsSub.unsubscribe();
+      viewerSub.unsubscribe();
+    };
+  }, [stompClient]);
+
   return (
-    <WebSocketContext.Provider value={{ notifications, unreadCount, markAsRead, markAllAsRead }}>
+    <WebSocketContext.Provider value={{ 
+      notifications, unreadCount, markAsRead, markAllAsRead, 
+      recipeStats, viewerCounts, subscribeToRecipe, latestActivity 
+    }}>
       {children}
     </WebSocketContext.Provider>
   );

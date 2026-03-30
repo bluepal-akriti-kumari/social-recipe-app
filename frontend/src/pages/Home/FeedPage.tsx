@@ -9,13 +9,15 @@ import CategoryQuickBar from '../../components/discovery/CategoryQuickBar';
 import FilterSidebar from '../../components/discovery/FilterSidebar';
 import { recipeService } from '../../services/recipe.service';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../../hooks/useAuth';
 
 const FeedPage = () => {
+  const { user } = useAuth();
   const location = useLocation();
   const queryClient = useQueryClient();
   const queryParams = new URLSearchParams(location.search);
   const searchQuery = queryParams.get('q');
-   const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [filters, setFilters] = useState({
     maxTime: 180,
     maxCalories: 2000,
@@ -48,14 +50,19 @@ const FeedPage = () => {
     error: exploreError,
   } = useInfiniteQuery({
     queryKey: ['recipes', 'explore', selectedCategory, filters],
-    queryFn: ({ pageParam }) => recipeService.getExploreFeed(
-      pageParam, 
-      selectedCategory, 
-      12, 
-      filters.maxTime, 
-      filters.maxCalories, 
-      filters.sort
-    ),
+    queryFn: async ({ pageParam }) => {
+      if (selectedCategory === 'OWN' && user) {
+        return recipeService.getUserRecipes((user as any).id, pageParam, 12);
+      }
+      return recipeService.getExploreFeed(
+        pageParam, 
+        selectedCategory, 
+        12, 
+        filters.maxTime, 
+        filters.maxCalories, 
+        filters.sort
+      );
+    },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
     enabled: !searchQuery,
@@ -187,15 +194,21 @@ const FeedPage = () => {
             <AnimatePresence mode="popLayout">
               <Box 
                 sx={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: { 
-                    xs: '1fr', 
-                    sm: 'repeat(2, 1fr)', 
-                    md: searchQuery ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
-                    lg: searchQuery ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
-                    xl: searchQuery ? 'repeat(5, 1fr)' : 'repeat(4, 1fr)'
-                  },
-                  gap: { xs: 3, md: 5 } 
+                  display: 'flex', 
+                  flexWrap: 'wrap', 
+                  gap: 6,
+                  justifyContent: { xs: 'center', md: 'flex-start' },
+                  '& > *': {
+                    flexBasis: { 
+                      xs: '100%', 
+                      sm: 'calc(50% - 24px)', 
+                      md: 'calc(50% - 24px)',
+                      lg: 'calc(33.333% - 32px)',
+                      xl: '320px'
+                    },
+                    flexGrow: 0,
+                    flexShrink: 0
+                  }
                 }}
               >
                 {displayFeed.map((recipe, index) => (
@@ -205,7 +218,7 @@ const FeedPage = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: (index % 8) * 0.1 }}
                     layout
-                    style={{ height: '100%', display: 'flex' }}
+                    style={{ height: 'auto', display: 'flex' }}
                   >
                     <RecipeCard 
                       recipe={recipe} 

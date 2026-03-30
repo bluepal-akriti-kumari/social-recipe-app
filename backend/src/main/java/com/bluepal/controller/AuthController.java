@@ -81,11 +81,15 @@ public class AuthController {
                                 .map(GrantedAuthority::getAuthority)
                                 .collect(Collectors.toList());
 
+                User userInstance = userRepository.findById(userDetails.getId()).orElse(null);
+                boolean isPremium = userInstance != null && userInstance.hasActivePremium();
+
                 return ResponseEntity.ok(new JwtResponse(jwt,
                                 userDetails.getId(),
                                 userDetails.getUsername(),
                                 userDetails.getEmail(),
-                                roles));
+                                roles,
+                                isPremium));
         }
 
         @PostMapping("/register")
@@ -229,6 +233,28 @@ public class AuthController {
                 passwordResetTokenRepository.delete(resetToken);
 
                 return ResponseEntity.ok("Password reset successful!");
+        }
+
+        @GetMapping("/me")
+        public ResponseEntity<?> getCurrentUser() {
+                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+                }
+
+                String username = authentication.getName();
+                User user = userRepository.findByUsernameIgnoreCase(username)
+                                .orElseThrow(() -> new com.bluepal.exception.ResourceNotFoundException("User", "username", username));
+
+                List<String> roles = user.getRoles().stream().collect(Collectors.toList());
+
+                return ResponseEntity.ok(new JwtResponse(
+                                null, // No need to return the token again
+                                user.getId(),
+                                user.getUsername(),
+                                user.getEmail(),
+                                roles,
+                                user.hasActivePremium()));
         }
 
         @ResponseStatus(HttpStatus.BAD_REQUEST)

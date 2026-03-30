@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { 
   Box, Stepper, Step, StepLabel, Button, 
   Typography, TextField, IconButton, 
-  CircularProgress, Alert, Grid, MenuItem
+  CircularProgress, Alert, Grid, MenuItem,
+  FormControlLabel, Switch
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -27,6 +28,7 @@ interface RecipeFormValues {
   steps: { stepNumber: number; instruction: string }[];
   category: string;
   isPublished: boolean;
+  isPremium: boolean;
 }
 
 interface CreateRecipeFormProps {
@@ -53,7 +55,8 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
       imageUrl: '',
       additionalImages: [],
       category: 'VEG',
-      isPublished: true
+      isPublished: true,
+      isPremium: false
     }
   });
 
@@ -120,7 +123,8 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
       if (onSuccess) onSuccess();
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || err.response?.data || err.message || 'Failed to create recipe';
+      const responseData = err.response?.data;
+      const errorMessage = responseData?.message || responseData?.error || (typeof responseData === 'string' ? responseData : err.message) || 'Failed to create recipe';
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -176,6 +180,28 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
               fullWidth multiline rows={3} label="The Story" placeholder="What's the inspiration behind this recipe?"
               {...register('description')}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
+            />
+            <Controller
+              name="isPremium"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={
+                    <Switch 
+                      {...field} 
+                      checked={field.value} 
+                      onChange={(e) => field.onChange(e.target.checked)}
+                      color="warning" 
+                    />
+                  }
+                  label={
+                    <Typography sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      💎 Premium Recipe
+                    </Typography>
+                  }
+                  sx={{ alignSelf: 'flex-start' }}
+                />
+              )}
             />
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField 

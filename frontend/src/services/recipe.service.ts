@@ -35,6 +35,7 @@ export interface RecipeSummary {
   ratingCount?: number;
   userRating?: number;
   isPublished?: boolean;
+  isPremium?: boolean;
   createdAt: string;
   author: {
     id: number;
@@ -43,6 +44,7 @@ export interface RecipeSummary {
     isVerified?: boolean;
   };
   category?: string;
+  content?: string;
 }
 
 export interface RecipeDetail extends RecipeSummary {

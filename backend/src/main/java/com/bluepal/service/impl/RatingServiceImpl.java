@@ -28,7 +28,7 @@ public class RatingServiceImpl implements RatingService {
         Recipe recipe = recipeRepository.findById(recipeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", recipeId));
 
-        Rating rating = ratingRepository.findByUserAndRecipe(user, recipe)
+        Rating rating = ratingRepository.findFirstByUserAndRecipeOrderByCreatedAtDesc(user, recipe)
                 .orElse(Rating.builder().user(user).recipe(recipe).build());
 
         rating.setRating(ratingValue);
@@ -40,7 +40,7 @@ public class RatingServiceImpl implements RatingService {
 
     @Override
     public Integer getUserRating(User user, Recipe recipe) {
-        return ratingRepository.findByUserAndRecipe(user, recipe)
+        return ratingRepository.findFirstByUserAndRecipeOrderByCreatedAtDesc(user, recipe)
                 .map(Rating::getRating)
                 .orElse(0);
     }
@@ -48,7 +48,7 @@ public class RatingServiceImpl implements RatingService {
     private void updateRecipeRating(Recipe recipe) {
         Double avg = ratingRepository.getAverageRatingByRecipe(recipe);
         long count = ratingRepository.countByRecipe(recipe);
-        
+
         recipe.setAverageRating(avg != null ? avg : 0.0);
         recipe.setRatingCount((int) count);
         recipeRepository.save(recipe);

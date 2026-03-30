@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Container, Grid, Box, Typography, Avatar, 
@@ -23,10 +23,13 @@ import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
+import { userService } from '../../services/user.service';
 import EditIcon from '@mui/icons-material/Edit';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import { recipeService } from '../../services/recipe.service';
 import { shoppingListService } from '../../services/shoppingList.service';
 import AddToPlannerModal from './AddToPlannerModal';
@@ -134,6 +137,7 @@ const RecipeDetailPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
+  const { subscribeToRecipe, recipeStats, viewerCounts } = useWebSocket();
   
   const recipeId = parseInt(id || '0');
   const [commentText, setCommentText] = useState('');
@@ -143,26 +147,21 @@ const RecipeDetailPage = () => {
   const [reportData, setReportData] = useState<{ type: string; id: number } | null>(null);
   const [reportReason, setReportReason] = useState('');
 
-  // --- Data Fetching (UseQuery) ---
-  const { 
-    data: recipeDetail, 
-    isLoading: isRecipeLoading, 
-    error: recipeError 
-  } = useQuery({
-    queryKey: ['recipes', recipeId],
-    queryFn: () => recipeService.getRecipeById(recipeId),
-    enabled: !!recipeId && !isNaN(recipeId),
-  });
-
-  const { 
-    data: comments = [] 
-  } = useQuery({
-    queryKey: ['recipes', recipeId, 'comments'],
-    queryFn: () => recipeService.getComments(recipeId).then(res => res.content),
-    enabled: !!recipeId && !isNaN(recipeId),
-  });
-
   // --- Mutations ---
+  const upgradeMutation = useMutation({
+    mutationFn: () => userService.upgradeToPremium(),
+    onSuccess: (res: any) => {
+      if (res?.url) {
+        window.location.href = res.url;
+      }
+    },
+    onError: (error: any) => {
+      const responseData = error.response?.data;
+      const errorMessage = responseData?.message || responseData?.error || (typeof responseData === 'string' ? responseData : 'Stripe Checkout failed. Please try again later.');
+      toast.error(errorMessage);
+    },
+  });
+
   const likeMutation = useMutation({
     mutationFn: () => recipeService.likeRecipe(recipeId),
     onSuccess: () => {
@@ -198,19 +197,16 @@ const RecipeDetailPage = () => {
     mutationFn: () => recipeService.bookmarkRecipe(recipeId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recipes', recipeId] });
-      toast.success(recipeDetail?.isBookmarked ? 'Removed from bookmarks' : 'Added to bookmarks');
+      // We will handle the toast message inside the handler to access current recipeDetail safely
     },
   });
 
   const deleteRecipeMutation = useMutation({
     mutationFn: () => recipeService.deleteRecipe(recipeId),
     onSuccess: () => {
-      // Remove specific queries for this recipe and its comments
       queryClient.removeQueries({ queryKey: ['recipes', recipeId] });
       queryClient.removeQueries({ queryKey: ['recipes', recipeId, 'comments'] });
-      // Invalidate general recipe lists (feed, trending, etc)
       queryClient.invalidateQueries({ queryKey: ['recipes'] });
-      
       toast.success('Recipe deleted successfully');
       navigate('/feed');
     },
@@ -237,6 +233,41 @@ const RecipeDetailPage = () => {
     onError: () => toast.error('Failed to submit report'),
   });
 
+  // --- Real-Time Subscription ---
+  useEffect(() => {
+    if (recipeId) {
+      const unsubscribe = subscribeToRecipe(recipeId);
+      return () => {
+        if (unsubscribe) unsubscribe();
+      };
+    }
+  }, [recipeId, subscribeToRecipe]);
+
+  // --- Data Fetching (UseQuery) ---
+  const { 
+    data: recipeDetail, 
+    isLoading: isRecipeLoading, 
+    error: recipeError 
+  } = useQuery({
+    queryKey: ['recipes', recipeId],
+    queryFn: () => recipeService.getRecipeById(recipeId),
+    enabled: !!recipeId && !isNaN(recipeId),
+  });
+
+  const { 
+    data: comments = [] 
+  } = useQuery({
+    queryKey: ['recipes', recipeId, 'comments'],
+    queryFn: () => recipeService.getComments(recipeId).then(res => res.content),
+    enabled: !!recipeId && !isNaN(recipeId) && !!recipeDetail,
+  });
+
+  // Use real-time stats if available, otherwise fallback to initial query data
+  const liveStats = recipeStats[recipeId];
+  const currentLikeCount = liveStats ? liveStats.likeCount : (recipeDetail?.likeCount || 0);
+  const currentCommentCount = liveStats ? liveStats.commentCount : (recipeDetail?.commentCount || 0);
+  const currentViewers = viewerCounts[recipeId] || 0;
+
   // --- Handlers ---
   const handleLike = () => {
     if (!currentUser) return navigate('/login');
@@ -249,7 +280,6 @@ const RecipeDetailPage = () => {
     addCommentMutation.mutate(commentText);
   };
 
-
   const handleDeleteComment = async (commentId: number) => {
     if (window.confirm('Delete this comment?')) {
       deleteCommentMutation.mutate(commentId);
@@ -258,7 +288,12 @@ const RecipeDetailPage = () => {
 
   const handleBookmark = () => {
     if (!currentUser) return navigate('/login');
-    bookmarkMutation.mutate();
+    const isBookmarked = recipeDetail?.isBookmarked;
+    bookmarkMutation.mutate(undefined, {
+      onSuccess: () => {
+        toast.success(isBookmarked ? 'Removed from bookmarks' : 'Added to bookmarks');
+      }
+    });
   };
 
   const handleDeleteRecipe = () => {
@@ -279,8 +314,65 @@ const RecipeDetailPage = () => {
   // Image logic
   const displayImage = activeImage || recipeDetail?.imageUrl;
 
+  const premium = Boolean((currentUser as any)?.premium);
+  
+  // DIAGNOSTIC LOG: Help verify premium status sync
+  useEffect(() => {
+    if (recipeDetail?.isPremium) {
+      console.log(`[RecipeDetailPage] Recipe "${recipeDetail.id}" is PREMIUM. User "${currentUser?.username}" premium status: ${premium}`);
+    }
+  }, [recipeDetail, currentUser?.username, premium]);
+
   if (isRecipeLoading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
+  }
+
+  if ((recipeError as any)?.response?.status === 402 || (recipeError as any)?.response?.status === 403) {
+    return (
+      <Box sx={{ minHeight: '80vh', display: 'flex', alignItems: 'center', py: 12 }}>
+        <Container maxWidth="sm">
+          <Paper elevation={0} sx={{ p: 6, textAlign: 'center', borderRadius: '32px', border: '1px solid rgba(0,0,0,0.05)' }}>
+            <WorkspacePremiumIcon sx={{ fontSize: 80, color: '#FFD700', mb: 2 }} />
+            <Typography variant="h4" sx={{ fontWeight: 900, mb: 2 }}>Premium Experience</Typography>
+            <Typography variant="body1" sx={{ color: 'text.secondary', mb: 4, fontWeight: 500 }}>
+              This culinary masterpiece is reserved for our Premium chefs. Upgrade your account to unlock full access to ingredients, instructions, and community secrets.
+            </Typography>
+            <Stack spacing={2}>
+              <Button 
+                variant="contained" 
+                size="large"
+                onClick={() => upgradeMutation.mutate()}
+                disabled={upgradeMutation.isPending}
+                sx={{ 
+                  py: 2.5, 
+                  borderRadius: '20px', 
+                  fontWeight: 950, 
+                  fontSize: '1.2rem', 
+                  bgcolor: '#FFD700', 
+                  color: 'black',
+                  boxShadow: '0 12px 24px rgba(234, 179, 8, 0.3)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': { 
+                    bgcolor: '#EAB308',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 16px 32px rgba(234, 179, 8, 0.4)'
+                  } 
+                }}
+              >
+                {upgradeMutation.isPending ? 'Connecting to Stripe...' : '💳 Unlock All for ₹499 (One-time)'}
+              </Button>
+              <Button 
+                variant="text" 
+                onClick={() => navigate('/feed')}
+                sx={{ fontWeight: 800, color: 'text.secondary' }}
+              >
+                Continue Free Exploration
+              </Button>
+            </Stack>
+          </Paper>
+        </Container>
+      </Box>
+    );
   }
 
   if (recipeError || !recipeDetail) {
@@ -331,19 +423,43 @@ const RecipeDetailPage = () => {
           {/* Left Column: Image and Main Info */}
           <Grid size={{ xs: 12, md: 7 }}>
             <Box sx={{ position: 'relative', mb: 6 }}>
-              <Box 
-                component="img" 
-                src={displayImage || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80'} 
-                sx={{ 
-                  width: '100%', 
-                  aspectRatio: '16/9',
-                  objectFit: 'cover',
-                  borderRadius: '16px', 
-                  boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-                  border: '1px solid rgba(255,255,255,0.3)',
-                  transition: 'all 0.5s ease-in-out'
-                }}
-              />
+              {displayImage ? (
+                <Box 
+                  component="img" 
+                  src={displayImage} 
+                  sx={{ 
+                    width: '100%', 
+                    aspectRatio: '16/9',
+                    objectFit: 'cover',
+                    borderRadius: '16px', 
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+                    border: '1px solid rgba(255,255,255,0.3)',
+                    transition: 'all 0.5s ease-in-out'
+                  }}
+                  onError={(e) => {
+                    console.warn("Failed to load recipe image:", displayImage);
+                    (e.target as any).style.display = 'none';
+                    (e.target as any).parentElement.classList.add('no-image-fallback');
+                  }}
+                />
+              ) : (
+                <Box 
+                  sx={{ 
+                    width: '100%', 
+                    aspectRatio: '16/9',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                    borderRadius: '16px',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.05)',
+                    border: '1px solid rgba(0,0,0,0.05)'
+                  }}
+                >
+                  <RestaurantIcon sx={{ fontSize: 80, color: 'primary.light', mb: 2, opacity: 0.5 }} />
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.disabled', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                    No Image Provided
+                  </Typography>
+                </Box>
+              )}
               
               {/* Additional Images Thumbnails */}
               {recipeDetail.additionalImages && recipeDetail.additionalImages.length > 0 && (
@@ -394,25 +510,49 @@ const RecipeDetailPage = () => {
                 >
                   <FlagIcon />
                 </IconButton>
-                <IconButton 
-                  size="large"
-                  onClick={handleBookmark}
-                  disabled={bookmarkMutation.isPending}
-                  sx={{ 
-                    bgcolor: 'white',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
-                    color: recipeDetail?.isBookmarked ? 'primary.main' : 'inherit',
-                    '&:hover': { bgcolor: 'white', transform: 'translateY(-2px)' } 
-                  }}
-                >
-                  {recipeDetail?.isBookmarked ? <BookmarkIcon /> : <BookmarkBorderIcon />}
-                </IconButton>
+                {currentUser && !premium && (
+                  <IconButton 
+                    size="large"
+                    onClick={handleBookmark}
+                    disabled={bookmarkMutation.isPending}
+                    sx={{ 
+                      bgcolor: 'white',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                      color: recipeDetail?.isBookmarked ? 'primary.main' : 'inherit',
+                      '&:hover': { bgcolor: 'white', transform: 'translateY(-2px)' } 
+                    }}
+                  >
+                    {recipeDetail?.isBookmarked ? <BookmarkIcon /> : <BookmarkBorderIcon />}
+                  </IconButton>
+                )}
               </Box>
             </Box>
             
-            <Typography variant="h1" sx={{ fontWeight: 950, mb: 1.5, letterSpacing: '-0.04em', lineHeight: 1, fontSize: { xs: '2.5rem', md: '4.5rem' } }}>
-              {recipeDetail.title}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 1.5 }}>
+              <Typography variant="h1" sx={{ fontWeight: 950, letterSpacing: '-0.04em', lineHeight: 1, fontSize: { xs: '2.5rem', md: '4.5rem' } }}>
+                {recipeDetail.title}
+              </Typography>
+              
+              {currentViewers > 0 && (
+                <Box 
+                  component={motion.div}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  sx={{ 
+                    display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 0.8, 
+                    borderRadius: '50px', bgcolor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)'
+                  }}
+                >
+                  <Box sx={{ 
+                    width: 8, height: 8, borderRadius: '50%', bgcolor: '#ef4444',
+                    animation: 'pulse 1.5s infinite' 
+                  }} />
+                  <Typography sx={{ color: '#ef4444', fontWeight: 900, fontSize: '0.85rem' }}>
+                    {currentViewers} {currentViewers === 1 ? 'person' : 'people'} viewing now
+                  </Typography>
+                </Box>
+              )}
+            </Box>
             
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -505,7 +645,7 @@ const RecipeDetailPage = () => {
                   {recipeDetail.isLiked ? <FavoriteIcon /> : <FavoriteBorderIcon />}
                 </IconButton>
                 <Typography sx={{ fontWeight: 900, color: recipeDetail.isLiked ? 'secondary.main' : 'text.primary', ml: 1 }}>
-                  {recipeDetail.likeCount}
+                  {currentLikeCount}
                 </Typography>
               </Box>
             </Box>
@@ -554,11 +694,36 @@ const RecipeDetailPage = () => {
               />
             </Paper>
 
+            {recipeDetail.content && (
+              <Box sx={{ mb: 8 }}>
+                <Typography variant="h5" sx={{ fontWeight: 900, mb: 3, display: 'flex', alignItems: 'center', gap: 2, letterSpacing: '-0.02em' }}>
+                  <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'secondary.light', display: 'flex' }}>
+                    <RestaurantIcon sx={{ color: 'secondary.main' }} />
+                  </Box>
+                  Kitchen Secrets & Tips
+                </Typography>
+                <Paper 
+                  elevation={0}
+                  sx={{ 
+                    p: 4, 
+                    borderRadius: '24px', 
+                    bgcolor: 'white',
+                    border: '1px solid rgba(0,0,0,0.05)',
+                    lineHeight: 1.8,
+                    fontSize: '1.1rem',
+                    whiteSpace: 'pre-wrap'
+                  }}
+                >
+                  {recipeDetail.content}
+                </Paper>
+              </Box>
+            )}
+
             {/* Social Section */}
             <Box id="comments" sx={{ mt: 10 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
                 <Typography variant="h4" sx={{ fontWeight: 950, letterSpacing: '-0.03em' }}>
-                  Community Talk <span style={{ color: '#6366f1', fontSize: '1.5rem', opacity: 0.7 }}>({recipeDetail.commentCount})</span>
+                  Community Talk <span style={{ color: '#6366f1', fontSize: '1.5rem', opacity: 0.7 }}>({currentCommentCount})</span>
                 </Typography>
               </Box>
 

@@ -3,6 +3,7 @@ import { Box } from '@mui/material';
 import Navbar from './components/layout/Navbar';
 import MobileBottomNav from './components/layout/MobileBottomNav';
 import NotificationToaster from './components/notifications/NotificationToaster';
+import GlobalActivityTicker from './components/layout/GlobalActivityTicker';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from './hooks/useAuth';
 import LoginPage from './pages/Auth/LoginPage';
@@ -41,6 +42,7 @@ const App = () => {
       <ModalProvider>
         <WebSocketProvider>
         <Navbar />
+        <GlobalActivityTicker />
         <Box sx={{ mt: { xs: 7, sm: 8 }, pb: { xs: 8, sm: 0 }, minHeight: '100vh' }}>
           <Routes>
             {/* Public Routes */}

@@ -46,6 +46,38 @@ public class Recipe {
     private Double carbs;
     private Double fats;
 
+    public Integer getCalories() {
+        return this.calories;
+    }
+
+    public void setCalories(Integer calories) {
+        this.calories = calories;
+    }
+
+    public Double getProtein() {
+        return this.protein;
+    }
+
+    public void setProtein(Double protein) {
+        this.protein = protein;
+    }
+
+    public Double getCarbs() {
+        return this.carbs;
+    }
+
+    public void setCarbs(Double carbs) {
+        this.carbs = carbs;
+    }
+
+    public Double getFats() {
+        return this.fats;
+    }
+
+    public void setFats(Double fats) {
+        this.fats = fats;
+    }
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id", nullable = false)
     private User author;
@@ -85,6 +117,18 @@ public class Recipe {
     @Builder.Default
     @Column(name = "is_published", nullable = false)
     private boolean isPublished = true;
+
+    @Builder.Default
+    @Column(name = "is_premium", nullable = false)
+    private boolean isPremium = false;
+
+    @Column(columnDefinition = "TEXT")
+    private String content;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private RecipeStatus status = RecipeStatus.ACTIVE;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
