@@ -28,6 +28,9 @@ public class User {
     @Column(nullable = false, unique = true, length = 100)
     private String username;
 
+    @Column(length = 200)
+    private String fullName;
+
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
@@ -67,7 +70,8 @@ public class User {
 
     @Builder.Default
     @Column(name = "is_verified", nullable = false)
-    private boolean isVerified = false;
+    @JsonProperty("isVerified")
+    private boolean verified = false;
 
     @Builder.Default
     @Column(nullable = false)
@@ -90,7 +94,8 @@ public class User {
 
     @Builder.Default
     @Column(name = "is_restricted", nullable = false)
-    private boolean isRestricted = false;
+    @JsonProperty("isRestricted")
+    private boolean restricted = false;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -100,7 +105,6 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @JsonProperty("premium")
     public boolean isPremium() {
         return this.premium;
     }

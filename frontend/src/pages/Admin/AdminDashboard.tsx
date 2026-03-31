@@ -1,13 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Container, Box, Typography, Paper, Table, TableBody, TableCell, 
   TableContainer, TableHead, TableRow, Avatar, Chip, IconButton,
   CircularProgress, Grid, Card, CardContent, Tooltip,
   Tabs, Tab,
-  Button
+  Button, Stack
 } from '@mui/material';
-import FlagIcon from '@mui/icons-material/Flag';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
@@ -16,6 +15,14 @@ import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { 
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  Autocomplete, MenuItem, Select, FormControl, InputLabel
+} from '@mui/material';
+import HistoryIcon from '@mui/icons-material/History';
+import MergeTypeIcon from '@mui/icons-material/MergeType';
+import LaunchIcon from '@mui/icons-material/Launch';
+import BlockIcon from '@mui/icons-material/Block';
 
 interface User {
   id: number;
@@ -38,19 +45,28 @@ interface Recipe {
   createdAt: string;
 }
 
-interface Report {
+interface AuditLog {
   id: number;
-  reporter: { username: string };
-  reason: string;
-  targetType: string;
-  targetId: number;
-  resolved: boolean;
-  createdAt: string;
+  action: string;
+  performedBy: string;
+  target: string;
+  details: string;
+  timestamp: string;
 }
+
+
 
 const AdminDashboard = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [tabValue, setTabValue] = useState(0);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [sourceUser, setSourceUser] = useState<string>('');
+  const [targetUser, setTargetUser] = useState<string>('');
+  
+  const [premiumOverrideOpen, setPremiumOverrideOpen] = useState(false);
+  const [selectedUserForPremium, setSelectedUserForPremium] = useState<string | null>(null);
+  const [premiumDuration, setPremiumDuration] = useState(30);
 
   // --- Data Fetching ---
   const { 
@@ -61,13 +77,7 @@ const AdminDashboard = () => {
     queryFn: () => api.get<User[]>('/admin/users').then(res => res.data),
   });
 
-  const { 
-    data: reports = [], 
-    isLoading: isReportsLoading 
-  } = useQuery({
-    queryKey: ['admin', 'reports'],
-    queryFn: () => api.get<Report[]>('/admin/reports').then(res => res.data),
-  });
+
 
   const { 
     data: recipes = [], 
@@ -78,46 +88,36 @@ const AdminDashboard = () => {
   });
 
   const { 
-    data: stats = { totalUsers: 0, totalRecipes: 0, pendingReports: 0 }, 
+    data: stats = { totalUsers: 0, totalRecipes: 0 }, 
     isLoading: isStatsLoading 
   } = useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: () => api.get<any>('/admin/stats').then(res => ({
       totalUsers: res.data.totalUsers || 0,
-      totalRecipes: res.data.totalRecipes || 0,
-      pendingReports: res.data.pendingReports || 0
+      totalRecipes: res.data.totalRecipes || 0
     })),
   });
 
-  // --- Mutations ---
-  const toggleVerifyMutation = useMutation({
-    mutationFn: (username: string) => api.patch(`/admin/users/${username}/verify`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin'] });
-      toast.success('User verification updated');
-    },
-    onError: () => toast.error('Failed to update verification'),
+  const { data: auditLogs = [] } = useQuery({
+    queryKey: ['admin', 'audit-logs'],
+    queryFn: () => api.get<AuditLog[]>('/admin/audit-logs').then(res => res.data),
+    enabled: tabValue === 2
   });
+
+  // --- Mutations ---
 
   const updateRolesMutation = useMutation({
     mutationFn: ({ username, roles }: { username: string, roles: string[] }) => 
       api.patch(`/admin/users/${username}/roles`, { roles }),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['admin'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
       const isNowAdmin = variables.roles.includes('ROLE_ADMIN');
       toast.success(isNowAdmin ? 'User promoted to Admin' : 'Admin role removed');
     },
     onError: () => toast.error('Failed to update user role'),
   });
 
-  const resolveReportMutation = useMutation({
-    mutationFn: (id: number) => api.patch(`/admin/reports/${id}/resolve`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin'] });
-      toast.success('Report resolved');
-    },
-    onError: () => toast.error('Failed to resolve report'),
-  });
+
 
   const toggleRestrictUserMutation = useMutation({
     mutationFn: (username: string) => api.patch(`/admin/users/${username}/restrict`),
@@ -127,23 +127,19 @@ const AdminDashboard = () => {
     },
   });
 
-  const handleToggleVerify = (username: string) => toggleVerifyMutation.mutate(username);
   
   const handlePromoteAdmin = (username: string, currentRoles: string[]) => {
     const isAlreadyAdmin = currentRoles.includes('ROLE_ADMIN');
-    const newRoles = isAlreadyAdmin 
-      ? currentRoles.filter(r => r !== 'ROLE_ADMIN')
-      : [...currentRoles, 'ROLE_ADMIN'];
+    if (isAlreadyAdmin) {
+      toast.error('Administrative privileges cannot be revoked.');
+      return;
+    }
+    // Ensure we also strip ROLE_MODERATOR when updating roles via the dashboard
+    let newRoles = currentRoles.filter(r => r !== 'ROLE_MODERATOR');
+    newRoles = [...newRoles, 'ROLE_ADMIN'];
     updateRolesMutation.mutate({ username, roles: newRoles });
   };
 
-  const toggleRecipeStatusMutation = useMutation({
-    mutationFn: (id: number) => api.patch(`/admin/recipes/${id}/status`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'recipes'] });
-      toast.success('Recipe status updated');
-    },
-  });
 
   const toggleRecipePremiumMutation = useMutation({
     mutationFn: (id: number) => api.patch(`/admin/recipes/${id}/premium`),
@@ -162,7 +158,33 @@ const AdminDashboard = () => {
     },
   });
 
-  const isLoading = isUsersLoading || isStatsLoading || isReportsLoading || isRecipesLoading;
+  const mergeUsersMutation = useMutation({
+    mutationFn: () => api.post('/admin/users/merge', { 
+      sourceUsername: sourceUser, 
+      targetUsername: targetUser 
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin'] });
+      toast.success('Users merged successfully');
+      setMergeDialogOpen(false);
+      setSourceUser('');
+      setTargetUser('');
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Merge failed'),
+  });
+
+  const premiumOverrideMutation = useMutation({
+    mutationFn: ({ username, isPremium, durationDays }: { username: string, isPremium: boolean, durationDays?: number }) => 
+      api.patch(`/admin/users/${username}/premium-override`, { isPremium, durationDays }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      toast.success('Premium status overridden');
+      setPremiumOverrideOpen(false);
+    },
+    onError: () => toast.error('Failed to override premium'),
+  });
+
+  const isLoading = isUsersLoading || isStatsLoading || isRecipesLoading;
   const handleTabChange = (_: any, newValue: number) => setTabValue(newValue);
 
   if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
@@ -176,7 +198,7 @@ const AdminDashboard = () => {
 
         {/* Stats Grid */}
         <Grid container spacing={3} sx={{ mb: 6 }}>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid item xs={12} sm={6}>
             <Card className="glass-card" sx={{ borderRadius: 2 }}>
               <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ p: 1.5, bgcolor: 'primary.light', borderRadius: 1.5, display: 'flex' }}>
@@ -189,7 +211,7 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid item xs={12} sm={6}>
             <Card className="glass-card" sx={{ borderRadius: 2 }}>
               <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ p: 1.5, bgcolor: 'secondary.light', borderRadius: 1.5, display: 'flex' }}>
@@ -202,34 +224,28 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Card className="glass-card" sx={{ borderRadius: 2 }}>
-              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={{ p: 1.5, bgcolor: 'error.light', borderRadius: 1.5, display: 'flex' }}>
-                   <FlagIcon sx={{ color: 'error.main' }} />
-                </Box>
-                <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 950 }}>{stats.pendingReports}</Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>PENDING REPORTS</Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
         </Grid>
 
         <Box sx={{ mb: 4, borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange} sx={{ '& .MuiTab-root': { fontWeight: 900 } }}>
-            <Tab label="User Management" />
-            <Tab label="Recipe Management" />
-            <Tab label="Reports & Moderation" />
+          <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ '& .MuiTab-root': { fontWeight: 900 } }}>
+            <Tab icon={<PeopleIcon />} label="User Management" />
+            <Tab icon={<RestaurantMenuIcon />} label="Recipe Management" />
+            <Tab icon={<HistoryIcon />} label="Audit Logs" />
           </Tabs>
         </Box>
 
         {tabValue === 0 && (
-          /* Users Table */
           <Paper className="glass-card" sx={{ borderRadius: 2, overflow: 'hidden' }}>
-          <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+          <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6" sx={{ fontWeight: 900 }}>User Management</Typography>
+            <Button 
+              variant="contained" 
+              startIcon={<MergeTypeIcon />} 
+              sx={{ borderRadius: 2, fontWeight: 900 }}
+              onClick={() => setMergeDialogOpen(true)}
+            >
+              Merge Users
+            </Button>
           </Box>
           <TableContainer>
             <Table>
@@ -237,7 +253,6 @@ const AdminDashboard = () => {
                 <TableRow>
                   <TableCell sx={{ fontWeight: 900 }}>User</TableCell>
                   <TableCell sx={{ fontWeight: 900 }}>Roles</TableCell>
-                  <TableCell sx={{ fontWeight: 900 }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 900 }}>Premium</TableCell>
                   <TableCell sx={{ fontWeight: 900 }}>Reputation</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 900 }}>Actions</TableCell>
@@ -253,7 +268,7 @@ const AdminDashboard = () => {
                         </Avatar>
                         <Box>
                           <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
-                            {user.username} {user.isVerified && <VerifiedIcon color="primary" sx={{ fontSize: 16, ml: 0.5, verticalAlign: 'middle' }} />}
+                            {user.username}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">{user.email}</Typography>
                         </Box>
@@ -274,14 +289,6 @@ const AdminDashboard = () => {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Chip 
-                        label={user.isVerified ? 'Verified' : 'Unverified'} 
-                        size="small" 
-                        color={user.isVerified ? 'success' : 'default'}
-                        sx={{ fontWeight: 800, fontSize: '0.65rem' }} 
-                      />
-                    </TableCell>
-                    <TableCell>
                       {user.premium ? (
                         <Chip 
                           label="Premium" 
@@ -295,19 +302,31 @@ const AdminDashboard = () => {
                     </TableCell>
                     <TableCell sx={{ fontWeight: 800 }}>{user.reputationPoints} pts</TableCell>
                     <TableCell align="right">
-                      <Tooltip title={user.isVerified ? "Remove Verification" : "Verify User"}>
-                        <IconButton onClick={() => handleToggleVerify(user.username)} color={user.isVerified ? "error" : "primary"}>
-                          <VerifiedIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title={user.roles.includes('ROLE_ADMIN') ? "Revoke Admin" : "Promote to Admin"}>
-                        <IconButton onClick={() => handlePromoteAdmin(user.username, user.roles)} color="secondary">
-                          <AdminPanelSettingsIcon />
-                        </IconButton>
+                      <Tooltip title={user.roles.includes('ROLE_ADMIN') ? "User is Administrator" : "Promote to Admin"}>
+                        <span>
+                          <IconButton 
+                            onClick={() => handlePromoteAdmin(user.username, user.roles)} 
+                            color="secondary"
+                            disabled={user.roles.includes('ROLE_ADMIN')}
+                          >
+                            <AdminPanelSettingsIcon />
+                          </IconButton>
+                        </span>
                       </Tooltip>
                       <Tooltip title={user.isRestricted ? "Unrestrict User" : "Restrict User"}>
                         <IconButton onClick={() => toggleRestrictUserMutation.mutate(user.username)} color="warning">
-                          <FlagIcon />
+                          <BlockIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Premium Override">
+                        <IconButton 
+                          onClick={() => {
+                            setSelectedUserForPremium(user.username);
+                            setPremiumOverrideOpen(true);
+                          }} 
+                          sx={{ color: '#B8860B' }}
+                        >
+                          <WorkspacePremiumIcon />
                         </IconButton>
                       </Tooltip>
                     </TableCell>
@@ -320,7 +339,6 @@ const AdminDashboard = () => {
         )}
 
         {tabValue === 1 && (
-          /* Recipes Table */
           <Paper className="glass-card" sx={{ borderRadius: 2, overflow: 'hidden' }}>
             <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
               <Typography variant="h6" sx={{ fontWeight: 900 }}>Recipe Management</Typography>
@@ -366,15 +384,6 @@ const AdminDashboard = () => {
                       <TableCell align="right">
                         <Button 
                           size="small" 
-                          variant="outlined" 
-                          color="warning" 
-                          sx={{ mr: 1, borderRadius: 1.5 }}
-                          onClick={() => toggleRecipeStatusMutation.mutate(recipe.id)}
-                        >
-                          {recipe.status === 'ACTIVE' ? 'Restrict' : 'Activate'}
-                        </Button>
-                        <Button 
-                          size="small" 
                           variant="contained" 
                           color="error"
                           sx={{ borderRadius: 1.5 }}
@@ -396,51 +405,48 @@ const AdminDashboard = () => {
         )}
 
         {tabValue === 2 && (
-          /* Reports Table */
+          /* Audit Logs Table */
           <Paper className="glass-card" sx={{ borderRadius: 2, overflow: 'hidden' }}>
-            <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-              <Typography variant="h6" sx={{ fontWeight: 900 }}>Pending Reports</Typography>
+            <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <HistoryIcon color="primary" />
+              <Typography variant="h6" sx={{ fontWeight: 900 }}>Administrative Audit Logs</Typography>
             </Box>
-            <TableContainer>
-              <Table>
-                <TableHead sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
+            <TableContainer sx={{ maxHeight: 600 }}>
+              <Table stickyHeader>
+                <TableHead>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 900 }}>Reporter</TableCell>
+                    <TableCell sx={{ fontWeight: 900 }}>Action</TableCell>
+                    <TableCell sx={{ fontWeight: 900 }}>Performed By</TableCell>
                     <TableCell sx={{ fontWeight: 900 }}>Target</TableCell>
-                    <TableCell sx={{ fontWeight: 900 }}>Reason</TableCell>
-                    <TableCell sx={{ fontWeight: 900 }}>Date</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 900 }}>Actions</TableCell>
+                    <TableCell sx={{ fontWeight: 900 }}>Details</TableCell>
+                    <TableCell sx={{ fontWeight: 900 }}>Timestamp</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {reports.map((report) => (
-                    <TableRow key={report.id} hover>
-                      <TableCell sx={{ fontWeight: 800 }}>{report.reporter.username}</TableCell>
+                  {auditLogs.map((log) => (
+                    <TableRow key={log.id} hover>
                       <TableCell>
                         <Chip 
-                          label={`${report.targetType} #${report.targetId}`} 
+                          label={log.action} 
                           size="small" 
-                          variant="outlined"
-                          sx={{ fontWeight: 800, fontSize: '0.65rem' }} 
+                          color={log.action === 'MERGE_USERS' ? 'secondary' : 'primary'}
+                          sx={{ fontWeight: 900, fontSize: '0.65rem' }} 
                         />
                       </TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>{report.reason}</TableCell>
-                      <TableCell sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>{new Date(report.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell align="right">
-                        <IconButton 
-                          color="success" 
-                          onClick={() => resolveReportMutation.mutate(report.id)}
-                          disabled={resolveReportMutation.isPending}
-                        >
-                          <CheckCircleOutlineIcon />
-                        </IconButton>
+                      <TableCell sx={{ fontWeight: 700 }}>{log.performedBy}</TableCell>
+                      <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {log.target}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: '0.8125rem' }}>{log.details}</TableCell>
+                      <TableCell sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
+                        {new Date(log.timestamp).toLocaleString()}
                       </TableCell>
                     </TableRow>
                   ))}
-                  {reports.length === 0 && (
+                  {auditLogs.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                        No pending reports. Everything looks clean!
+                        No audit logs yet.
                       </TableCell>
                     </TableRow>
                   )}
@@ -450,6 +456,96 @@ const AdminDashboard = () => {
           </Paper>
         )}
       </Container>
+
+      {/* --- Dialogs --- */}
+      
+      {/* Merge Users Dialog */}
+      <Dialog open={mergeDialogOpen} onClose={() => setMergeDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 900 }}>Merge Duplicate Users</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="error" sx={{ mb: 3, fontWeight: 700 }}>
+            WARNING: This action is irreversible. All recipes, likes, and followers will be moved from the source user to the target user. The source user will be DELETED.
+          </Typography>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid size={{ xs: 12 }}>
+              <Autocomplete
+                options={users.map(u => u.username)}
+                value={sourceUser}
+                onChange={(_, newValue) => setSourceUser(newValue || '')}
+                renderInput={(params) => <TextField {...params} label="Source Username (To be deleted)" required fullWidth />}
+              />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', my: 1 }}>
+                <MergeTypeIcon sx={{ transform: 'rotate(90deg)', color: 'text.secondary' }} />
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <Autocomplete
+                options={users.map(u => u.username).filter(u => u !== sourceUser)}
+                value={targetUser}
+                onChange={(_, newValue) => setTargetUser(newValue || '')}
+                renderInput={(params) => <TextField {...params} label="Target Username (To receive data)" required fullWidth />}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={() => setMergeDialogOpen(false)} sx={{ fontWeight: 900 }}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            color="secondary" 
+            onClick={() => mergeUsersMutation.mutate()}
+            disabled={!sourceUser || !targetUser || mergeUsersMutation.isPending}
+            sx={{ fontWeight: 900, borderRadius: 2 }}
+          >
+            {mergeUsersMutation.isPending ? 'Merging...' : 'Confirm Merge'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Premium Override Dialog */}
+      <Dialog open={premiumOverrideOpen} onClose={() => setPremiumOverrideOpen(false)}>
+        <DialogTitle sx={{ fontWeight: 900 }}>Premium Override: {selectedUserForPremium}</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <FormControl fullWidth>
+              <InputLabel>Premium Status</InputLabel>
+              <Select
+                value={30} // Dummy
+                label="Premium Status"
+                onChange={() => {}}
+              >
+                <MenuItem value={30}>Add 30 Days</MenuItem>
+                <MenuItem value={90}>Add 90 Days</MenuItem>
+                <MenuItem value={365}>Add 1 Year</MenuItem>
+                <MenuItem value={0}>Remove Premium</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField 
+              label="Custom Days" 
+              type="number" 
+              value={premiumDuration} 
+              onChange={(e) => setPremiumDuration(parseInt(e.target.value))}
+              fullWidth
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={() => setPremiumOverrideOpen(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={() => premiumOverrideMutation.mutate({ 
+              username: selectedUserForPremium!, 
+              isPremium: premiumDuration > 0,
+              durationDays: premiumDuration > 0 ? premiumDuration : undefined
+            })}
+            sx={{ fontWeight: 900 }}
+          >
+            Update Status
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

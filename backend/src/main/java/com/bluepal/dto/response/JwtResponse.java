@@ -8,6 +8,7 @@ public class JwtResponse {
     private Long id;
     private String username;
     private String email;
+    private String fullName;
     private List<String> roles;
     @JsonProperty("premium")
     private boolean premium;
@@ -15,11 +16,12 @@ public class JwtResponse {
     public JwtResponse() {
     }
 
-    public JwtResponse(String token, Long id, String username, String email, List<String> roles, boolean premium) {
+    public JwtResponse(String token, Long id, String username, String email, String fullName, List<String> roles, boolean premium) {
         this.token = token;
         this.id = id;
         this.username = username;
         this.email = email;
+        this.fullName = fullName;
         this.roles = roles;
         this.premium = premium;
     }
@@ -54,6 +56,14 @@ public class JwtResponse {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
     }
 
     public List<String> getRoles() {

@@ -160,15 +160,6 @@ const LoginPage = () => {
           </Box>
           </motion.div>
 
-          <Box sx={{ mt: 'auto', pt: 4 }}>
-            <Button 
-              startIcon={<ArrowBackIcon />} 
-              onClick={() => navigate('/feed')}
-              sx={{ textTransform: 'none', fontWeight: 800, color: 'text.disabled', '&:hover': { color: 'text.primary' } }}
-            >
-              Back to Explore
-            </Button>
-          </Box>
         </Box>
       </Box>
 

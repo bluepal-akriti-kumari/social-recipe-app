@@ -67,8 +67,8 @@ public class UserServiceImplTest {
 
     @Test
     void getUserProfile_Success() {
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(user));
-        when(userRepository.findByUsername("follower")).thenReturn(Optional.of(follower));
+        when(userRepository.findByUsernameIgnoreCase("testuser")).thenReturn(Optional.of(user));
+        when(userRepository.findByUsernameIgnoreCase("follower")).thenReturn(Optional.of(follower));
         when(followRepository.existsByFollowerAndFollowing(follower, user)).thenReturn(true);
         when(recipeRepository.countByAuthor(user)).thenReturn(5L);
 
@@ -77,20 +77,20 @@ public class UserServiceImplTest {
         assertNotNull(response);
         assertEquals("testuser", response.getUsername());
         assertTrue(response.getIsFollowing());
-        verify(userRepository, times(2)).findByUsername(anyString());
+        verify(userRepository, times(2)).findByUsernameIgnoreCase(anyString());
     }
 
     @Test
     void getUserProfile_UserNotFound() {
-        when(userRepository.findByUsername("unknown")).thenReturn(Optional.empty());
+        when(userRepository.findByUsernameIgnoreCase("unknown")).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> userService.getUserProfile("unknown", null));
     }
 
     @Test
     void toggleFollow_Follow() {
-        when(userRepository.findByUsername("follower")).thenReturn(Optional.of(follower));
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(user));
+        when(userRepository.findByUsernameIgnoreCase("follower")).thenReturn(Optional.of(follower));
+        when(userRepository.findByUsernameIgnoreCase("testuser")).thenReturn(Optional.of(user));
         when(followRepository.findByFollowerAndFollowing(follower, user)).thenReturn(Optional.empty());
 
         userService.toggleFollow("follower", "testuser");
@@ -103,8 +103,8 @@ public class UserServiceImplTest {
 
     @Test
     void toggleFollow_Unfollow() {
-        when(userRepository.findByUsername("follower")).thenReturn(Optional.of(follower));
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(user));
+        when(userRepository.findByUsernameIgnoreCase("follower")).thenReturn(Optional.of(follower));
+        when(userRepository.findByUsernameIgnoreCase("testuser")).thenReturn(Optional.of(user));
         Follow follow = new Follow(1L, follower, user, null);
         when(followRepository.findByFollowerAndFollowing(follower, user)).thenReturn(Optional.of(follow));
         
@@ -122,7 +122,7 @@ public class UserServiceImplTest {
     void updateProfile_Success() {
         UpdateProfileRequest request = new UpdateProfileRequest();
         request.setBio("New Bio");
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(user));
+        when(userRepository.findByUsernameIgnoreCase("testuser")).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenReturn(user);
 
         UserProfileResponse response = userService.updateProfile("testuser", request);
@@ -133,7 +133,7 @@ public class UserServiceImplTest {
 
     @Test
     void updateReputation_LevelUp() {
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(user));
+        when(userRepository.findByUsernameIgnoreCase("testuser")).thenReturn(Optional.of(user));
 
         userService.updateReputation("testuser", 500);
 

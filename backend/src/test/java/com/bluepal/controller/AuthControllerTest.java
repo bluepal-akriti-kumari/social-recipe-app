@@ -35,7 +35,7 @@ public class AuthControllerTest {
     private AuthenticationManager authenticationManager;
 
     @MockBean
-    private UserRepository userRepository;
+    private com.bluepal.repository.UserRepository userRepository;
 
     @MockBean
     private PasswordEncoder passwordEncoder;
@@ -44,7 +44,7 @@ public class AuthControllerTest {
     private JwtUtils jwtUtils;
 
     @MockBean
-    private PasswordResetTokenRepository passwordResetTokenRepository;
+    private com.bluepal.repository.PasswordResetTokenRepository passwordResetTokenRepository;
 
     @MockBean
     private com.bluepal.repository.VerificationTokenRepository verificationTokenRepository;
@@ -64,6 +64,7 @@ public class AuthControllerTest {
         request.setUsername("newuser");
         request.setEmail("new@example.com");
         request.setPassword("Password@123");
+        request.setFullName("New User");
 
         when(userRepository.existsByUsername("newuser")).thenReturn(false);
         when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
@@ -83,6 +84,7 @@ public class AuthControllerTest {
         request.setUsername("takenuser");
         request.setEmail("new@example.com");
         request.setPassword("Password@123");
+        request.setFullName("Taken User");
 
         when(userRepository.existsByUsername("takenuser")).thenReturn(true);
 

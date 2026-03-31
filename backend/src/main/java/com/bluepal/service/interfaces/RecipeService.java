@@ -2,6 +2,7 @@ package com.bluepal.service.interfaces;
 
 import com.bluepal.dto.request.RecipeRequest;
 import com.bluepal.dto.response.RecipeResponse;
+import com.bluepal.entity.Recipe;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -29,4 +30,6 @@ public interface RecipeService {
     RecipeResponse updateRecipe(Long id, RecipeRequest request, String username);
     void deleteRecipe(Long id, String username);
     void markAsPremium(Long id);
+    RecipeResponse mapToResponse(Recipe recipe, String currentUsername);
+    Recipe getRecipeEntity(Long id);
 }

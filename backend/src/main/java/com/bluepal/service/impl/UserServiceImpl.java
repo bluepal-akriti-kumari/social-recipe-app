@@ -75,6 +75,7 @@ public class UserServiceImpl implements UserService {
                 .recipeCount((int) recipeCount)
                 .premium(isPremium)
                 .premiumExpiryDate(user.getPremiumExpiryDate())
+                .roles(user.getRoles())
                 .build();
     }
 
@@ -233,6 +234,7 @@ public class UserServiceImpl implements UserService {
                 .reputationLevel(updatedUser.getReputationLevel())
                 .premium(updatedUser.hasActivePremium())
                 .premiumExpiryDate(updatedUser.getPremiumExpiryDate())
+                .roles(updatedUser.getRoles())
                 .build();
     }
 

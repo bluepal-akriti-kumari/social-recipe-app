@@ -54,7 +54,7 @@ public class BookmarkServiceImplTest {
     @Test
     void toggleBookmark_Add() {
         when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
-        when(bookmarkRepository.findByUserAndRecipe(user, recipe)).thenReturn(Optional.empty());
+        when(bookmarkRepository.findFirstByUserAndRecipeOrderByCreatedAtDesc(user, recipe)).thenReturn(Optional.empty());
 
         bookmarkService.toggleBookmark(user, 100L);
 
@@ -66,7 +66,7 @@ public class BookmarkServiceImplTest {
     void toggleBookmark_Remove() {
         Bookmark bookmark = Bookmark.builder().user(user).recipe(recipe).build();
         when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
-        when(bookmarkRepository.findByUserAndRecipe(user, recipe)).thenReturn(Optional.of(bookmark));
+        when(bookmarkRepository.findFirstByUserAndRecipeOrderByCreatedAtDesc(user, recipe)).thenReturn(Optional.of(bookmark));
 
         bookmarkService.toggleBookmark(user, 100L);
 

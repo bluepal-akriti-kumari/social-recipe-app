@@ -16,20 +16,22 @@ import java.util.Map;
 public class AdminController {
 
     private final UserRepository userRepository;
-    private final com.bluepal.service.impl.ModerationService moderationService;
     private final com.bluepal.service.interfaces.RecipeService recipeService;
+    private final com.bluepal.repository.RecipeRepository recipeRepository;
+    private final com.bluepal.service.interfaces.AdminService adminService;
+    private final com.bluepal.repository.CommentRepository commentRepository;
 
     public AdminController(UserRepository userRepository, 
-                           com.bluepal.service.impl.ModerationService moderationService,
                            com.bluepal.service.interfaces.RecipeService recipeService,
-                           com.bluepal.repository.RecipeRepository recipeRepository) {
+                           com.bluepal.repository.RecipeRepository recipeRepository,
+                           com.bluepal.service.interfaces.AdminService adminService,
+                           com.bluepal.repository.CommentRepository commentRepository) {
         this.userRepository = userRepository;
-        this.moderationService = moderationService;
         this.recipeService = recipeService;
         this.recipeRepository = recipeRepository;
+        this.adminService = adminService;
+        this.commentRepository = commentRepository;
     }
-
-    private final com.bluepal.repository.RecipeRepository recipeRepository;
 
     @GetMapping("/users")
     public ResponseEntity<List<User>> getAllUsers() {
@@ -43,6 +45,11 @@ public class AdminController {
         
         List<String> newRoles = body.get("roles");
         if (newRoles != null) {
+            // SECURITY CHECK: Cannot revoke ADMIN role
+            if (user.getRoles().contains("ROLE_ADMIN") && !newRoles.contains("ROLE_ADMIN")) {
+                return ResponseEntity.badRequest().body("Error: Cannot revoke administrative privileges.");
+            }
+
             user.getRoles().clear();
             user.getRoles().addAll(newRoles);
             userRepository.save(user);
@@ -50,33 +57,13 @@ public class AdminController {
         return ResponseEntity.ok("User roles updated successfully");
     }
 
-    @PatchMapping("/users/{username}/verify")
-    public ResponseEntity<?> toggleUserVerification(@PathVariable String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
-        
-        user.setVerified(!user.isVerified());
-        userRepository.save(user);
-        return ResponseEntity.ok("User verification toggled: " + user.isVerified());
-    }
-
-    @GetMapping("/reports")
-    public ResponseEntity<List<com.bluepal.entity.Report>> getPendingReports() {
-        return ResponseEntity.ok(moderationService.getPendingReports());
-    }
-
-    @PatchMapping("/reports/{id}/resolve")
-    public ResponseEntity<?> resolveReport(@PathVariable Long id) {
-        moderationService.resolveReport(id);
-        return ResponseEntity.ok("Report resolved");
-    }
 
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Long>> getPlatformStats() {
-        long userCount = userRepository.count();
-        // Since we don't have a RecipeRepository here, we'll just return userCount for now
-        // or inject it. Let's keep it simple.
-        return ResponseEntity.ok(Map.of("totalUsers", userCount));
+        return ResponseEntity.ok(Map.of(
+            "totalUsers", userRepository.count(),
+            "totalRecipes", recipeRepository.count()
+        ));
     }
 
     @PatchMapping("/recipes/{id}/premium")
@@ -89,23 +76,12 @@ public class AdminController {
     }
 
     @GetMapping("/recipes")
-    public ResponseEntity<java.util.List<com.bluepal.entity.Recipe>> getAllRecipes() {
-        return ResponseEntity.ok(recipeRepository.findAll());
+    public ResponseEntity<java.util.List<com.bluepal.dto.response.RecipeResponse>> getAllRecipes() {
+        return ResponseEntity.ok(recipeRepository.findAll().stream()
+                .map(r -> recipeService.mapToResponse(r, "admin")) // Use a system-level or admin username for context
+                .collect(java.util.stream.Collectors.toList()));
     }
 
-    @PatchMapping("/recipes/{id}/status")
-    public ResponseEntity<?> toggleRecipeStatus(@PathVariable Long id) {
-        com.bluepal.entity.Recipe recipe = recipeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
-        
-        if (recipe.getStatus() == com.bluepal.entity.RecipeStatus.ACTIVE) {
-            recipe.setStatus(com.bluepal.entity.RecipeStatus.RESTRICTED);
-        } else {
-            recipe.setStatus(com.bluepal.entity.RecipeStatus.ACTIVE);
-        }
-        recipeRepository.save(recipe);
-        return ResponseEntity.ok("Recipe status updated to: " + recipe.getStatus());
-    }
 
     @DeleteMapping("/recipes/{id}")
     public ResponseEntity<?> deleteRecipe(@PathVariable Long id) {
@@ -114,12 +90,33 @@ public class AdminController {
     }
 
     @PatchMapping("/users/{username}/restrict")
-    public ResponseEntity<?> toggleUserRestriction(@PathVariable String username) {
+    public ResponseEntity<?> toggleUserRestriction(@PathVariable String username, java.security.Principal principal) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
         
-        user.setRestricted(!user.isRestricted());
-        userRepository.save(user);
-        return ResponseEntity.ok("User restricted status toggled: " + user.isRestricted());
+        boolean newStatus = !user.isRestricted();
+        adminService.restrictUser(username, newStatus, principal.getName());
+        return ResponseEntity.ok("User restricted status toggled to: " + newStatus);
+    }
+
+    @PostMapping("/users/merge")
+    public ResponseEntity<?> mergeUsers(@RequestBody Map<String, String> request, java.security.Principal principal) {
+        String source = request.get("sourceUsername");
+        String target = request.get("targetUsername");
+        adminService.mergeUsers(source, target, principal.getName());
+        return ResponseEntity.ok("Users merged successfully: " + source + " -> " + target);
+    }
+
+    @PatchMapping("/users/{username}/premium-override")
+    public ResponseEntity<?> updatePremiumStatus(@PathVariable String username, @RequestBody Map<String, Object> body, java.security.Principal principal) {
+        boolean isPremium = (boolean) body.getOrDefault("isPremium", true);
+        Integer duration = (Integer) body.get("durationDays");
+        adminService.updatePremiumStatus(username, isPremium, duration, principal.getName());
+        return ResponseEntity.ok("User premium status updated manually");
+    }
+
+    @GetMapping("/audit-logs")
+    public ResponseEntity<List<com.bluepal.entity.AuditLog>> getAuditLogs() {
+        return ResponseEntity.ok(adminService.getAuditLogs());
     }
 }

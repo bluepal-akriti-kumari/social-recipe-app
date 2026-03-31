@@ -8,7 +8,7 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import SearchIcon from '@mui/icons-material/Search';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useModal } from '../../context/ModalContext';
@@ -53,6 +53,9 @@ const Navbar = () => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useWebSocket();
   const { openCreateRecipeModal } = useModal();
   const navigate = useNavigate();
+  const location = useLocation();
+  const hideSearchPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
+  const shouldHideSearch = hideSearchPaths.includes(location.pathname);
 
   const upgradeMutation = useMutation({
     mutationFn: () => userService.upgradeToPremium(),
@@ -151,39 +154,41 @@ const Navbar = () => {
             </Typography>
           </Box>
 
-          <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>
-            <Search 
-              sx={{ 
-                display: { xs: 'none', md: 'flex' },
-                bgcolor: scrolled ? '#f1f5f9' : '#ffffff',
-                border: '1px solid #e2e8f0',
-                boxShadow: scrolled ? 'none' : '0 4px 12px rgba(0,0,0,0.03)',
-                borderRadius: '18px',
-                px: 1
-              }}
-            >
-              <Box sx={{ px: 2, display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                <SearchIcon sx={{ fontSize: 20 }} />
-              </Box>
-              <InputBase
-                placeholder="Search recipes, chefs, or ingredients..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleSearch}
-                sx={{
-                  color: 'text.primary',
-                  width: '100%',
-                  '& .MuiInputBase-input': {
-                    py: 1.5,
-                    pr: 3,
-                    width: { md: '35ch', lg: '55ch' },
-                    fontSize: '0.95rem',
-                    fontWeight: 500
-                  },
+          {!shouldHideSearch && (
+            <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>
+              <Search 
+                sx={{ 
+                  display: { xs: 'none', md: 'flex' },
+                  bgcolor: scrolled ? '#f1f5f9' : '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: scrolled ? 'none' : '0 4px 12px rgba(0,0,0,0.03)',
+                  borderRadius: '18px',
+                  px: 1
                 }}
-              />
-            </Search>
-          </Box>
+              >
+                <Box sx={{ px: 2, display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                  <SearchIcon sx={{ fontSize: 20 }} />
+                </Box>
+                <InputBase
+                  placeholder="Search recipes, chefs, or ingredients..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={handleSearch}
+                  sx={{
+                    color: 'text.primary',
+                    width: '100%',
+                    '& .MuiInputBase-input': {
+                      py: 1.5,
+                      pr: 3,
+                      width: { md: '35ch', lg: '55ch' },
+                      fontSize: '0.95rem',
+                      fontWeight: 500
+                    },
+                  }}
+                />
+              </Search>
+            </Box>
+          )}
 
           {isAuthenticated ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2.5 } }}>
@@ -431,7 +436,7 @@ const Navbar = () => {
                 >
                   My Profile
                 </MenuItem>
-                {(user?.roles?.includes('ROLE_ADMIN') || user?.roles?.includes('ROLE_MODERATOR')) && (
+                {(user?.roles?.includes('ROLE_ADMIN')) && (
                   <MenuItem 
                     onClick={() => { navigate('/admin'); handleClose(); }}
                     sx={{ borderRadius: '12px', py: 1.5, fontWeight: 700, color: 'primary.main' }}

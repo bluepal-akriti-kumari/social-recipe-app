@@ -11,6 +11,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import HubIcon from '@mui/icons-material/Hub';
 import { motion } from 'framer-motion';
 import { recipeService } from '../../services/recipe.service';
@@ -190,6 +191,7 @@ const ProfilePage = () => {
   }
 
   const isOwnProfile = currentUser?.username === profile.username;
+  const isAdmin = profile.roles.includes('ROLE_ADMIN');
 
   return (
     <Box className="bg-mesh" sx={{ minHeight: '100vh', py: { xs: 4, md: 8 } }}>
@@ -213,7 +215,14 @@ const ProfilePage = () => {
                 sx={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'scale(1.08)' } }} 
               />
             ) : (
-              <Box sx={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', opacity: 0.9 }} />
+              <Box sx={{ 
+                width: '100%', 
+                height: '100%', 
+                background: isAdmin 
+                  ? 'linear-gradient(135deg, #1e293b 0%, #334155 100%)' // Professional Slate
+                  : 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', 
+                opacity: 0.9 
+              }} />
             )}
             <Box className="card-overlay" />
           </Box>
@@ -239,11 +248,11 @@ const ProfilePage = () => {
                   boxShadow: '0 15px 40px rgba(0,0,0,0.15)',
                   fontSize: '4rem',
                   fontWeight: 950,
-                  bgcolor: 'primary.main',
+                  bgcolor: isAdmin ? '#0f172a' : 'primary.main',
                   color: 'white'
                 }}
               >
-                {profile.username[0].toUpperCase()}
+                {(profile.fullName?.[0] || profile.username?.[0] || '?').toUpperCase()}
               </Avatar>
               {profile.isVerified && (
                 <Box 
@@ -269,10 +278,22 @@ const ProfilePage = () => {
               <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: 'center', gap: 3, mb: 3 }}>
                 <Box>
                   <Typography variant="h2" sx={{ fontWeight: 950, letterSpacing: '-0.04em', color: 'text.primary', display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    {profile.username}
+                    {profile.fullName || profile.username}
                   </Typography>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    {profile.reputationLevel || 'Executive Chef'} • {profile.reputationPoints || 1250} Rep
+                  <Typography variant="subtitle1" sx={{ color: 'text.secondary', fontWeight: 700, mt: -0.5, mb: 1 }}>
+                    @{profile.username}
+                  </Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: isAdmin ? 'text.primary' : 'primary.main', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    {isAdmin ? (
+                      <Chip 
+                        label="Platform Administrator" 
+                        size="small" 
+                        icon={<AdminPanelSettingsIcon sx={{ fontSize: '14px !important' }} />}
+                        sx={{ fontWeight: 900, bgcolor: '#1e293b', color: 'white', '& .MuiChip-icon': { color: 'white' } }} 
+                      />
+                    ) : (
+                      <>{profile.reputationLevel || 'Executive Chef'} • {profile.reputationPoints || 1250} Rep</>
+                    )}
                     {profile.premium && (
                       <Chip 
                         label="Premium Member" 
@@ -347,7 +368,9 @@ const ProfilePage = () => {
               </Box>
               
               <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500, mb: 4, maxWidth: 650, mx: { xs: 'auto', md: 0 }, fontSize: '1.25rem', lineHeight: 1.6, letterSpacing: '0.01em' }}>
-                {profile.bio || 'Passion for good food and community. Sharing my culinary journey one recipe at a time! 🍳✨'}
+                {profile.bio || (isAdmin 
+                  ? 'Official Administrative Profile for the Culinario Platform.' 
+                  : 'Passion for good food and community. Sharing my culinary journey one recipe at a time! 🍳✨')}
               </Typography>
               
               <Box sx={{ display: 'flex', gap: { xs: 3, md: 5 }, justifyContent: { xs: 'center', md: 'flex-start' } }}>
@@ -409,8 +432,8 @@ const ProfilePage = () => {
                     }
                   }}
                 >
-                  <Tab label="Collection" disableRipple />
-                  <Tab label="Liked" disableRipple />
+                  <Tab label={isAdmin ? "Authored" : "Collection"} disableRipple />
+                  <Tab label={isAdmin ? "Supervised" : "Liked"} disableRipple />
                 </Tabs>
               </Box>
             </Box>

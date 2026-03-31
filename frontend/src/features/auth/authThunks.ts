@@ -8,7 +8,14 @@ export const loginThunk = (payload: LoginPayload) => async (dispatch: AppDispatc
   try {
     const data = await authService.login(payload);
     dispatch(loginSuccess({
-      user: { id: data.id, username: data.username, email: data.email, roles: data.roles, premium: data.premium ?? false },
+      user: { 
+        id: data.id, 
+        username: data.username, 
+        fullName: data.fullName,
+        email: data.email, 
+        roles: data.roles, 
+        premium: data.premium ?? false 
+      },
       token: data.token,
     }));
   } catch (err: any) {

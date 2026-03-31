@@ -2,6 +2,7 @@ package com.bluepal.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "steps")
@@ -25,5 +26,6 @@ public class Step {
     @JoinColumn(name = "recipe_id", nullable = false)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
+    @JsonIgnore
     private Recipe recipe;
 }

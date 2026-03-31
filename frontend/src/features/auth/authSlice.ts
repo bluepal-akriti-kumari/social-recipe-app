@@ -4,6 +4,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 interface User {
   id: number;
   username: string;
+  fullName: string;
   email: string;
   profilePictureUrl?: string;
   coverPictureUrl?: string;

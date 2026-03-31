@@ -49,9 +49,6 @@ public class RecipeController {
                 ? LocalDateTime.parse(cursorStr) 
                 : null;
 
-        if (category != null && !category.isEmpty()) {
-            return ResponseEntity.ok(recipeService.getExploreFeedCursorByCategory(category, cursor, size, getCurrentUsername()));
-        }
         return ResponseEntity.ok(recipeService.getFilteredExploreFeed(cursor, size, category, maxTime, maxCalories, sort, getCurrentUsername()));
     }
 

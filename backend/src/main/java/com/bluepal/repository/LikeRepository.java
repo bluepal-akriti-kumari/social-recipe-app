@@ -28,6 +28,16 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
 
     @Modifying
     @Transactional
+    @Query("UPDATE Like l SET l.user.id = :targetId WHERE l.user.id = :sourceId AND l.recipe.id NOT IN (SELECT l2.recipe.id FROM Like l2 WHERE l2.user.id = :targetId)")
+    void updateUserForLikes(@Param("sourceId") Long sourceId, @Param("targetId") Long targetId);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Like l WHERE l.user.id = :sourceId AND l.recipe.id IN (SELECT l2.recipe.id FROM Like l2 WHERE l2.user.id = :targetId)")
+    void deleteDuplicateLikes(@Param("sourceId") Long sourceId, @Param("targetId") Long targetId);
+
+    @Modifying
+    @Transactional
     @Query(value = "WITH deleted AS (DELETE FROM likes WHERE user_id = :userId AND recipe_id = :recipeId RETURNING id) " +
                    "INSERT INTO likes (user_id, recipe_id, created_at) " +
                    "SELECT :userId, :recipeId, NOW() " +

@@ -47,7 +47,7 @@ public class RatingServiceImplTest {
     @Test
     void rateRecipe_NewRating_Success() {
         when(recipeRepository.findById(1L)).thenReturn(Optional.of(mockRecipe));
-        when(ratingRepository.findByUserAndRecipe(any(), any())).thenReturn(Optional.empty());
+        when(ratingRepository.findFirstByUserAndRecipeOrderByCreatedAtDesc(any(), any())).thenReturn(Optional.empty());
         when(ratingRepository.getAverageRatingByRecipe(any())).thenReturn(4.0);
         when(ratingRepository.countByRecipe(any())).thenReturn(1L);
 
@@ -70,7 +70,7 @@ public class RatingServiceImplTest {
     void getUserRating_Success() {
         Rating rating = new Rating();
         rating.setRating(3);
-        when(ratingRepository.findByUserAndRecipe(any(), any())).thenReturn(Optional.of(rating));
+        when(ratingRepository.findFirstByUserAndRecipeOrderByCreatedAtDesc(any(), any())).thenReturn(Optional.of(rating));
 
         Integer result = ratingService.getUserRating(mockUser, mockRecipe);
         assertEquals(3, result);
@@ -78,7 +78,7 @@ public class RatingServiceImplTest {
 
     @Test
     void getUserRating_NoRating_ReturnsZero() {
-        when(ratingRepository.findByUserAndRecipe(any(), any())).thenReturn(Optional.empty());
+        when(ratingRepository.findFirstByUserAndRecipeOrderByCreatedAtDesc(any(), any())).thenReturn(Optional.empty());
 
         Integer result = ratingService.getUserRating(mockUser, mockRecipe);
         assertEquals(0, result);

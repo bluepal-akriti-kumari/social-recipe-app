@@ -4,6 +4,7 @@ import com.bluepal.service.interfaces.CloudinaryService;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -34,6 +35,17 @@ public class CloudinaryServiceImpl implements CloudinaryService {
             );
         } catch (Exception e) {
             throw new RuntimeException("Could not generate Cloudinary signature", e);
+        }
+    }
+
+    @Override
+    public String uploadImage(MultipartFile file, String folder) {
+        try {
+            Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(),
+                    ObjectUtils.asMap("folder", folder));
+            return (String) uploadResult.get("secure_url");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to upload image to Cloudinary", e);
         }
     }
 

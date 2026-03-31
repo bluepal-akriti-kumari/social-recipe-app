@@ -41,10 +41,10 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long>, JpaSpecif
     @Query("SELECT r FROM Recipe r ORDER BY (r.likeCount + r.ratingCount) DESC")
     List<Recipe> findTrending(Pageable pageable);
 
-    List<Recipe> findByCategoryAndIsPublishedTrueOrderByCreatedAtDesc(com.bluepal.entity.RecipeCategory category, Pageable pageable);
+    List<Recipe> findByCategoryAndIsPublishedTrueOrderByCreatedAtDesc(com.bluepal.entity.Category category, Pageable pageable);
 
     @Query("SELECT r FROM Recipe r WHERE r.category = :category AND r.isPublished = true AND r.createdAt < :cursor ORDER BY r.createdAt DESC")
-    List<Recipe> findExploreCursorWithCategoryPublished(@Param("category") com.bluepal.entity.RecipeCategory category, @Param("cursor") LocalDateTime cursor, Pageable pageable);
+    List<Recipe> findExploreCursorWithCategoryPublished(@Param("category") com.bluepal.entity.Category category, @Param("cursor") LocalDateTime cursor, Pageable pageable);
 
     // Optimized full-text search using GIN indexes and tsvector
     @Query(value = "SELECT DISTINCT r.* FROM recipes r " +
@@ -60,6 +60,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long>, JpaSpecif
     List<Recipe> searchRecipesFullText(@Param("query") String query);
 
     // Optimized user recipe lists
+    List<Recipe> findByAuthor(User author);
     List<Recipe> findByAuthorOrderByCreatedAtDesc(User author, Pageable pageable);
 
     List<Recipe> findByAuthorAndIsPublishedTrueOrderByCreatedAtDesc(User author, Pageable pageable);

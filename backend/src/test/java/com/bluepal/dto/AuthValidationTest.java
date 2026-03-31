@@ -29,6 +29,7 @@ public class AuthValidationTest {
         request.setUsername("Chef_Explorer");
         request.setEmail("chef@example.com");
         request.setPassword("Password@123");
+        request.setFullName("Full Name");
 
         Set<ConstraintViolation<RegisterRequest>> violations = validator.validate(request);
         assertTrue(violations.isEmpty(), "Should have no violations");
@@ -40,6 +41,7 @@ public class AuthValidationTest {
         request.setUsername("123Chef");
         request.setEmail("chef@example.com");
         request.setPassword("Password@123");
+        request.setFullName("Full Name");
 
         Set<ConstraintViolation<RegisterRequest>> violations = validator.validate(request);
         assertFalse(violations.isEmpty(), "Should have violations for username starting with number");
@@ -52,6 +54,7 @@ public class AuthValidationTest {
         request.setUsername("ch");
         request.setEmail("chef@example.com");
         request.setPassword("Password@123");
+        request.setFullName("Full Name");
 
         Set<ConstraintViolation<RegisterRequest>> violations = validator.validate(request);
         assertFalse(violations.isEmpty(), "Should have violations for short username");
@@ -63,6 +66,7 @@ public class AuthValidationTest {
         request.setUsername("Chef_123");
         request.setEmail("invalid-email");
         request.setPassword("Password@123");
+        request.setFullName("Full Name");
 
         Set<ConstraintViolation<RegisterRequest>> violations = validator.validate(request);
         assertFalse(violations.isEmpty(), "Should have violations for invalid email");
@@ -75,6 +79,7 @@ public class AuthValidationTest {
         request.setUsername("Chef_123");
         request.setEmail("chef@example.com");
         request.setPassword("Password123");
+        request.setFullName("Full Name");
 
         Set<ConstraintViolation<RegisterRequest>> violations = validator.validate(request);
         assertFalse(violations.isEmpty(), "Should have violations for simple password");

@@ -18,6 +18,7 @@ import { motion } from 'framer-motion';
 
 interface RegisterFormValues {
   username: string;
+  fullName: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -37,7 +38,12 @@ const RegisterPage = () => {
   }, [isAuthenticated, navigate, dispatch]);
 
   const onSubmit = (data: RegisterFormValues) => {
-    dispatch(registerThunk({ username: data.username, email: data.email, password: data.password }) as any);
+    dispatch(registerThunk({ 
+      username: data.username, 
+      fullName: data.fullName,
+      email: data.email, 
+      password: data.password 
+    }) as any);
   };
 
   return (
@@ -83,6 +89,23 @@ const RegisterPage = () => {
 
           <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
             <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 800 }}>Full Name</Typography>
+                  <TextField
+                    fullWidth
+                    placeholder="John Doe"
+                    {...register('fullName', { 
+                      required: 'Full Name is required',
+                      maxLength: { value: 100, message: 'Full Name cannot exceed 100 characters' }
+                    })}
+                    error={!!errors.fullName}
+                    helperText={errors.fullName?.message}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'rgba(0,0,0,0.02)' } }}
+                  />
+                </Box>
+              </Grid>
+
               <Grid size={{ xs: 12 }}>
                 <Box>
                   <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 800 }}>Username</Typography>
@@ -200,15 +223,6 @@ const RegisterPage = () => {
           </Box>
           </motion.div>
 
-          <Box sx={{ mt: 4, pt: 2 }}>
-            <Button 
-              startIcon={<ArrowBackIcon />} 
-              onClick={() => navigate('/feed')}
-              sx={{ textTransform: 'none', fontWeight: 800, color: 'text.disabled', '&:hover': { color: 'text.primary' } }}
-            >
-              Explore recipes first
-            </Button>
-          </Box>
         </Box>
       </Box>
 

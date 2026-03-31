@@ -188,7 +188,7 @@ public class InteractionController {
         // RBAC: Author, Moderator, or Admin can delete
         boolean isAuthor = comment.getUser().getUsername().equals(username);
         boolean isModeratorOrAdmin = user.getRoles().stream()
-                .anyMatch(r -> r.equals("ROLE_MODERATOR") || r.equals("ROLE_ADMIN"));
+                .anyMatch(r -> r.equals("ROLE_ADMIN"));
 
         if (!isAuthor && !isModeratorOrAdmin) {
             return ResponseEntity.status(403).body("Not authorized to delete this comment");

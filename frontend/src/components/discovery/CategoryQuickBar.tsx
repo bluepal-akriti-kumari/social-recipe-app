@@ -11,12 +11,12 @@ import PersonIcon from '@mui/icons-material/Person';
 const CATEGORIES = [
   { label: 'All Recipes', value: '', icon: null },
   { label: 'My Recipes', value: 'OWN', icon: <PersonIcon sx={{ fontSize: 18 }} /> },
-  { label: 'Healthy', value: 'HEALTHY', icon: <SpaIcon sx={{ fontSize: 18 }} /> },
-  { label: 'Italian', value: 'ITALIAN', icon: <LocalPizzaIcon sx={{ fontSize: 18 }} /> },
-  { label: 'Seafood', value: 'SEAFOOD', icon: <SetMealIcon sx={{ fontSize: 18 }} /> },
-  { label: 'Baking', value: 'BAKING', icon: <BakeryDiningIcon sx={{ fontSize: 18 }} /> },
-  { label: 'Breakfast', value: 'BREAKFAST', icon: <CoffeeIcon sx={{ fontSize: 18 }} /> },
-  { label: 'Desserts', value: 'DESSERTS', icon: <IcecreamIcon sx={{ fontSize: 18 }} /> },
+  { label: 'Healthy', value: 'Healthy', icon: <SpaIcon sx={{ fontSize: 18 }} /> },
+  { label: 'Italian', value: 'Italian', icon: <LocalPizzaIcon sx={{ fontSize: 18 }} /> },
+  { label: 'Seafood', value: 'Seafood', icon: <SetMealIcon sx={{ fontSize: 18 }} /> },
+  { label: 'Baking', value: 'Baking', icon: <BakeryDiningIcon sx={{ fontSize: 18 }} /> },
+  { label: 'Breakfast', value: 'Breakfast', icon: <CoffeeIcon sx={{ fontSize: 18 }} /> },
+  { label: 'Dessert', value: 'Dessert', icon: <IcecreamIcon sx={{ fontSize: 18 }} /> },
 ];
 
 interface CategoryQuickBarProps {

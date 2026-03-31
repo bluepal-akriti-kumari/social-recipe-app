@@ -44,9 +44,12 @@ public class RecipeServiceImplTest {
     @Mock
     private RatingRepository ratingRepository;
     @Mock
-    private RatingService ratingService;
-    @Mock
     private BookmarkService bookmarkService;
+    @Mock
+    private CategoryRepository categoryRepository;
+    @Mock
+    private TagRepository tagRepository;
+
 
     @InjectMocks
     private RecipeServiceImpl recipeService;
@@ -63,15 +66,18 @@ public class RecipeServiceImplTest {
                 .reputationPoints(0)
                 .build();
 
+        Category vegCategory = new Category("VEG");
+
         recipe = Recipe.builder()
-                .id(1L)
+                .id(100L)
                 .title("Test Recipe")
                 .description("Test Description")
                 .author(author)
-                .category(RecipeCategory.VEG)
+                .category(vegCategory)
                 .ingredients(new ArrayList<>())
                 .steps(new ArrayList<>())
                 .images(new ArrayList<>())
+
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -83,8 +89,11 @@ public class RecipeServiceImplTest {
 
     @Test
     void createRecipe_Success() {
+        Category vegCategory = new Category("VEG");
         when(userRepository.findByUsername("chef1")).thenReturn(Optional.of(author));
+        when(categoryRepository.findByNameIgnoreCase("VEG")).thenReturn(Optional.of(vegCategory));
         when(recipeRepository.save(any(Recipe.class))).thenReturn(recipe);
+
 
         RecipeResponse response = recipeService.createRecipe(recipeRequest, "chef1");
 
@@ -97,22 +106,24 @@ public class RecipeServiceImplTest {
 
     @Test
     void getRecipeById_Success() {
-        when(recipeRepository.findById(1L)).thenReturn(Optional.of(recipe));
+        when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
 
-        RecipeResponse response = recipeService.getRecipeById(1L, null);
+        RecipeResponse response = recipeService.getRecipeById(100L, null);
 
         assertNotNull(response);
-        assertEquals(1L, response.getId());
-        verify(recipeRepository, times(1)).findById(1L);
+        assertEquals(100L, response.getId());
+        verify(recipeRepository, times(1)).findById(100L);
     }
 
     @Test
     void updateRecipe_Success() {
-        when(recipeRepository.findById(1L)).thenReturn(Optional.of(recipe));
+        when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
+        when(userRepository.findByUsername("chef1")).thenReturn(Optional.of(author));
+        when(categoryRepository.findByNameIgnoreCase("VEG")).thenReturn(Optional.of(new Category("VEG")));
         when(recipeRepository.save(any(Recipe.class))).thenReturn(recipe);
 
         recipeRequest.setTitle("Updated Title");
-        RecipeResponse response = recipeService.updateRecipe(1L, recipeRequest, "chef1");
+        RecipeResponse response = recipeService.updateRecipe(100L, recipeRequest, "chef1");
 
         assertNotNull(response);
         assertEquals("Updated Title", recipe.getTitle());
@@ -121,10 +132,10 @@ public class RecipeServiceImplTest {
 
     @Test
     void deleteRecipe_Success() {
-        when(recipeRepository.findById(1L)).thenReturn(Optional.of(recipe));
+        when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
         when(userRepository.findByUsername("chef1")).thenReturn(Optional.of(author));
 
-        recipeService.deleteRecipe(1L, "chef1");
+        recipeService.deleteRecipe(100L, "chef1");
 
         verify(recipeRepository, times(1)).delete(recipe);
         verify(likeRepository, times(1)).deleteByRecipe(recipe);
@@ -133,10 +144,10 @@ public class RecipeServiceImplTest {
     @Test
     void deleteRecipe_Unauthorized() {
         User otherUser = User.builder().username("other").roles(new java.util.HashSet<>()).build();
-        when(recipeRepository.findById(1L)).thenReturn(Optional.of(recipe));
+        when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
         when(userRepository.findByUsername("other")).thenReturn(Optional.of(otherUser));
 
-        assertThrows(RuntimeException.class, () -> recipeService.deleteRecipe(1L, "other"));
+        assertThrows(RuntimeException.class, () -> recipeService.deleteRecipe(100L, "other"));
     }
 
     @Test

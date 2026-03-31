@@ -27,4 +27,14 @@ public interface RatingRepository extends JpaRepository<Rating, Long> {
     @Modifying
     @Transactional
     void deleteByRecipe(Recipe recipe);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE Rating r SET r.user.id = :targetId WHERE r.user.id = :sourceId AND r.recipe.id NOT IN (SELECT r2.recipe.id FROM Rating r2 WHERE r2.user.id = :targetId)")
+    void updateUserForRatings(@Param("sourceId") Long sourceId, @Param("targetId") Long targetId);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Rating r WHERE r.user.id = :sourceId AND r.recipe.id IN (SELECT r2.recipe.id FROM Rating r2 WHERE r2.user.id = :targetId)")
+    void deleteDuplicateRatings(@Param("sourceId") Long sourceId, @Param("targetId") Long targetId);
 }

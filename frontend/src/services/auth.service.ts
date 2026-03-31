@@ -7,6 +7,7 @@ export interface LoginPayload {
 
 export interface RegisterPayload {
   username: string;
+  fullName: string;
   email: string;
   password: string;
 }
@@ -16,6 +17,7 @@ export interface AuthResponse {
   id: number;
   username: string;
   email: string;
+  fullName: string;
   roles: string[];
   premium?: boolean;
 }

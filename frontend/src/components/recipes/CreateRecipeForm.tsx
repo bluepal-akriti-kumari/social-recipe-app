@@ -54,7 +54,7 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
       servings: 4,
       imageUrl: '',
       additionalImages: [],
-      category: 'VEG',
+      category: 'Vegetarian',
       isPublished: true,
       isPremium: false
     }
@@ -162,16 +162,16 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
                   helperText={errors.category?.message}
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
                 >
-                  <MenuItem value="VEG">Vegetarian</MenuItem>
-                  <MenuItem value="NON_VEG">Non-Vegetarian</MenuItem>
-                  <MenuItem value="BREAKFAST">Breakfast</MenuItem>
-                  <MenuItem value="BAKING">Baking</MenuItem>
-                  <MenuItem value="SEAFOOD">Seafood</MenuItem>
-                  <MenuItem value="HEALTHY">Healthy</MenuItem>
-                  <MenuItem value="ITALIAN">Italian</MenuItem>
-                  <MenuItem value="DESSERTS">Desserts</MenuItem>
-                  <MenuItem value="SNACK">Snack</MenuItem>
-                  <MenuItem value="DRINK">Drink</MenuItem>
+                  <MenuItem value="Vegetarian">Vegetarian</MenuItem>
+                  <MenuItem value="Non-Vegetarian">Non-Vegetarian</MenuItem>
+                  <MenuItem value="Breakfast">Breakfast</MenuItem>
+                  <MenuItem value="Baking">Baking</MenuItem>
+                  <MenuItem value="Seafood">Seafood</MenuItem>
+                  <MenuItem value="Healthy">Healthy</MenuItem>
+                  <MenuItem value="Italian">Italian</MenuItem>
+                  <MenuItem value="Dessert">Dessert</MenuItem>
+                  <MenuItem value="Snack">Snack</MenuItem>
+                  <MenuItem value="Drink">Drink</MenuItem>
                 </TextField>
               )}
             />

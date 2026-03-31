@@ -86,7 +86,7 @@ const CommentItem = ({ comment, index, onReply, onDelete, onReport, currentUser,
                 Reply
               </Button>
               {currentUser && (currentUser.username === comment.username || 
-                currentUser.roles?.some((r: any) => r === 'ROLE_ADMIN' || r === 'ROLE_MODERATOR')) && (
+                currentUser.roles?.some((r: any) => r === 'ROLE_ADMIN')) && (
                 <Button 
                   size="small" 
                   startIcon={isDeleting ? <CircularProgress size={12} /> : <DeleteOutlineIcon sx={{ fontSize: '16px !important' }} />}
@@ -583,7 +583,7 @@ const RecipeDetailPage = () => {
                 </Button>
               )}
               {currentUser && ((currentUser as any).username === recipeDetail.author.username || 
-                (currentUser as any).roles?.some((r: any) => r === 'ROLE_ADMIN' || r === 'ROLE_MODERATOR')) && (
+                (currentUser as any).roles?.some((r: any) => r === 'ROLE_ADMIN')) && (
                 <Button
                   variant="outlined"
                   color="error"

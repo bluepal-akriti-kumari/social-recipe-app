@@ -1,5 +1,8 @@
 package com.bluepal.dto.response;
 
+import java.util.Set;
+
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,6 +16,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class UserProfileResponse {
     private Long id;
     private String username;
+    private String fullName;
     private String bio;
     private String profilePictureUrl;
     private String coverPictureUrl;
@@ -26,4 +30,5 @@ public class UserProfileResponse {
     @JsonProperty("premium")
     private Boolean premium;
     private java.time.LocalDateTime premiumExpiryDate;
+    private Set<String> roles;
 }

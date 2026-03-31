@@ -32,6 +32,7 @@ public class RecipeServiceImpl implements RecipeService {
 	private final CommentRepository commentRepository;
 	private final BookmarkRepository bookmarkRepository;
 	private final RatingRepository ratingRepository;
+	private final CategoryRepository categoryRepository;
 	private final com.bluepal.service.interfaces.RatingService ratingService;
 	private final com.bluepal.service.interfaces.BookmarkService bookmarkService;
 
@@ -40,6 +41,7 @@ public class RecipeServiceImpl implements RecipeService {
 			ShoppingListItemRepository shoppingListItemRepository,
 			LikeRepository likeRepository, CommentRepository commentRepository,
 			BookmarkRepository bookmarkRepository, RatingRepository ratingRepository,
+			CategoryRepository categoryRepository,
 			com.bluepal.service.interfaces.RatingService ratingService,
 			@Lazy com.bluepal.service.interfaces.BookmarkService bookmarkService) {
 		this.recipeRepository = recipeRepository;
@@ -51,6 +53,7 @@ public class RecipeServiceImpl implements RecipeService {
 		this.commentRepository = commentRepository;
 		this.bookmarkRepository = bookmarkRepository;
 		this.ratingRepository = ratingRepository;
+		this.categoryRepository = categoryRepository;
 		this.ratingService = ratingService;
 		this.bookmarkService = bookmarkService;
 	}
@@ -83,24 +86,26 @@ public class RecipeServiceImpl implements RecipeService {
 			}
 		}
 
-		// --- Safety logic for Category ---
-		RecipeCategory category;
-		if (request.getCategory() == null || request.getCategory().isBlank()) {
-			// Default if null or empty
-			category = RecipeCategory.VEG;
+		// --- Dynamic Category Handling ---
+		Category category = null;
+		if (request.getCategory() != null && !request.getCategory().isBlank()) {
+			String catName = request.getCategory().trim();
+			category = categoryRepository.findByNameIgnoreCase(catName)
+					.orElseGet(() -> categoryRepository.save(new Category(catName)));
 		} else {
-			try {
-				// Convert to uppercase safely
-				category = RecipeCategory.valueOf(request.getCategory().trim().toUpperCase());
-			} catch (IllegalArgumentException e) {
-				// Default if the string doesn't match any Enum constant (e.g., "fastfood")
-				category = RecipeCategory.VEG;
-			}
+			// Fallback to "General" or similar default category
+			category = categoryRepository.findByNameIgnoreCase("General")
+					.orElseGet(() -> categoryRepository.save(new Category("General")));
 		}
 
-		Recipe recipe = Recipe.builder().title(request.getTitle()).description(request.getDescription())
-				.imageUrl(request.getImageUrl()).prepTimeMinutes(request.getPrepTimeMinutes())
-				.cookTimeMinutes(request.getCookTimeMinutes()).servings(request.getServings()).author(author)
+		Recipe recipe = Recipe.builder()
+				.title(request.getTitle())
+				.description(request.getDescription())
+				.imageUrl(request.getImageUrl())
+				.prepTimeMinutes(request.getPrepTimeMinutes())
+				.cookTimeMinutes(request.getCookTimeMinutes())
+				.servings(request.getServings())
+				.author(author)
 				.category(category)
 				.isPublished(request.isPublished())
 				.isPremium(request.isPremium())
@@ -108,7 +113,9 @@ public class RecipeServiceImpl implements RecipeService {
 				.protein(request.getProtein())
 				.carbs(request.getCarbs())
 				.fats(request.getFats())
-				.likeCount(0).commentCount(0).build();
+				.likeCount(0)
+				.commentCount(0)
+				.build();
 
 		if (request.getIngredients() != null) {
 			request.getIngredients().forEach(ir -> {
@@ -165,7 +172,7 @@ public class RecipeServiceImpl implements RecipeService {
 	}
 
 	// The Mapping Method that fixes your Compilation Error
-	private RecipeResponse mapToResponse(Recipe recipe, String currentUsername) {
+	public RecipeResponse mapToResponse(Recipe recipe, String currentUsername) {
 		try {
 			boolean isLiked = checkIsLiked(recipe, currentUsername);
 			User currentUser = currentUsername != null ? userRepository.findFirstByUsername(currentUsername).orElse(null)
@@ -181,7 +188,7 @@ public class RecipeServiceImpl implements RecipeService {
 					.fats(recipe.getFats())
 					.likeCount(recipe.getLikeCount()).commentCount(recipe.getCommentCount())
 					.averageRating(recipe.getAverageRating()).ratingCount(recipe.getRatingCount())
-					.category(recipe.getCategory() != null ? recipe.getCategory().name() : null).isLiked(isLiked)
+					.category(recipe.getCategory() != null ? recipe.getCategory().getName() : null).isLiked(isLiked)
 					.isBookmarked(isBookmarked).userRating(userRating)
 					.isPublished(recipe.isPublished())
 					.isPremium(recipe.isPremium())
@@ -419,13 +426,12 @@ public class RecipeServiceImpl implements RecipeService {
 		recipe.setCarbs(request.getCarbs());
 		recipe.setFats(request.getFats());
 
-		// Update category safely
+		// Update category dynamically
 		if (request.getCategory() != null && !request.getCategory().isBlank()) {
-			try {
-				recipe.setCategory(RecipeCategory.valueOf(request.getCategory().trim().toUpperCase()));
-			} catch (IllegalArgumentException e) {
-				// Keep existing if invalid
-			}
+			String catName = request.getCategory().trim();
+			Category category = categoryRepository.findByNameIgnoreCase(catName)
+					.orElseGet(() -> categoryRepository.save(new Category(catName)));
+			recipe.setCategory(category);
 		}
 
 		recipe.setPublished(request.isPublished());
@@ -476,7 +482,7 @@ public class RecipeServiceImpl implements RecipeService {
 
 		boolean isAuthor = recipe.getAuthor().getUsername().equals(username);
 		boolean isModeratorOrAdmin = user.getRoles().stream()
-				.anyMatch(r -> r.equals("ROLE_MODERATOR") || r.equals("ROLE_ADMIN"));
+				.anyMatch(r -> r.equals("ROLE_ADMIN"));
 
 		if (!isAuthor && !isModeratorOrAdmin) {
 			throw new RuntimeException("You are not authorized to delete this recipe");
@@ -504,24 +510,25 @@ public class RecipeServiceImpl implements RecipeService {
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<RecipeResponse> getRecipesByCategory(String category, String currentUsername, int limit) {
+	public List<RecipeResponse> getRecipesByCategory(String categoryName, String currentUsername, int limit) {
 		try {
-			RecipeCategory cat = RecipeCategory.valueOf(category.toUpperCase());
+			Category cat = categoryRepository.findByNameIgnoreCase(categoryName)
+					.orElseThrow(() -> new ResourceNotFoundException("Category", "name", categoryName));
 			Pageable pageable = PageRequest.of(0, limit);
 			return recipeRepository.findByCategoryAndIsPublishedTrueOrderByCreatedAtDesc(cat, pageable).stream()
 					.map(r -> this.mapToResponse(r, currentUsername)).collect(Collectors.toList());
-		} catch (IllegalArgumentException e) {
+		} catch (ResourceNotFoundException e) {
 			return List.of(); // Return empty list for unknown category
 		}
 	}
 
 	@Override
 	@Transactional(readOnly = true)
-	public Map<String, Object> getExploreFeedCursorByCategory(String category, LocalDateTime cursor, int size,
+	public Map<String, Object> getExploreFeedCursorByCategory(String categoryName, LocalDateTime cursor, int size,
 			String currentUsername) {
 		try {
-			com.bluepal.entity.RecipeCategory cat = com.bluepal.entity.RecipeCategory
-					.valueOf(category.trim().toUpperCase());
+			Category cat = categoryRepository.findByNameIgnoreCase(categoryName)
+					.orElseThrow(() -> new ResourceNotFoundException("Category", "name", categoryName));
 			Pageable limit = PageRequest.of(0, size);
 			List<Recipe> recipes;
 
@@ -537,7 +544,7 @@ public class RecipeServiceImpl implements RecipeService {
 			String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
 
 			return Map.of("content", content, "nextCursor", nextCursor);
-		} catch (IllegalArgumentException e) {
+		} catch (ResourceNotFoundException e) {
 			return Map.of("content", List.of(), "nextCursor", "");
 		}
 	}
@@ -558,10 +565,9 @@ public class RecipeServiceImpl implements RecipeService {
 				}
 
 				if (category != null && !category.isEmpty() && !"all".equalsIgnoreCase(category)) {
-					try {
-						RecipeCategory cat = RecipeCategory.valueOf(category.trim().toUpperCase());
+					Category cat = categoryRepository.findByNameIgnoreCase(category.trim()).orElse(null);
+					if (cat != null) {
 						predicates.add(cb.equal(root.get("category"), cat));
-					} catch (IllegalArgumentException ignored) {
 					}
 				}
 
@@ -577,8 +583,8 @@ public class RecipeServiceImpl implements RecipeService {
 					predicates.add(cb.lessThanOrEqualTo(cb.coalesce(root.get("calories"), 0), maxCalories));
 				}
 
-				// CRITICAL FIX: Only add orderBy if it's not a count query
-				if (query.getResultType() != Long.class && query.getResultType() != long.class) {
+				// Only add orderBy if it's not a count query
+				if (query != null && query.getResultType() != Long.class && query.getResultType() != long.class) {
 					if ("trending".equalsIgnoreCase(sort)) {
 						Expression<Integer> likes = cb.coalesce(root.get("likeCount"), 0);
 						Expression<Integer> ratings = cb.coalesce(root.get("ratingCount"), 0);
@@ -608,5 +614,10 @@ public class RecipeServiceImpl implements RecipeService {
 			e.printStackTrace();
 			return Map.of("content", List.of(), "nextCursor", "", "error", e.getMessage());
 		}
+	}
+	@Override
+	public Recipe getRecipeEntity(Long id) {
+		return recipeRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
 	}
 }

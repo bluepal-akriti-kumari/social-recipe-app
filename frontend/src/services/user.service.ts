@@ -3,6 +3,7 @@ import api from './api';
 export interface UserProfile {
   id: number;
   username: string;
+  fullName: string;
   email: string;
   bio: string;
   profilePictureUrl: string;
@@ -15,6 +16,7 @@ export interface UserProfile {
   reputationLevel?: string;
   recipeCount?: number;
   premium?: boolean;
+  roles: string[];
 }
 
 export const userService = {

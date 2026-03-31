@@ -22,6 +22,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private JwtUtils jwtUtils;
 
     @Autowired
+    @org.springframework.context.annotation.Lazy
     private CustomUserDetailsService userDetailsService;
 
     @Override

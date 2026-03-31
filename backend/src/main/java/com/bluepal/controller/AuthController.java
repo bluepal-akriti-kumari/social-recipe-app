@@ -66,31 +66,37 @@ public class AuthController {
 
         @PostMapping("/login")
         public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+                try {
+                        Authentication authentication = authenticationManager.authenticate(
+                                        new UsernamePasswordAuthenticationToken(loginRequest.getUsername(),
+                                                        loginRequest.getPassword()));
 
-                Authentication authentication = authenticationManager.authenticate(
-                                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(),
-                                                loginRequest.getPassword()));
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                        
+                        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                
-                CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+                        String jwt = jwtUtils.generateJwtToken(authentication);
 
-                String jwt = jwtUtils.generateJwtToken(authentication);
+                        List<String> roles = userDetails.getAuthorities().stream()
+                                        .map(GrantedAuthority::getAuthority)
+                                        .collect(Collectors.toList());
 
-                List<String> roles = userDetails.getAuthorities().stream()
-                                .map(GrantedAuthority::getAuthority)
-                                .collect(Collectors.toList());
+                        User userInstance = userRepository.findById(userDetails.getId()).orElse(null);
+                        boolean isPremium = userInstance != null && userInstance.hasActivePremium();
 
-                User userInstance = userRepository.findById(userDetails.getId()).orElse(null);
-                boolean isPremium = userInstance != null && userInstance.hasActivePremium();
-
-                return ResponseEntity.ok(new JwtResponse(jwt,
-                                userDetails.getId(),
-                                userDetails.getUsername(),
-                                userDetails.getEmail(),
-                                roles,
-                                isPremium));
-        }
+                        return ResponseEntity.ok(new JwtResponse(jwt,
+                                        userDetails.getId(),
+                                        userDetails.getUsername(),
+                                        userDetails.getEmail(),
+                                        userInstance != null ? userInstance.getFullName() : null,
+                                        roles,
+                                        isPremium));
+                } catch (org.springframework.security.authentication.LockedException | org.springframework.security.authentication.DisabledException e) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("your account is restricted by admin");
+                } catch (org.springframework.security.core.AuthenticationException e) {
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Error: Invalid username or password!");
+                }
+    }
 
         @PostMapping("/register")
         @Transactional
@@ -111,6 +117,7 @@ public class AuthController {
                         // Create new user's account
                         User user = User.builder()
                                         .username(signUpRequest.getUsername())
+                                        .fullName(signUpRequest.getFullName())
                                         .email(signUpRequest.getEmail())
                                         .password(encoder.encode(signUpRequest.getPassword()))
                                         .enabled(true)
@@ -210,9 +217,15 @@ public class AuthController {
                                 .build();
 
                 passwordResetTokenRepository.save(resetToken);
-                emailService.sendResetPasswordEmail(user.getEmail(), token);
 
-                return ResponseEntity.ok("Password reset email sent!");
+                try {
+                        emailService.sendResetPasswordEmail(user.getEmail(), token);
+                        return ResponseEntity.ok("Password reset email sent!");
+                } catch (Exception e) {
+                        System.err.println("CRITICAL: Failed to send OTP email to " + user.getEmail() + " : " + e.getMessage());
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                        .body("Error: Failed to send reset email. Please ensure the mail server is configured correctly.");
+                }
         }
 
         @PostMapping("/reset-password")
@@ -253,9 +266,10 @@ public class AuthController {
                                 user.getId(),
                                 user.getUsername(),
                                 user.getEmail(),
+                                user.getFullName(),
                                 roles,
                                 user.hasActivePremium()));
-        }
+    }
 
         @ResponseStatus(HttpStatus.BAD_REQUEST)
         @ExceptionHandler(MethodArgumentNotValidException.class)
