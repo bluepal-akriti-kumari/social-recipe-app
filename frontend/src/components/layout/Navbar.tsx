@@ -207,7 +207,7 @@ const Navbar = () => {
                 </IconButton>
               </Tooltip>
 
-              <Tooltip title="Shopping List">
+              {/* <Tooltip title="Shopping List">
                 <IconButton 
                   onClick={() => navigate('/shopping')}
                   sx={{ 
@@ -220,7 +220,7 @@ const Navbar = () => {
                 >
                   <ShoppingBasketIcon />
                 </IconButton>
-              </Tooltip>
+              </Tooltip> */}
 
               {user && !(user as any).premium && (
                 <Tooltip title="Upgrade for Premium Recipes">

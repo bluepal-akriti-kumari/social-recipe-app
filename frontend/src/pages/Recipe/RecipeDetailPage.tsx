@@ -862,7 +862,7 @@ const RecipeDetailPage = () => {
                 </Typography>
 
                 <Stack spacing={2} sx={{ mb: 4 }}>
-                  <Button 
+                  {/* <Button 
                     fullWidth 
                     variant="contained" 
                     startIcon={<ShoppingBasketIcon />}
@@ -871,7 +871,7 @@ const RecipeDetailPage = () => {
                     sx={{ borderRadius: '8px', py: 1, fontWeight: 900 }}
                   >
                     {addToShoppingMutation.isPending ? 'Adding...' : 'Add All to Shopping List'}
-                  </Button>
+                  </Button> */}
                   <Button 
                     fullWidth 
                     variant="outlined" 

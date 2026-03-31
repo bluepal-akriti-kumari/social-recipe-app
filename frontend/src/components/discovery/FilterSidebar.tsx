@@ -1,21 +1,46 @@
+import { useState, useEffect } from 'react';
 import { 
-  Box, Typography, Slider, FormControl, 
-  Select, MenuItem, Button, 
-  Divider, Stack
+  Box, Typography, Slider, 
+  Button, Divider, Stack, ToggleButton, ToggleButtonGroup
 } from '@mui/material';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import SortIcon from '@mui/icons-material/Sort';
 
 interface FilterSidebarProps {
   filters: {
     maxTime: number;
     maxCalories: number;
-    sort: string;
+    sort: string[];
   };
-  onFilterChange: (filters: { maxTime: number; maxCalories: number; sort: string }) => void;
+  onFilterChange: (filters: { maxTime: number; maxCalories: number; sort: string[] }) => void;
   onReset: () => void;
 }
 
 const FilterSidebar = ({ filters, onFilterChange, onReset }: FilterSidebarProps) => {
+  const [localFilters, setLocalFilters] = useState(filters);
+
+  // Sync local filters when parent filters change (important for reset)
+  useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters]);
+
+  const handleApply = () => {
+    onFilterChange(localFilters);
+  };
+
+  const handleReset = () => {
+    onReset();
+    setLocalFilters({ maxTime: 180, maxCalories: 2000, sort: ['newest'] });
+  };
+
+  const handleSortChange = (
+    _event: React.MouseEvent<HTMLElement>,
+    newSorts: string[],
+  ) => {
+    // If user deselects all, default to newest or just allow empty
+    setLocalFilters({ ...localFilters, sort: newSorts.length > 0 ? newSorts : ['newest'] });
+  };
+
   return (
     <Box sx={{ 
       p: 3, 
@@ -32,7 +57,7 @@ const FilterSidebar = ({ filters, onFilterChange, onReset }: FilterSidebarProps)
         <Button 
           startIcon={<RestartAltIcon />} 
           size="small" 
-          onClick={onReset}
+          onClick={handleReset}
           sx={{ color: 'text.secondary', fontWeight: 700 }}
         >
           Reset
@@ -40,22 +65,50 @@ const FilterSidebar = ({ filters, onFilterChange, onReset }: FilterSidebarProps)
       </Box>
 
       <Stack spacing={4}>
-        {/* Sort By */}
+        {/* Sort By - Multi-select Toggle Buttons */}
         <Box>
-          <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 800, color: 'text.primary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Sort By
-          </Typography>
-          <FormControl fullWidth size="small">
-            <Select
-              value={filters.sort}
-              onChange={(e) => onFilterChange({ ...filters, sort: e.target.value })}
-              sx={{ borderRadius: 2 }}
-            >
-              <MenuItem value="newest">Newest First</MenuItem>
-              <MenuItem value="trending">Trending Now</MenuItem>
-              <MenuItem value="rating">Top Rated</MenuItem>
-            </Select>
-          </FormControl>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
+            <SortIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.primary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Sort Selection
+            </Typography>
+          </Box>
+          <ToggleButtonGroup
+            value={localFilters.sort}
+            onChange={handleSortChange}
+            aria-label="recipe sorting"
+            fullWidth
+            orientation="vertical"
+            sx={{ 
+              gap: 1,
+              '& .MuiToggleButton-root': {
+                border: '1px solid #e2e8f0 !important',
+                borderRadius: '12px !important',
+                py: 1,
+                px: 2,
+                justifyContent: 'flex-start',
+                textTransform: 'none',
+                fontWeight: 700,
+                color: 'text.secondary',
+                '&.Mui-selected': {
+                  bgcolor: 'primary.main',
+                  color: 'white',
+                  borderColor: 'primary.main !important',
+                  '&:hover': { bgcolor: 'primary.dark' }
+                }
+              }
+            }}
+          >
+            <ToggleButton value="newest" aria-label="newest">
+              ✨ Newest First
+            </ToggleButton>
+            <ToggleButton value="trending" aria-label="trending">
+              🔥 Trending Now
+            </ToggleButton>
+            <ToggleButton value="rating" aria-label="rating">
+              ⭐ Top Rated
+            </ToggleButton>
+          </ToggleButtonGroup>
         </Box>
 
         <Divider />
@@ -67,15 +120,15 @@ const FilterSidebar = ({ filters, onFilterChange, onReset }: FilterSidebarProps)
               Max Time
             </Typography>
             <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main' }}>
-              {filters.maxTime} mins
+              {localFilters.maxTime} mins
             </Typography>
           </Box>
           <Slider
-            value={filters.maxTime}
+            value={localFilters.maxTime}
             min={0}
             max={180}
             step={5}
-            onChange={(_, value) => onFilterChange({ ...filters, maxTime: value as number })}
+            onChange={(_, value) => setLocalFilters({ ...localFilters, maxTime: value as number })}
             valueLabelDisplay="auto"
             sx={{ color: 'primary.main' }}
           />
@@ -94,15 +147,15 @@ const FilterSidebar = ({ filters, onFilterChange, onReset }: FilterSidebarProps)
               Max Calories
             </Typography>
             <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main' }}>
-              {filters.maxCalories} kcal
+              {localFilters.maxCalories} kcal
             </Typography>
           </Box>
           <Slider
-            value={filters.maxCalories}
+            value={localFilters.maxCalories}
             min={0}
             max={2000}
             step={50}
-            onChange={(_, value) => onFilterChange({ ...filters, maxCalories: value as number })}
+            onChange={(_, value) => setLocalFilters({ ...localFilters, maxCalories: value as number })}
             valueLabelDisplay="auto"
             sx={{ color: 'primary.main' }}
           />
@@ -116,6 +169,7 @@ const FilterSidebar = ({ filters, onFilterChange, onReset }: FilterSidebarProps)
       <Button 
         variant="contained" 
         fullWidth 
+        onClick={handleApply}
         sx={{ 
           mt: 4, 
           py: 1.5, 

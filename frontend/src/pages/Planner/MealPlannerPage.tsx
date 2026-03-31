@@ -121,7 +121,7 @@ const MealPlannerPage = () => {
           >
             Create Plan
           </Button>
-          <Button 
+          {/* <Button 
             variant="outlined" 
             startIcon={<ShoppingCartIcon />}
             onClick={handleGenerateShoppingList}
@@ -137,7 +137,7 @@ const MealPlannerPage = () => {
             }}
           >
             Shopping List
-          </Button>
+          </Button> */}
           <Box sx={{ p: 0.8, borderRadius: '18px', display: 'flex', alignItems: 'center', bgcolor: '#f1f5f9', border: '1px solid #e2e8f0' }}>
             <IconButton onClick={() => setCurrentDate(addDays(currentDate, -7))}>
               <ChevronLeftIcon />

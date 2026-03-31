@@ -21,11 +21,11 @@ const FeedPage = () => {
   const [filters, setFilters] = useState({
     maxTime: 180,
     maxCalories: 2000,
-    sort: 'newest'
+    sort: ['newest'] as string[]
   });
 
   const handleFilterReset = () => {
-    setFilters({ maxTime: 180, maxCalories: 2000, sort: 'newest' });
+    setFilters({ maxTime: 180, maxCalories: 2000, sort: ['newest'] });
     setSelectedCategory('');
   };
 
@@ -60,7 +60,7 @@ const FeedPage = () => {
         12, 
         filters.maxTime, 
         filters.maxCalories, 
-        filters.sort
+        filters.sort.join(',')
       );
     },
     initialPageParam: undefined as string | undefined,

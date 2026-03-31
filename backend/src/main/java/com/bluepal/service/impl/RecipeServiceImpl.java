@@ -585,16 +585,36 @@ public class RecipeServiceImpl implements RecipeService {
 
 				// Only add orderBy if it's not a count query
 				if (query != null && query.getResultType() != Long.class && query.getResultType() != long.class) {
-					if ("trending".equalsIgnoreCase(sort)) {
-						Expression<Integer> likes = cb.coalesce(root.get("likeCount"), 0);
-						Expression<Integer> ratings = cb.coalesce(root.get("ratingCount"), 0);
-						query.orderBy(cb.desc(cb.sum(likes, ratings)));
-					} else if ("rating".equalsIgnoreCase(sort)) {
-						query.orderBy(cb.desc(cb.coalesce(root.get("averageRating"), 0.0)));
-					} else {
-						// Default to newest
-						query.orderBy(cb.desc(root.get("createdAt")));
+					List<Order> orders = new ArrayList<>();
+					
+					if (sort != null && !sort.isEmpty()) {
+						String[] sortParams = sort.split(",");
+						java.util.Set<String> sortSet = new java.util.HashSet<>(java.util.Arrays.asList(sortParams));
+
+						// Priority 1: Top Rated
+						if (sortSet.contains("rating")) {
+							orders.add(cb.desc(cb.coalesce(root.get("averageRating"), 0.0)));
+						}
+						
+						// Priority 2: Trending (Likes + Ratings)
+						if (sortSet.contains("trending")) {
+							Expression<Integer> likes = cb.coalesce(root.get("likeCount"), 0);
+							Expression<Integer> ratingsCount = cb.coalesce(root.get("ratingCount"), 0);
+							orders.add(cb.desc(cb.sum(likes, ratingsCount)));
+						}
+						
+						// Priority 3: Newest First
+						if (sortSet.contains("newest")) {
+							orders.add(cb.desc(root.get("createdAt")));
+						}
 					}
+
+					// Fallback to Newest if no valid sort options provided
+					if (orders.isEmpty()) {
+						orders.add(cb.desc(root.get("createdAt")));
+					}
+
+					query.orderBy(orders);
 				}
 
 				return cb.and(predicates.toArray(new Predicate[0]));
