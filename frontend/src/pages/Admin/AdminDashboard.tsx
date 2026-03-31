@@ -8,8 +8,6 @@ import {
   Button, Stack
 } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import VerifiedIcon from '@mui/icons-material/Verified';
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import PeopleIcon from '@mui/icons-material/People';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
@@ -20,8 +18,7 @@ import {
   Autocomplete, MenuItem, Select, FormControl, InputLabel
 } from '@mui/material';
 import HistoryIcon from '@mui/icons-material/History';
-import MergeTypeIcon from '@mui/icons-material/MergeType';
-import LaunchIcon from '@mui/icons-material/Launch';
+
 import BlockIcon from '@mui/icons-material/Block';
 
 interface User {
@@ -60,9 +57,7 @@ const AdminDashboard = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [tabValue, setTabValue] = useState(0);
-  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
-  const [sourceUser, setSourceUser] = useState<string>('');
-  const [targetUser, setTargetUser] = useState<string>('');
+
   
   const [premiumOverrideOpen, setPremiumOverrideOpen] = useState(false);
   const [selectedUserForPremium, setSelectedUserForPremium] = useState<string | null>(null);
@@ -106,16 +101,6 @@ const AdminDashboard = () => {
 
   // --- Mutations ---
 
-  const updateRolesMutation = useMutation({
-    mutationFn: ({ username, roles }: { username: string, roles: string[] }) => 
-      api.patch(`/admin/users/${username}/roles`, { roles }),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
-      const isNowAdmin = variables.roles.includes('ROLE_ADMIN');
-      toast.success(isNowAdmin ? 'User promoted to Admin' : 'Admin role removed');
-    },
-    onError: () => toast.error('Failed to update user role'),
-  });
 
 
 
@@ -128,17 +113,6 @@ const AdminDashboard = () => {
   });
 
   
-  const handlePromoteAdmin = (username: string, currentRoles: string[]) => {
-    const isAlreadyAdmin = currentRoles.includes('ROLE_ADMIN');
-    if (isAlreadyAdmin) {
-      toast.error('Administrative privileges cannot be revoked.');
-      return;
-    }
-    // Ensure we also strip ROLE_MODERATOR when updating roles via the dashboard
-    let newRoles = currentRoles.filter(r => r !== 'ROLE_MODERATOR');
-    newRoles = [...newRoles, 'ROLE_ADMIN'];
-    updateRolesMutation.mutate({ username, roles: newRoles });
-  };
 
 
   const toggleRecipePremiumMutation = useMutation({
@@ -158,20 +132,7 @@ const AdminDashboard = () => {
     },
   });
 
-  const mergeUsersMutation = useMutation({
-    mutationFn: () => api.post('/admin/users/merge', { 
-      sourceUsername: sourceUser, 
-      targetUsername: targetUser 
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin'] });
-      toast.success('Users merged successfully');
-      setMergeDialogOpen(false);
-      setSourceUser('');
-      setTargetUser('');
-    },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Merge failed'),
-  });
+
 
   const premiumOverrideMutation = useMutation({
     mutationFn: ({ username, isPremium, durationDays }: { username: string, isPremium: boolean, durationDays?: number }) => 
@@ -198,7 +159,7 @@ const AdminDashboard = () => {
 
         {/* Stats Grid */}
         <Grid container spacing={3} sx={{ mb: 6 }}>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <Card className="glass-card" sx={{ borderRadius: 2 }}>
               <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ p: 1.5, bgcolor: 'primary.light', borderRadius: 1.5, display: 'flex' }}>
@@ -211,7 +172,7 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <Card className="glass-card" sx={{ borderRadius: 2 }}>
               <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ p: 1.5, bgcolor: 'secondary.light', borderRadius: 1.5, display: 'flex' }}>
@@ -238,14 +199,6 @@ const AdminDashboard = () => {
           <Paper className="glass-card" sx={{ borderRadius: 2, overflow: 'hidden' }}>
           <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6" sx={{ fontWeight: 900 }}>User Management</Typography>
-            <Button 
-              variant="contained" 
-              startIcon={<MergeTypeIcon />} 
-              sx={{ borderRadius: 2, fontWeight: 900 }}
-              onClick={() => setMergeDialogOpen(true)}
-            >
-              Merge Users
-            </Button>
           </Box>
           <TableContainer>
             <Table>
@@ -302,17 +255,6 @@ const AdminDashboard = () => {
                     </TableCell>
                     <TableCell sx={{ fontWeight: 800 }}>{user.reputationPoints} pts</TableCell>
                     <TableCell align="right">
-                      <Tooltip title={user.roles.includes('ROLE_ADMIN') ? "User is Administrator" : "Promote to Admin"}>
-                        <span>
-                          <IconButton 
-                            onClick={() => handlePromoteAdmin(user.username, user.roles)} 
-                            color="secondary"
-                            disabled={user.roles.includes('ROLE_ADMIN')}
-                          >
-                            <AdminPanelSettingsIcon />
-                          </IconButton>
-                        </span>
-                      </Tooltip>
                       <Tooltip title={user.isRestricted ? "Unrestrict User" : "Restrict User"}>
                         <IconButton onClick={() => toggleRestrictUserMutation.mutate(user.username)} color="warning">
                           <BlockIcon />
@@ -450,50 +392,7 @@ const AdminDashboard = () => {
 
       {/* --- Dialogs --- */}
       
-      {/* Merge Users Dialog */}
-      <Dialog open={mergeDialogOpen} onClose={() => setMergeDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 900 }}>Merge Duplicate Users</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="error" sx={{ mb: 3, fontWeight: 700 }}>
-            WARNING: This action is irreversible. All recipes, likes, and followers will be moved from the source user to the target user. The source user will be DELETED.
-          </Typography>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid size={{ xs: 12 }}>
-              <Autocomplete
-                options={users.map(u => u.username)}
-                value={sourceUser}
-                onChange={(_, newValue) => setSourceUser(newValue || '')}
-                renderInput={(params) => <TextField {...params} label="Source Username (To be deleted)" required fullWidth />}
-              />
-            </Grid>
-            <Grid size={{ xs: 12 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'center', my: 1 }}>
-                <MergeTypeIcon sx={{ transform: 'rotate(90deg)', color: 'text.secondary' }} />
-              </Box>
-            </Grid>
-            <Grid size={{ xs: 12 }}>
-              <Autocomplete
-                options={users.map(u => u.username).filter(u => u !== sourceUser)}
-                value={targetUser}
-                onChange={(_, newValue) => setTargetUser(newValue || '')}
-                renderInput={(params) => <TextField {...params} label="Target Username (To receive data)" required fullWidth />}
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button onClick={() => setMergeDialogOpen(false)} sx={{ fontWeight: 900 }}>Cancel</Button>
-          <Button 
-            variant="contained" 
-            color="secondary" 
-            onClick={() => mergeUsersMutation.mutate()}
-            disabled={!sourceUser || !targetUser || mergeUsersMutation.isPending}
-            sx={{ fontWeight: 900, borderRadius: 2 }}
-          >
-            {mergeUsersMutation.isPending ? 'Merging...' : 'Confirm Merge'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+
 
       {/* Premium Override Dialog */}
       <Dialog open={premiumOverrideOpen} onClose={() => setPremiumOverrideOpen(false)}>
