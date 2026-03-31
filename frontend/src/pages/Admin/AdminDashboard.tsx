@@ -350,7 +350,6 @@ const AdminDashboard = () => {
                     <TableCell sx={{ fontWeight: 900 }}>Recipe</TableCell>
                     <TableCell sx={{ fontWeight: 900 }}>Author</TableCell>
                     <TableCell sx={{ fontWeight: 900 }}>Premium</TableCell>
-                    <TableCell sx={{ fontWeight: 900 }}>Status</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 900 }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
@@ -371,14 +370,6 @@ const AdminDashboard = () => {
                             cursor: 'pointer'
                           }} 
                           onClick={() => toggleRecipePremiumMutation.mutate(recipe.id)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={recipe.status} 
-                          size="small" 
-                          color={recipe.status === 'ACTIVE' ? 'success' : 'error'}
-                          sx={{ fontWeight: 900 }} 
                         />
                       </TableCell>
                       <TableCell align="right">
