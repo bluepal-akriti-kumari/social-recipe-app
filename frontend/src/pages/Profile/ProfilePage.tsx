@@ -86,10 +86,11 @@ const ProfilePage = () => {
     enabled: !!id,
   });
 
-  const [recipes, setRecipes] = useState<any[]>([]);
+  const [additionalRecipes, setAdditionalRecipes] = useState<any[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
 
   const { 
+    data: recipesData,
     isLoading: isRecipesLoading,
     isFetching: isRecipesFetching
   } = useQuery({
@@ -98,20 +99,26 @@ const ProfilePage = () => {
       const data = activeTab === 0 
         ? await recipeService.getUserRecipes(Number(id)) 
         : await recipeService.getUserLikedRecipes(Number(id));
-      console.log('DEBUG: Fetched recipes data:', data);
-      setRecipes(data.content);
-      setNextCursor(data.nextCursor);
       return data;
     },
     enabled: !!id && !!profile,
   });
+
+  // Sync nextCursor and reset additional pages when primary query data changes
+  useEffect(() => {
+    setAdditionalRecipes([]);
+    setNextCursor(recipesData?.nextCursor ?? null);
+  }, [recipesData]);
+
+  // Derive final recipes list: query data + any load-more pages
+  const recipes = [...(recipesData?.content ?? []), ...additionalRecipes];
 
   const handleLoadMore = async () => {
     if (!nextCursor) return;
     const data = activeTab === 0 
       ? await recipeService.getUserRecipes(Number(id!), nextCursor) 
       : await recipeService.getUserLikedRecipes(Number(id!), nextCursor);
-    setRecipes(prev => [...prev, ...data.content]);
+    setAdditionalRecipes(prev => [...prev, ...data.content]);
     setNextCursor(data.nextCursor);
   };
 
