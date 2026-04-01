@@ -17,12 +17,12 @@ describe('useAuth hook', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useDispatch as jest.Mock).mockReturnValue(mockDispatch);
+    (useDispatch as unknown as jest.Mock).mockReturnValue(mockDispatch);
   });
 
   test('returns authentication state from Redux store', () => {
     const mockUser = { id: 1, username: 'testuser' };
-    (useSelector as jest.Mock).mockImplementation((selector) => 
+    (useSelector as unknown as jest.Mock).mockImplementation((selector) => 
       selector({
         auth: {
           user: mockUser,
@@ -49,7 +49,7 @@ describe('useAuth hook', () => {
   });
 
   test('returns loading and error states', () => {
-    (useSelector as jest.Mock).mockImplementation((selector) => 
+    (useSelector as unknown as jest.Mock).mockImplementation((selector) => 
       selector({
         auth: {
           user: null,

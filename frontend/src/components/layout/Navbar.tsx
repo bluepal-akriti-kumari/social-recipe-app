@@ -20,7 +20,6 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import CommentIcon from '@mui/icons-material/Comment';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 
 const Search = styled('div')(({ theme }) => ({

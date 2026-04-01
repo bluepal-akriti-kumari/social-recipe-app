@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { 
   Container, Box, Typography, Paper, Table, TableBody, TableCell, 
   TableContainer, TableHead, TableRow, Avatar, Chip, IconButton,
   CircularProgress, Grid, Card, CardContent, Tooltip,
   Tabs, Tab,
-  Button, Stack
+  Button
 } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import PeopleIcon from '@mui/icons-material/People';
@@ -15,7 +14,7 @@ import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { 
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Autocomplete, MenuItem, Select, FormControl, InputLabel
+  MenuItem, Select, FormControl, InputLabel
 } from '@mui/material';
 import HistoryIcon from '@mui/icons-material/History';
 
@@ -55,7 +54,6 @@ interface AuditLog {
 
 const AdminDashboard = () => {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [tabValue, setTabValue] = useState(0);
 
   
@@ -147,7 +145,6 @@ const AdminDashboard = () => {
   });
 
   const isLoading = isUsersLoading || isStatsLoading || isRecipesLoading;
-  const handleTabChange = (_: any, newValue: number) => setTabValue(newValue);
 
   if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
 

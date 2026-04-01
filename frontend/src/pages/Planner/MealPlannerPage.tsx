@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { 
   Container, Typography, Box, Paper, Grid, 
   IconButton, Card, CardMedia, CardContent,
@@ -11,10 +10,8 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { mealPlanService, type MealPlan } from '../../services/mealPlan.service';
-import { shoppingListService } from '../../services/shoppingList.service';
 import { toast } from 'react-hot-toast';
-import { format, startOfWeek, endOfWeek, addDays, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import { format, startOfWeek, addDays, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import BlockIcon from '@mui/icons-material/Block';
 import ScheduleIcon from '@mui/icons-material/Schedule';
@@ -23,7 +20,6 @@ import MealPlannerDrawer from '../../components/planner/MealPlannerDrawer';
 import { isBefore, isToday, startOfDay } from 'date-fns';
 
 const MealPlannerPage = () => {
-  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [plans, setPlans] = useState<MealPlan[]>([]);
   const [loading, setLoading] = useState(false);
@@ -72,18 +68,6 @@ const MealPlannerPage = () => {
       toast.success(`Marked as ${status.toLowerCase()}`);
     } catch (err) {
       toast.error('Failed to update status');
-    }
-  };
-
-  const handleGenerateShoppingList = async () => {
-    try {
-      const start = format(startOfWeek(currentDate), 'yyyy-MM-dd');
-      const end = format(endOfWeek(currentDate), 'yyyy-MM-dd');
-      await shoppingListService.addFromMealPlan(start, end);
-      toast.success('Weekly ingredients added to shopping list!');
-      navigate('/shopping-list');
-    } catch (err) {
-      toast.error('Failed to generate shopping list');
     }
   };
 

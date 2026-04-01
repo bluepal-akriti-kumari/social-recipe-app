@@ -19,7 +19,6 @@ import BookmarkIcon from '@mui/icons-material/Bookmark';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 
 import DescriptionIcon from '@mui/icons-material/Description';
-import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -31,7 +30,6 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { recipeService } from '../../services/recipe.service';
-import { shoppingListService } from '../../services/shoppingList.service';
 import AddToPlannerModal from './AddToPlannerModal';
 import { toast } from 'react-hot-toast';
 
@@ -185,12 +183,6 @@ const RecipeDetailPage = () => {
       queryClient.invalidateQueries({ queryKey: ['recipes', recipeId, 'comments'] });
       toast.success('Comment deleted');
     },
-  });
-
-  const addToShoppingMutation = useMutation({
-    mutationFn: () => shoppingListService.addFromRecipe(recipeId),
-    onSuccess: () => toast.success('All ingredients added to your shopping list!'),
-    onError: () => toast.error('Failed to add ingredients'),
   });
 
   const bookmarkMutation = useMutation({

@@ -8,7 +8,6 @@ import {
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import type { AppDispatch } from '../../store/store';
 import { registerThunk } from '../../features/auth/authThunks';
 import { useAuth } from '../../hooks/useAuth';
