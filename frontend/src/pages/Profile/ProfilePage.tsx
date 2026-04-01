@@ -94,7 +94,7 @@ const ProfilePage = () => {
     isLoading: isRecipesLoading,
     isFetching: isRecipesFetching
   } = useQuery({
-    queryKey: ['profiles', id, 'recipes', activeTab],
+    queryKey: ['recipes', 'profile', id, activeTab],
     queryFn: async () => {
       const data = activeTab === 0 
         ? await recipeService.getUserRecipes(Number(id)) 
@@ -154,6 +154,21 @@ const ProfilePage = () => {
 
   const handleLike = (id: number) => likeMutation.mutate(id);
   const handleBookmark = (id: number) => bookmarkMutation.mutate(id);
+
+  const deleteRecipeMutation = useMutation({
+    mutationFn: (id: number) => recipeService.deleteRecipe(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recipes'] });
+      toast.success('Recipe deleted successfully');
+    },
+    onError: () => toast.error('Failed to delete recipe'),
+  });
+
+  const handleDeleteRecipe = (id: number) => {
+    if (window.confirm('Are you sure you want to delete this recipe? This action cannot be undone.')) {
+      deleteRecipeMutation.mutate(id);
+    }
+  };
 
   const handleShowFollowers = async () => {
     if (!profile) return;
@@ -301,7 +316,7 @@ const ProfilePage = () => {
                     ) : (
                       <>{profile.reputationLevel || 'Executive Chef'} • {profile.reputationPoints || 1250} Rep</>
                     )}
-                    {profile.premium && (
+                    {!isAdmin && profile.premium && (
                       <Chip 
                         label="Premium Member" 
                         size="small" 
@@ -380,34 +395,36 @@ const ProfilePage = () => {
                   : 'Passion for good food and community. Sharing my culinary journey one recipe at a time! 🍳✨')}
               </Typography>
               
-              <Box sx={{ display: 'flex', gap: { xs: 3, md: 5 }, justifyContent: { xs: 'center', md: 'flex-start' } }}>
-                <Box 
-                  sx={{ 
-                    textAlign: 'center', 
-                    cursor: 'pointer',
-                    '&:hover': { opacity: 0.7 } 
-                  }}
-                  onClick={handleShowFollowers}
-                >
-                  <Typography variant="h5" sx={{ fontWeight: 950 }}>{profile.followerCount}</Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Followers</Typography>
+              {!isAdmin && (
+                <Box sx={{ display: 'flex', gap: { xs: 3, md: 5 }, justifyContent: { xs: 'center', md: 'flex-start' } }}>
+                  <Box 
+                    sx={{ 
+                      textAlign: 'center', 
+                      cursor: 'pointer',
+                      '&:hover': { opacity: 0.7 } 
+                    }}
+                    onClick={handleShowFollowers}
+                  >
+                    <Typography variant="h5" sx={{ fontWeight: 950 }}>{profile.followerCount}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Followers</Typography>
+                  </Box>
+                  <Box 
+                    sx={{ 
+                      textAlign: 'center', 
+                      cursor: 'pointer',
+                      '&:hover': { opacity: 0.7 } 
+                    }}
+                    onClick={handleShowFollowing}
+                  >
+                    <Typography variant="h5" sx={{ fontWeight: 950 }}>{profile.followingCount}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Following</Typography>
+                  </Box>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h5" sx={{ fontWeight: 950 }}>{profile.recipeCount || 0}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recipes</Typography>
+                  </Box>
                 </Box>
-                <Box 
-                  sx={{ 
-                    textAlign: 'center', 
-                    cursor: 'pointer',
-                    '&:hover': { opacity: 0.7 } 
-                  }}
-                  onClick={handleShowFollowing}
-                >
-                  <Typography variant="h5" sx={{ fontWeight: 950 }}>{profile.followingCount}</Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Following</Typography>
-                </Box>
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="h5" sx={{ fontWeight: 950 }}>{profile.recipeCount || 0}</Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recipes</Typography>
-                </Box>
-              </Box>
+              )}
             </Box>
           </Box>
         </Paper>
@@ -478,6 +495,7 @@ const ProfilePage = () => {
                         recipe={recipe} 
                         onLike={handleLike} 
                         onBookmark={handleBookmark}
+                        onDelete={handleDeleteRecipe}
                       />
                     </motion.div>
                   ))

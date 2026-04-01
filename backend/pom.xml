@@ -167,6 +167,14 @@
 						<goals>
 							<goal>report</goal>
 						</goals>
+						<configuration>
+							<excludes>
+								<exclude>com/bluepal/dto/**</exclude>
+								<exclude>com/bluepal/entity/**</exclude>
+								<exclude>com/bluepal/config/**</exclude>
+								<exclude>com/bluepal/BackendApplication.class</exclude>
+							</excludes>
+						</configuration>
 					</execution>
 				</executions>
 			</plugin>

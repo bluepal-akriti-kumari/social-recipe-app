@@ -110,6 +110,21 @@ const FeedPage = () => {
   const handleLike = (id: number) => likeMutation.mutate(id);
   const handleBookmark = (id: number) => bookmarkMutation.mutate(id);
 
+  const deleteRecipeMutation = useMutation({
+    mutationFn: (id: number) => recipeService.deleteRecipe(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recipes'] });
+      toast.success('Recipe deleted successfully');
+    },
+    onError: () => toast.error('Failed to delete recipe'),
+  });
+
+  const handleDeleteRecipe = (id: number) => {
+    if (window.confirm('Are you sure you want to delete this recipe? This action cannot be undone.')) {
+      deleteRecipeMutation.mutate(id);
+    }
+  };
+
   const currentLoading = searchQuery ? isSearchLoading : isExploreLoading;
   const currentError = searchQuery ? (searchError as any)?.message : (exploreError as any)?.message;
   const displayFeed = searchQuery ? (searchData || []) : exploreFeed;
@@ -224,6 +239,7 @@ const FeedPage = () => {
                       recipe={recipe} 
                       onLike={handleLike} 
                       onBookmark={handleBookmark}
+                      onDelete={handleDeleteRecipe}
                     />
                   </motion.div>
                 ))}

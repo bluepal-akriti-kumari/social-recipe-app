@@ -17,6 +17,36 @@ jest.mock('../../pages/Recipe/AddToPlannerModal', () => {
   };
 });
 
+jest.mock('./QuickCommentModal', () => {
+  return function MockQuickCommentModal({ open, onClose }: any) {
+    if (!open) return null;
+    return (
+      <div data-testid="quick-comment-modal">
+        Quick Comment Modal
+        <button onClick={onClose}>Close</button>
+      </div>
+    );
+  };
+});
+
+// Mock QueryClient
+jest.mock('@tanstack/react-query', () => {
+  const original = jest.requireActual('@tanstack/react-query');
+  return {
+    ...original,
+    useQueryClient: () => ({
+      invalidateQueries: jest.fn(),
+    }),
+    useMutation: ({ mutationFn, onSuccess }: any) => {
+      const mutate = async (...args: any[]) => {
+        await mutationFn(...args);
+        onSuccess?.();
+      };
+      return { mutate, isPending: false };
+    },
+  };
+});
+
 // Mock framer-motion
 jest.mock('framer-motion', () => ({
   motion: {
@@ -84,5 +114,25 @@ describe('RecipeCard', () => {
     fireEvent.click(calendarButton);
     
     expect(screen.getByTestId('planner-modal')).toBeVisible();
+  });
+
+  test('calls onDelete when delete button is clicked', () => {
+    const onDeleteMock = jest.fn();
+    // Author is testuser (id: 1)
+    renderWithRouter(<RecipeCard recipe={mockRecipe} onDelete={onDeleteMock} />);
+    
+    const deleteButton = screen.getByRole('button', { name: /delete/i });
+    fireEvent.click(deleteButton);
+    
+    expect(onDeleteMock).toHaveBeenCalledWith(mockRecipe.id);
+  });
+
+  test('opens quick comment modal when chat icon is clicked', () => {
+    renderWithRouter(<RecipeCard recipe={mockRecipe} />);
+    
+    const chatButton = screen.getByTestId('chat-bubble-button');
+    fireEvent.click(chatButton);
+    
+    expect(screen.getByTestId('quick-comment-modal')).toBeInTheDocument();
   });
 });

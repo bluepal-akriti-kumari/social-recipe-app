@@ -13,6 +13,7 @@ import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import LockIcon from '@mui/icons-material/Lock';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import StarIcon from '@mui/icons-material/Star';
@@ -20,16 +21,20 @@ import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import { useAuth } from '../../hooks/useAuth';
 import AddToPlannerModal from '../../pages/Recipe/AddToPlannerModal';
-import type { RecipeSummary } from '../../services/recipe.service';
+import { recipeService, type RecipeSummary } from '../../services/recipe.service';
+import QuickCommentModal from './QuickCommentModal';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface RecipeCardProps {
   recipe: RecipeSummary;
   onLike?: (id: number) => void;
   onBookmark?: (id: number) => void;
+  onDelete?: (id: number) => void;
 }
 
-const RecipeCard = ({ recipe, onLike, onBookmark }: RecipeCardProps) => {
+const RecipeCard = ({ recipe, onLike, onBookmark, onDelete }: RecipeCardProps) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, isAuthenticated } = useAuth();
   const premium = Boolean((user as any)?.premium);
   
@@ -40,6 +45,27 @@ const RecipeCard = ({ recipe, onLike, onBookmark }: RecipeCardProps) => {
     }
   }, [isAuthenticated, recipe.isPremium, recipe.title, user?.username, premium]);
   const [isPlannerOpen, setIsPlannerOpen] = useState(false);
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+
+  const rateMutation = useMutation({
+    mutationFn: (rating: number) => recipeService.rateRecipe(recipe.id, rating),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recipes'] });
+      toast.success('Rating submitted! ⭐');
+    },
+    onError: () => toast.error('Failed to submit rating'),
+  });
+
+  const handleRate = (e: any, newValue: number | null) => {
+    e.stopPropagation();
+    if (!isAuthenticated) return navigate('/login');
+    if (!newValue) return;
+    if ((user as any)?.id === recipe.author?.id) {
+        toast.error("You can't rate your own masterpiece! 😉");
+        return;
+    }
+    rateMutation.mutate(newValue);
+  };
 
   const handleNavigate = () => {
     const isAuthor = (user as any)?.id === recipe.author?.id;
@@ -176,6 +202,30 @@ const RecipeCard = ({ recipe, onLike, onBookmark }: RecipeCardProps) => {
             {recipe.isBookmarked ? <BookmarkIcon fontSize="small" /> : <BookmarkBorderIcon fontSize="small" />}
           </IconButton>
 
+          {/* Delete Button for Author/Admin */}
+          {(onDelete && ((user as any)?.id === recipe.author?.id || (user as any)?.roles?.includes('ROLE_ADMIN'))) && (
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(recipe.id);
+              }}
+              sx={{ 
+                position: 'absolute', 
+                top: recipe.isPremium ? 98 : 55, 
+                right: 12,
+                bgcolor: 'rgba(255,255,255,0.9)', 
+                zIndex: 4,
+                '&:hover': { bgcolor: '#fee2e2', color: 'error.main' },
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                color: 'text.secondary',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
+          )}
+
           {/* Lock Overlay for non-premium users */}
           {recipe.isPremium && !premium && (
             <Box sx={{
@@ -270,9 +320,14 @@ const RecipeCard = ({ recipe, onLike, onBookmark }: RecipeCardProps) => {
             <Rating 
               value={recipe.averageRating || 0} 
               precision={0.5} 
-              readOnly 
+              onChange={handleRate}
+              readOnly={!isAuthenticated || (user as any)?.id === recipe.author?.id} 
               size="small" 
-              sx={{ color: 'primary.main', fontSize: '1rem' }}
+              sx={{ 
+                color: 'primary.main', 
+                fontSize: '1rem',
+                '&.Mui-disabled': { opacity: 1 } // Keep it visible even when disabled
+              }}
             />
             <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
               {recipe.averageRating?.toFixed(1) || '0.0'}
@@ -316,7 +371,17 @@ const RecipeCard = ({ recipe, onLike, onBookmark }: RecipeCardProps) => {
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.disabled' }}>
-                <ChatBubbleOutlineIcon sx={{ fontSize: 18 }} />
+                <IconButton 
+                  size="small" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isAuthenticated) return navigate('/login');
+                    setIsCommentModalOpen(true);
+                  }}
+                  sx={{ p: 0, color: 'inherit', '&:hover': { color: 'primary.main' } }}
+                >
+                  <ChatBubbleOutlineIcon sx={{ fontSize: 18 }} />
+                </IconButton>
                 <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main' }}>
                   {recipe.commentCount}
                 </Typography>
@@ -344,6 +409,14 @@ const RecipeCard = ({ recipe, onLike, onBookmark }: RecipeCardProps) => {
         onClose={() => setIsPlannerOpen(false)}
         recipeId={recipe.id}
         recipeTitle={recipe.title}
+      />
+
+      <QuickCommentModal 
+        open={isCommentModalOpen}
+        onClose={() => setIsCommentModalOpen(false)}
+        recipeId={recipe.id}
+        recipeTitle={recipe.title}
+        authorName={recipe.author?.username || 'Chef'}
       />
     </motion.div>
   );

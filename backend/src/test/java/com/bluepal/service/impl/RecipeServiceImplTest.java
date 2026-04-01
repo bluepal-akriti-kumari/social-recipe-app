@@ -22,6 +22,17 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import com.bluepal.exception.PremiumRequiredException;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import java.util.List;
+import java.util.Map;
+import java.util.HashSet;
+import java.util.Collections;
+import java.util.Set;
+
 @ExtendWith(MockitoExtension.class)
 public class RecipeServiceImplTest {
 
@@ -180,11 +191,63 @@ public class RecipeServiceImplTest {
     }
 
     @Test
-    void getTrendingRecipes_Success() {
-        when(recipeRepository.findTrending(any())).thenReturn(java.util.List.of(recipe));
+    void getRecipeById_Premium_AccessDenied() {
+        recipe.setPremium(true);
+        User commonUser = User.builder().id(2L).username("common").roles(new HashSet<>()).build();
+        when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
+        when(userRepository.findFirstByUsernameIgnoreCasePrioritizePremium("common")).thenReturn(Optional.of(commonUser));
 
-        java.util.List<RecipeResponse> result = recipeService.getTrendingRecipes(null, 10);
+        assertThrows(PremiumRequiredException.class, () -> recipeService.getRecipeById(100L, "common"));
+    }
 
-        assertFalse(result.isEmpty());
+    @Test
+    void getRecipeById_Premium_AccessAuthor() {
+        recipe.setPremium(true);
+        when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
+        when(userRepository.findFirstByUsernameIgnoreCasePrioritizePremium("chef1")).thenReturn(Optional.of(author));
+
+        RecipeResponse response = recipeService.getRecipeById(100L, "chef1");
+        assertNotNull(response);
+        verify(recipeRepository).findById(100L);
+    }
+
+    @Test
+    void createRecipe_ReputationIncrease_ToChefDePartie() {
+        author.setReputationPoints(450);
+        when(userRepository.findByUsername("chef1")).thenReturn(Optional.of(author));
+        when(categoryRepository.findByNameIgnoreCase("VEG")).thenReturn(Optional.of(new Category("VEG")));
+        when(recipeRepository.save(any(Recipe.class))).thenReturn(recipe);
+
+        recipeService.createRecipe(recipeRequest, "chef1");
+
+        assertEquals(500, author.getReputationPoints());
+        assertEquals("Chef de Partie", author.getReputationLevel());
+    }
+
+    @Test
+    void createRecipe_ReputationIncrease_ToSousChef() {
+        author.setReputationPoints(950);
+        when(userRepository.findByUsername("chef1")).thenReturn(Optional.of(author));
+        when(categoryRepository.findByNameIgnoreCase("VEG")).thenReturn(Optional.of(new Category("VEG")));
+        when(recipeRepository.save(any(Recipe.class))).thenReturn(recipe);
+
+        recipeService.createRecipe(recipeRequest, "chef1");
+
+        assertEquals(1000, author.getReputationPoints());
+        assertEquals("Sous Chef", author.getReputationLevel());
+    }
+
+    @Test
+    void getFilteredExploreFeed_WithFilters() {
+        Page<Recipe> page = new PageImpl<>(List.of(recipe));
+        when(recipeRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
+
+        Map<String, Object> result = recipeService.getFilteredExploreFeed(
+            null, 10, "VEG", 60, 500, "newest", null
+        );
+
+        assertNotNull(result);
+        assertFalse(((List)result.get("content")).isEmpty());
+        verify(recipeRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 }

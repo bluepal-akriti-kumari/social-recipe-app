@@ -128,6 +128,7 @@ const AdminDashboard = () => {
     mutationFn: (id: number) => api.delete(`/admin/recipes/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'recipes'] });
+      queryClient.invalidateQueries({ queryKey: ['recipes'] });
       toast.success('Recipe deleted');
     },
   });
