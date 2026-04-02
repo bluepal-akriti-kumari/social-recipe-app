@@ -60,6 +60,9 @@ public class InteractionControllerTest {
     private UserService userService;
 
     @MockBean
+    private RecipeService recipeService;
+
+    @MockBean
     private com.bluepal.service.impl.ModerationService moderationService;
 
     @Autowired
