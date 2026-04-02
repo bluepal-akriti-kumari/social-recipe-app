@@ -646,4 +646,33 @@ public class RecipeServiceImpl implements RecipeService {
 		return recipeRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
 	}
+
+	@Override
+	@Transactional
+	public Map<String, Object> toggleLike(Long id, String username) {
+		User user = userRepository.findByUsername(username)
+				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+		Recipe recipe = recipeRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
+
+		likeRepository.toggleLikeAtomic(user.getId(), recipe.getId());
+		boolean isLiked = likeRepository.existsByUserAndRecipe(user, recipe);
+
+		if (isLiked) {
+			recipeRepository.incrementLikeCount(id);
+			// Send Notification
+			notificationService.createAndSendNotification(
+					recipe.getAuthor(),
+					user,
+					com.bluepal.entity.NotificationType.LIKE,
+					recipe.getId(),
+					user.getUsername() + " liked your recipe: " + recipe.getTitle());
+			// Award reputation points to recipe author
+			userService.updateReputation(recipe.getAuthor().getUsername(), 5);
+			return Map.of("liked", true, "likeCount", recipe.getLikeCount() + 1);
+		} else {
+			recipeRepository.decrementLikeCount(id);
+			return Map.of("liked", false, "likeCount", Math.max(0, recipe.getLikeCount() - 1));
+		}
+	}
 }
