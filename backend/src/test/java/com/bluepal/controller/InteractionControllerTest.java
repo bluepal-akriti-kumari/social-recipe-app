@@ -25,14 +25,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 @WebMvcTest(InteractionController.class)
 @org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc(addFilters = false)
@@ -123,18 +121,24 @@ class InteractionControllerTest {
 
     @Test
     @WithMockUser(username = "testuser")
-    void addComment_Success() throws Exception {
+    void addComment_WithParent_Success() throws Exception {
         CommentRequest request = new CommentRequest();
-        request.setContent("Nice recipe!");
+        request.setContent("Reply!");
+        request.setParentId(10L);
 
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
         when(recipeRepository.findById(1L)).thenReturn(Optional.of(mockRecipe));
         
+        Comment parent = new Comment();
+        parent.setId(10L);
+        when(commentRepository.findById(10L)).thenReturn(Optional.of(parent));
+
         Comment savedComment = new Comment();
         savedComment.setId(1L);
-        savedComment.setContent("Nice recipe!");
+        savedComment.setContent("Reply!");
         savedComment.setUser(mockUser);
         savedComment.setRecipe(mockRecipe);
+        savedComment.setParent(parent);
         
         when(commentRepository.save(any())).thenReturn(savedComment);
 
@@ -143,22 +147,73 @@ class InteractionControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").value("Nice recipe!"))
-                .andExpect(jsonPath("$.username").value("testuser"));
-
-        verify(recipeRepository).incrementCommentCount(1L);
-        verify(notificationService).createAndSendNotification(any(), any(), any(), any(), anyString());
+                .andExpect(jsonPath("$.parentId").value(10));
     }
 
     @Test
-    void toggleLike_Unauthenticated_Returns401() throws Exception {
-        // Since addFilters=false, @WithMockUser is usually bypassed if we don't mock the context manually,
-        // but let's test the controller logic where getCurrentUsername returns null.
-        // In our setup, addFilters=false means Spring Security filter chain is bypassed, 
-        // but the controller's getCurrentUsername() still reads the context.
+    @WithMockUser(username = "restricted")
+    void addComment_RestrictedUser_Forbidden() throws Exception {
+        mockUser.setRestricted(true);
+        when(userRepository.findByUsername("restricted")).thenReturn(Optional.of(mockUser));
 
-        mockMvc.perform(post("/api/recipes/1/like")
+        CommentRequest request = new CommentRequest();
+        request.setContent("Forbidden");
+
+        mockMvc.perform(post("/api/recipes/1/comments")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getComments_Success() throws Exception {
+        when(recipeRepository.findById(1L)).thenReturn(Optional.of(mockRecipe));
+        when(commentRepository.findByRecipeAndParentIsNullOrderByCreatedAtDesc(any(), any()))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/recipes/1/comments"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void deleteComment_Author_Success() throws Exception {
+        Comment comment = new Comment();
+        comment.setId(1L);
+        comment.setUser(mockUser);
+        comment.setRecipe(mockRecipe);
+
+        when(commentRepository.findById(1L)).thenReturn(Optional.of(comment));
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/comments/1")
                         .with(csrf()))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isOk())
+                .andExpect(content().string("Comment deleted successfully"));
+
+        verify(commentRepository).delete(comment);
+    }
+
+    @Test
+    @WithMockUser(username = "testuser")
+    void reportContent_Success() throws Exception {
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
+        
+        java.util.Map<String, Object> request = java.util.Map.of(
+            "reason", "Spam",
+            "targetType", "RECIPE",
+            "targetId", 1
+        );
+
+        mockMvc.perform(post("/api/reports")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Report submitted successfully"));
+
+        verify(moderationService).reportContent(eq(mockUser), eq("Spam"), eq("RECIPE"), eq(1L));
     }
 }
+

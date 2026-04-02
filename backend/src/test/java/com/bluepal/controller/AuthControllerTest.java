@@ -2,43 +2,49 @@ package com.bluepal.controller;
 
 import com.bluepal.dto.request.LoginRequest;
 import com.bluepal.dto.request.RegisterRequest;
-import com.bluepal.repository.PasswordResetTokenRepository;
+import com.bluepal.dto.request.ForgotPasswordRequest;
+import com.bluepal.dto.request.ResetPasswordRequest;
+import com.bluepal.entity.User;
+import com.bluepal.entity.PasswordResetToken;
+import com.bluepal.entity.VerificationToken;
 import com.bluepal.repository.UserRepository;
+import com.bluepal.repository.PasswordResetTokenRepository;
+import com.bluepal.repository.VerificationTokenRepository;
 import com.bluepal.security.JwtUtils;
 import com.bluepal.security.CustomUserDetailsService;
+import com.bluepal.security.CustomUserDetails;
 import com.bluepal.service.impl.EmailServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.LockedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
-import com.bluepal.security.CustomUserDetails;
-import com.bluepal.entity.User;
-import com.bluepal.entity.PasswordResetToken;
-import com.bluepal.dto.request.ForgotPasswordRequest;
-import com.bluepal.dto.request.ResetPasswordRequest;
-import org.springframework.security.core.Authentication;
+import java.util.Map;
+import java.util.Optional;
+import java.util.HashSet;
 
-@WebMvcTest(controllers = AuthController.class)
-@org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc(addFilters = false)
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@WebMvcTest(AuthController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTest {
 
     @Autowired
@@ -48,7 +54,7 @@ class AuthControllerTest {
     private AuthenticationManager authenticationManager;
 
     @MockBean
-    private com.bluepal.repository.UserRepository userRepository;
+    private UserRepository userRepository;
 
     @MockBean
     private PasswordEncoder passwordEncoder;
@@ -57,10 +63,10 @@ class AuthControllerTest {
     private JwtUtils jwtUtils;
 
     @MockBean
-    private com.bluepal.repository.PasswordResetTokenRepository passwordResetTokenRepository;
+    private PasswordResetTokenRepository passwordResetTokenRepository;
 
     @MockBean
-    private com.bluepal.repository.VerificationTokenRepository verificationTokenRepository;
+    private VerificationTokenRepository verificationTokenRepository;
 
     @MockBean
     private EmailServiceImpl emailService;
@@ -156,7 +162,7 @@ class AuthControllerTest {
         request.setPassword("password");
 
         when(authenticationManager.authenticate(any()))
-            .thenThrow(new org.springframework.security.authentication.LockedException("Locked"));
+            .thenThrow(new LockedException("Locked"));
 
         mockMvc.perform(post("/api/auth/login")
                         .with(csrf())
@@ -185,29 +191,81 @@ class AuthControllerTest {
     }
 
     @Test
-    void resetPassword_Success() throws Exception {
-        ResetPasswordRequest request = new ResetPasswordRequest();
-        request.setToken("123456");
-        request.setNewPassword("NewPass@123");
-        
-        User userRecord = User.builder().id(1L).build();
-        PasswordResetToken token = PasswordResetToken.builder()
-                .token("123456")
-                .user(userRecord)
-                .expiryDate(java.time.LocalDateTime.now().plusHours(1))
-                .build();
+    void verifyRegistration_Success() throws Exception {
+        VerificationToken token = new VerificationToken();
+        User unverifiedUser = User.builder().username("unverified").enabled(false).build();
+        token.setToken("valid-token");
+        token.setUser(unverifiedUser);
+        token.setExpiryDate(LocalDateTime.now().plusHours(24));
 
-        when(passwordResetTokenRepository.findByToken("123456")).thenReturn(Optional.of(token));
-        when(passwordEncoder.encode("NewPass@123")).thenReturn("encodedNewPass");
+        when(verificationTokenRepository.findByToken("valid-token")).thenReturn(Optional.of(token));
 
-        mockMvc.perform(post("/api/auth/reset-password")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(get("/api/auth/verify-registration")
+                        .param("token", "valid-token"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Password reset successful!"));
-        
+                .andExpect(content().string("Account verified successfully! You can now log in."));
+
+        assertTrue(unverifiedUser.isEnabled());
+        verify(verificationTokenRepository).delete(token);
+    }
+
+    @Test
+    void changePassword_Success() throws Exception {
+        User userRecord = User.builder().username("testuser").password("oldEncoded").build();
+        Map<String, String> body = new HashMap<>();
+        body.put("currentPassword", "oldPass");
+        body.put("newPassword", "newPass123");
+
+        Authentication auth = mock(Authentication.class);
+        when(auth.isAuthenticated()).thenReturn(true);
+        when(auth.getName()).thenReturn("testuser");
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(userRecord));
+        when(passwordEncoder.matches("oldPass", "oldEncoded")).thenReturn(true);
+        when(passwordEncoder.encode("newPass123")).thenReturn("newEncoded");
+
+        mockMvc.perform(post("/api/auth/change-password")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Password changed successfully"));
+
         verify(userRepository).save(userRecord);
-        assertEquals("encodedNewPass", userRecord.getPassword());
+        assertEquals("newEncoded", userRecord.getPassword());
+    }
+
+    @Test
+    void deleteAccount_Success() throws Exception {
+        User userRecord = User.builder().username("testuser").build();
+        Authentication auth = mock(Authentication.class);
+        when(auth.isAuthenticated()).thenReturn(true);
+        when(auth.getName()).thenReturn("testuser");
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(userRecord));
+
+        mockMvc.perform(delete("/api/auth/users/me")
+                        .principal(auth))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Account deleted successfully"));
+
+        verify(userRepository).delete(userRecord);
+    }
+
+    @Test
+    void getCurrentUser_Success() throws Exception {
+        User userRecord = User.builder().id(1L).username("testuser").email("test@ex.com").roles(new HashSet<>(List.of("ROLE_USER"))).build();
+        Authentication auth = mock(Authentication.class);
+        
+        org.springframework.security.core.context.SecurityContext securityContext = mock(org.springframework.security.core.context.SecurityContext.class);
+        org.springframework.security.core.context.SecurityContextHolder.setContext(securityContext);
+        
+        when(securityContext.getAuthentication()).thenReturn(auth);
+        when(auth.isAuthenticated()).thenReturn(true);
+        when(auth.getName()).thenReturn("testuser");
+        when(auth.getPrincipal()).thenReturn("testuser"); // Mock principal to avoid NPE
+        when(userRepository.findByUsernameIgnoreCase("testuser")).thenReturn(Optional.of(userRecord));
+
+        mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("testuser"));
     }
 }

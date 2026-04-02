@@ -57,6 +57,18 @@ class UserServiceImplTest {
         
         assertNotNull(response);
         assertEquals("testuser", response.getUsername());
+        assertEquals(10, response.getRecipeCount());
+    }
+
+    @Test
+    void getUserProfile_ById_Success() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(recipeRepository.countByAuthor(user)).thenReturn(5L);
+
+        UserProfileResponse response = userService.getUserProfile(1L, "viewer");
+
+        assertNotNull(response);
+        assertEquals(1L, response.getId());
     }
 
     @Test
@@ -76,6 +88,30 @@ class UserServiceImplTest {
     }
 
     @Test
+    void followUser_SelfFollow_ThrowsException() {
+        assertThrows(IllegalArgumentException.class, () -> 
+            userService.followUser("testuser", "testuser")
+        );
+    }
+
+    @Test
+    void unfollowUser_Success() {
+        User target = User.builder().id(2L).username("target").followerCount(1).build();
+        user.setFollowingCount(1);
+        com.bluepal.entity.Follow follow = com.bluepal.entity.Follow.builder().follower(user).following(target).build();
+
+        when(userRepository.findByUsernameIgnoreCase("target")).thenReturn(Optional.of(target));
+        when(userRepository.findByUsernameIgnoreCase("testuser")).thenReturn(Optional.of(user));
+        when(followRepository.findByFollowerAndFollowing(user, target)).thenReturn(Optional.of(follow));
+
+        userService.unfollowUser("testuser", "target");
+
+        verify(followRepository).delete(follow);
+        assertEquals(0, target.getFollowerCount());
+        assertEquals(0, user.getFollowingCount());
+    }
+
+    @Test
     void updateProfile_Success() {
         UpdateProfileRequest request = new UpdateProfileRequest();
         request.setBio("New Bio");
@@ -88,4 +124,26 @@ class UserServiceImplTest {
         assertEquals("New Bio", user.getBio());
         verify(userRepository).save(user);
     }
+
+    @Test
+    void updateReputation_SousChef_Level() {
+        when(userRepository.findByUsernameIgnoreCase("testuser")).thenReturn(Optional.of(user));
+        
+        userService.updateReputation("testuser", 1000);
+        
+        assertEquals(1000, user.getReputationPoints());
+        assertEquals("Sous Chef", user.getReputationLevel());
+    }
+
+    @Test
+    void updateReputation_MichelinStar_Level() {
+        when(userRepository.findByUsernameIgnoreCase("testuser")).thenReturn(Optional.of(user));
+        
+        userService.updateReputation("testuser", 5000);
+        
+        assertEquals(5000, user.getReputationPoints());
+        assertEquals("Michelin Star Chef", user.getReputationLevel());
+        assertTrue(user.isVerified());
+    }
 }
+
