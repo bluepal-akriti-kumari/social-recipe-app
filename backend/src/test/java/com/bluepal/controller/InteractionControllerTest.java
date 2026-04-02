@@ -190,7 +190,7 @@ class InteractionControllerTest {
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/comments/1")
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Comment deleted successfully"));
+                .andExpect(jsonPath("$.message").value("Comment deleted successfully"));
 
         verify(commentRepository).delete(comment);
     }
@@ -211,7 +211,7 @@ class InteractionControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Report submitted successfully"));
+                .andExpect(jsonPath("$.message").value("Report submitted successfully"));
 
         verify(moderationService).reportContent(eq(mockUser), eq("Spam"), eq("RECIPE"), eq(1L));
     }

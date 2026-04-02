@@ -19,7 +19,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -250,14 +249,20 @@ public class RecipeServiceImpl implements RecipeService {
 	@Transactional(readOnly = true)
 	public RecipeResponse getRecipeById(Long id, String currentUsername) {
 		Recipe recipe = recipeRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
+				.orElseThrow(() -> new ResourceNotFoundException(RECIPE, ID, id));
 
+		validateRecipeReadAccess(recipe, currentUsername);
+
+		return mapToResponse(recipe, currentUsername);
+	}
+
+	private void validateRecipeReadAccess(Recipe recipe, String currentUsername) {
 		if (recipe.getStatus() == RecipeStatus.RESTRICTED) {
 			User user = currentUsername != null ? userRepository.findByUsernameIgnoreCase(currentUsername).orElse(null)
 					: null;
 			boolean isAdmin = user != null && user.getRoles().contains(ROLE_ADMIN);
 			if (!isAdmin) {
-				throw new ResourceNotFoundException("Recipe", "id", id);
+				throw new ResourceNotFoundException(RECIPE, ID, recipe.getId());
 			}
 		}
 
@@ -266,32 +271,31 @@ public class RecipeServiceImpl implements RecipeService {
 					? userRepository.findFirstByUsernameIgnoreCasePrioritizePremium(currentUsername).orElse(null)
 					: null;
 
-			// Author check (Robust: check both ID and Username with NULL GUARDS)...
-			boolean isAuthor = false;
-			if (user != null && recipe.getAuthor() != null) {
-				isAuthor = (recipe.getAuthor().getId() != null && recipe.getAuthor().getId().equals(user.getId())) ||
-						(recipe.getAuthor().getUsername() != null
-								&& recipe.getAuthor().getUsername().equalsIgnoreCase(user.getUsername()));
-			}
-
-			// Admin check (now also checking ADMIN without ROLE_ prefix for safety)
-			boolean isAdmin = user != null && (user.getRoles().contains("ROLE_ADMIN") || user.getRoles().contains("ADMIN"));
-
-			// Premium check (leverages the improved User entity logic)
+			boolean isAuthor = isAuthor(recipe, user);
+			boolean isAdmin = isAdmin(user);
 			boolean isPremium = user != null && user.hasActivePremium();
 
 			log.debug("[RecipeAccess] User matched: {}", (user != null ? user.getUsername() + " (ID: " + user.getId() + ")" : "NONE"));
 			log.debug("[RecipeAccess] isAuthor: {}, isAdmin: {}, isPremium: {}", isAuthor, isAdmin, isPremium);
 
 			if (!isAdmin && !isAuthor && !isPremium) {
-				log.error("[RecipeAccess] ACCESS DENIED - ID: {}, User: {}", id, (user != null ? user.getUsername() : "null"));
+				log.error("[RecipeAccess] ACCESS DENIED - ID: {}, User: {}", recipe.getId(), (user != null ? user.getUsername() : "null"));
 				throw new com.bluepal.exception.PremiumRequiredException(
 						"This is a premium recipe. Please upgrade to view.");
 			}
 			log.debug("[RecipeAccess] ACCESS GRANTED");
 		}
+	}
 
-		return mapToResponse(recipe, currentUsername);
+	private boolean isAuthor(Recipe recipe, User user) {
+		if (user == null || recipe.getAuthor() == null) return false;
+		return (recipe.getAuthor().getId() != null && recipe.getAuthor().getId().equals(user.getId())) ||
+				(recipe.getAuthor().getUsername() != null && recipe.getAuthor().getUsername().equalsIgnoreCase(user.getUsername()));
+	}
+
+	private boolean isAdmin(User user) {
+		if (user == null) return false;
+		return user.getRoles().contains("ROLE_ADMIN") || user.getRoles().contains("ADMIN");
 	}
 
 	@Override

@@ -8,6 +8,7 @@ import com.bluepal.entity.Recipe;
 import com.bluepal.entity.User;
 import com.bluepal.repository.MealPlanRepository;
 import com.bluepal.repository.RecipeRepository;
+import com.bluepal.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -148,5 +149,28 @@ public class MealPlanServiceImplTest {
         mealPlanService.deleteMealPlan(50L, user);
 
         verify(mealPlanRepository, times(1)).delete(plan);
+    }
+    @Test
+    void addMealPlan_RecipeNotFound() {
+        MealPlanRequest request = new MealPlanRequest();
+        request.setRecipeId(999L);
+        when(recipeRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> mealPlanService.addMealPlan(user, request));
+    }
+
+    @Test
+    void updateMealPlan_NotFound() {
+        MealPlanRequest request = new MealPlanRequest();
+        when(mealPlanRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> mealPlanService.updateMealPlan(999L, request, user));
+    }
+
+    @Test
+    void deleteMealPlan_NotFound() {
+        when(mealPlanRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> mealPlanService.deleteMealPlan(999L, user));
     }
 }

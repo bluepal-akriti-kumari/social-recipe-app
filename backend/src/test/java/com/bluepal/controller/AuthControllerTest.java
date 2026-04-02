@@ -94,7 +94,7 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Registration successful! You can now log in."));
+                .andExpect(jsonPath("$.message").value("Registration successful! You can now log in."));
     }
 
     @Test
@@ -112,7 +112,7 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().string("Error: Username is already taken!"));
+                .andExpect(jsonPath("$.message").value("Error: Username is already taken!"));
     }
 
     @Test
@@ -169,7 +169,7 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden())
-                .andExpect(content().string("your account is restricted by admin"));
+                .andExpect(jsonPath("$.message").value("your account is restricted by admin"));
     }
 
     @Test
@@ -203,7 +203,7 @@ class AuthControllerTest {
         mockMvc.perform(get("/api/auth/verify-registration")
                         .param("token", "valid-token"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Account verified successfully! You can now log in."));
+                .andExpect(jsonPath("$.message").value("Account verified successfully! You can now log in."));
 
         assertTrue(unverifiedUser.isEnabled());
         verify(verificationTokenRepository).delete(token);
@@ -228,7 +228,7 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Password changed successfully"));
+                .andExpect(jsonPath("$.message").value("Password changed successfully"));
 
         verify(userRepository).save(userRecord);
         assertEquals("newEncoded", userRecord.getPassword());
@@ -245,7 +245,7 @@ class AuthControllerTest {
         mockMvc.perform(delete("/api/auth/users/me")
                         .principal(auth))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Account deleted successfully"));
+                .andExpect(jsonPath("$.message").value("Account deleted successfully"));
 
         verify(userRepository).delete(userRecord);
     }

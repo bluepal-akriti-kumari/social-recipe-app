@@ -58,7 +58,7 @@ public class DataSeeder implements CommandLineRunner {
                     .username("admin")
                     .fullName("System Administrator")
                     .email(ADMIN_EMAIL)
-                    .password(passwordEncoder.encode("admin123"))
+                    .password(passwordEncoder.encode("CulinarioAdmin@2026++"))
                     .roles(new java.util.HashSet<>(java.util.Set.of(ROLE_USER, ROLE_ADMIN)))
                     .enabled(true)
                     .verified(true)

@@ -72,7 +72,7 @@ class AdminControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("User roles updated successfully"));
+                .andExpect(jsonPath("$.message").value("User roles updated successfully"));
 
         verify(userRepository).save(user);
     }
@@ -109,7 +109,7 @@ class AdminControllerTest {
 
         mockMvc.perform(patch("/api/admin/recipes/1/premium"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Recipe premium status toggled to: true"));
+                .andExpect(jsonPath("$.message").value("Recipe premium status toggled to: true"));
 
         verify(recipeRepository).save(recipe);
     }
@@ -118,7 +118,7 @@ class AdminControllerTest {
     void deleteRecipe_Success() throws Exception {
         mockMvc.perform(delete("/api/admin/recipes/1"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Recipe deleted successfully"));
+                .andExpect(jsonPath("$.message").value("Recipe deleted successfully"));
 
         verify(recipeService).deleteRecipe(1L, "admin");
     }
@@ -132,7 +132,7 @@ class AdminControllerTest {
 
         mockMvc.perform(patch("/api/admin/users/testuser/restrict").principal(principal))
                 .andExpect(status().isOk())
-                .andExpect(content().string("User restricted status toggled to: true"));
+                .andExpect(jsonPath("$.message").value("User restricted status toggled to: true"));
 
         verify(adminService).restrictUser("testuser", true, "adminuser");
     }
@@ -148,7 +148,7 @@ class AdminControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Users merged successfully: user1 -> user2"));
+                .andExpect(jsonPath("$.message").value("Users merged successfully: user1 -> user2"));
 
         verify(adminService).mergeUsers("user1", "user2", "adminuser");
     }
@@ -164,7 +164,7 @@ class AdminControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("User premium status updated manually"));
+                .andExpect(jsonPath("$.message").value("User premium status updated manually"));
 
         verify(adminService).updatePremiumStatus("testuser", true, 30, "adminuser");
     }

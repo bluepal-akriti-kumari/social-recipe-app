@@ -41,7 +41,7 @@ public class CloudinaryServiceImpl implements CloudinaryService {
     @Override
     public String uploadImage(MultipartFile file, String folder) {
         try {
-            Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(),
+            java.util.Map<String, Object> uploadResult = (java.util.Map<String, Object>) cloudinary.uploader().upload(file.getBytes(),
                     ObjectUtils.asMap("folder", folder));
             return (String) uploadResult.get("secure_url");
         } catch (Exception e) {

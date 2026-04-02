@@ -1,6 +1,7 @@
 package com.bluepal.controller;
 
 import com.bluepal.dto.response.RecipeResponse;
+import com.bluepal.dto.response.MessageResponse;
 import com.bluepal.entity.User;
 import com.bluepal.exception.ResourceNotFoundException;
 import com.bluepal.repository.UserRepository;
@@ -31,15 +32,15 @@ public class BookmarkController {
     }
 
     @PostMapping("/{recipeId}")
-    public ResponseEntity<?> toggleBookmark(@PathVariable("recipeId") Long recipeId) {
+    public ResponseEntity<MessageResponse> toggleBookmark(@PathVariable("recipeId") Long recipeId) {
         String username = getCurrentUsername();
-        if (username == null) return ResponseEntity.status(401).build();
+        if (username == null) return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
 
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
         bookmarkService.toggleBookmark(user, recipeId);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(new MessageResponse("Bookmark status updated successfully"));
     }
 
     @GetMapping

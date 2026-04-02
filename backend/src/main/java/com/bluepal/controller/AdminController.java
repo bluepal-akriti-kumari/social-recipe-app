@@ -3,6 +3,7 @@ package com.bluepal.controller;
 import com.bluepal.entity.User;
 import com.bluepal.repository.UserRepository;
 import com.bluepal.exception.ResourceNotFoundException;
+import com.bluepal.dto.response.MessageResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -19,18 +20,15 @@ public class AdminController {
     private final com.bluepal.service.interfaces.RecipeService recipeService;
     private final com.bluepal.repository.RecipeRepository recipeRepository;
     private final com.bluepal.service.interfaces.AdminService adminService;
-    private final com.bluepal.repository.CommentRepository commentRepository;
 
     public AdminController(UserRepository userRepository, 
                            com.bluepal.service.interfaces.RecipeService recipeService,
                            com.bluepal.repository.RecipeRepository recipeRepository,
-                           com.bluepal.service.interfaces.AdminService adminService,
-                           com.bluepal.repository.CommentRepository commentRepository) {
+                           com.bluepal.service.interfaces.AdminService adminService) {
         this.userRepository = userRepository;
         this.recipeService = recipeService;
         this.recipeRepository = recipeRepository;
         this.adminService = adminService;
-        this.commentRepository = commentRepository;
     }
 
     @GetMapping("/users")
@@ -39,7 +37,7 @@ public class AdminController {
     }
 
     @PatchMapping("/users/{username}/roles")
-    public ResponseEntity<?> updateUserRoles(@PathVariable String username, @RequestBody Map<String, List<String>> body) {
+    public ResponseEntity<Object> updateUserRoles(@PathVariable String username, @RequestBody Map<String, List<String>> body) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
         
@@ -54,7 +52,7 @@ public class AdminController {
             user.getRoles().addAll(newRoles);
             userRepository.save(user);
         }
-        return ResponseEntity.ok("User roles updated successfully");
+        return ResponseEntity.ok(new MessageResponse("User roles updated successfully"));
     }
 
 
@@ -67,52 +65,52 @@ public class AdminController {
     }
 
     @PatchMapping("/recipes/{id}/premium")
-    public ResponseEntity<?> toggleRecipePremium(@PathVariable Long id) {
+    public ResponseEntity<MessageResponse> toggleRecipePremium(@PathVariable Long id) {
         com.bluepal.entity.Recipe recipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
         recipe.setPremium(!recipe.isPremium());
         recipeRepository.save(recipe);
-        return ResponseEntity.ok("Recipe premium status toggled to: " + recipe.isPremium());
+        return ResponseEntity.ok(new MessageResponse("Recipe premium status toggled to: " + recipe.isPremium()));
     }
 
     @GetMapping("/recipes")
     public ResponseEntity<java.util.List<com.bluepal.dto.response.RecipeResponse>> getAllRecipes() {
         return ResponseEntity.ok(recipeRepository.findAll().stream()
                 .map(r -> recipeService.mapToResponse(r, "admin")) // Use a system-level or admin username for context
-                .collect(java.util.stream.Collectors.toList()));
+                .toList());
     }
 
 
     @DeleteMapping("/recipes/{id}")
-    public ResponseEntity<?> deleteRecipe(@PathVariable Long id) {
+    public ResponseEntity<MessageResponse> deleteRecipe(@PathVariable Long id) {
         recipeService.deleteRecipe(id, "admin"); // Assuming admin can delete any recipe
-        return ResponseEntity.ok("Recipe deleted successfully");
+        return ResponseEntity.ok(new MessageResponse("Recipe deleted successfully"));
     }
 
     @PatchMapping("/users/{username}/restrict")
-    public ResponseEntity<?> toggleUserRestriction(@PathVariable String username, java.security.Principal principal) {
+    public ResponseEntity<MessageResponse> toggleUserRestriction(@PathVariable String username, java.security.Principal principal) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
         
         boolean newStatus = !user.isRestricted();
         adminService.restrictUser(username, newStatus, principal.getName());
-        return ResponseEntity.ok("User restricted status toggled to: " + newStatus);
+        return ResponseEntity.ok(new MessageResponse("User restricted status toggled to: " + newStatus));
     }
 
     @PostMapping("/users/merge")
-    public ResponseEntity<?> mergeUsers(@RequestBody Map<String, String> request, java.security.Principal principal) {
+    public ResponseEntity<MessageResponse> mergeUsers(@RequestBody Map<String, String> request, java.security.Principal principal) {
         String source = request.get("sourceUsername");
         String target = request.get("targetUsername");
         adminService.mergeUsers(source, target, principal.getName());
-        return ResponseEntity.ok("Users merged successfully: " + source + " -> " + target);
+        return ResponseEntity.ok(new MessageResponse("Users merged successfully: " + source + " -> " + target));
     }
 
     @PatchMapping("/users/{username}/premium-override")
-    public ResponseEntity<?> updatePremiumStatus(@PathVariable String username, @RequestBody Map<String, Object> body, java.security.Principal principal) {
+    public ResponseEntity<MessageResponse> updatePremiumStatus(@PathVariable String username, @RequestBody Map<String, Object> body, java.security.Principal principal) {
         boolean isPremium = (boolean) body.getOrDefault("isPremium", true);
         Integer duration = (Integer) body.get("durationDays");
         adminService.updatePremiumStatus(username, isPremium, duration, principal.getName());
-        return ResponseEntity.ok("User premium status updated manually");
+        return ResponseEntity.ok(new MessageResponse("User premium status updated manually"));
     }
 
     @GetMapping("/audit-logs")

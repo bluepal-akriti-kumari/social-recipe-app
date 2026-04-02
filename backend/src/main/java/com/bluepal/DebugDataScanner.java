@@ -2,11 +2,11 @@ package com.bluepal;
 
 import com.bluepal.repository.CategoryRepository;
 import com.bluepal.repository.RecipeRepository;
-import com.bluepal.entity.Recipe;
-import com.bluepal.entity.Category;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 public class DebugDataScanner implements CommandLineRunner {
     private final CategoryRepository categoryRepository;
@@ -19,14 +19,17 @@ public class DebugDataScanner implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        System.out.println("----- DEBUG CATEGORIES -----");
-        categoryRepository.findAll().forEach(cat -> {
-            System.out.println("ID: " + cat.getId() + " | Name: [" + cat.getName() + "]");
-        });
+        log.info("----- DEBUG CATEGORIES -----");
+        categoryRepository.findAll().forEach(cat -> 
+            log.info("ID: {} | Name: [{}]", cat.getId(), cat.getName())
+        );
         
-        System.out.println("----- DEBUG RECIPES -----");
-        recipeRepository.findAll().forEach(r -> {
-            System.out.println("Title: [" + r.getTitle() + "] | Category: [" + (r.getCategory() != null ? r.getCategory().getName() : "NULL") + "] | CatID: " + (r.getCategory() != null ? r.getCategory().getId() : "NULL"));
-        });
+        log.info("----- DEBUG RECIPES -----");
+        recipeRepository.findAll().forEach(r -> 
+            log.info("Title: [{}] | Category: [{}] | CatID: {}", 
+                r.getTitle(), 
+                (r.getCategory() != null ? r.getCategory().getName() : "NULL"), 
+                (r.getCategory() != null ? r.getCategory().getId() : "NULL"))
+        );
     }
 }

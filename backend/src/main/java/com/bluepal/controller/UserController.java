@@ -1,7 +1,9 @@
 package com.bluepal.controller;
 
 import com.bluepal.dto.response.UserProfileResponse;
+import com.bluepal.dto.response.MessageResponse;
 import com.bluepal.service.interfaces.UserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,27 +35,27 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
     @PostMapping("/{id}/follow")
-    public ResponseEntity<?> followUser(@PathVariable("id") Long id) {
+    public ResponseEntity<MessageResponse> followUser(@PathVariable("id") Long id) {
         String currentUsername = getCurrentUsername();
         if (currentUsername == null) {
-            return ResponseEntity.status(401).body("Authentication required");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Authentication required"));
         }
         
         userService.toggleFollow(currentUsername, id);
-        return ResponseEntity.ok("Follow status updated for user ID " + id);
+        return ResponseEntity.ok(new MessageResponse("Follow status updated for user ID " + id));
     }
     
     
 
     @DeleteMapping("/{id}/unfollow")
-    public ResponseEntity<?> unfollowUser(@PathVariable("id") Long id) {
+    public ResponseEntity<MessageResponse> unfollowUser(@PathVariable("id") Long id) {
         String currentUsername = getCurrentUsername();
         if (currentUsername == null) {
-            return ResponseEntity.status(401).body("Authentication required");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Authentication required"));
         }
         
         userService.unfollowUser(currentUsername, id);
-        return ResponseEntity.ok("Successfully unfollowed user ID " + id);
+        return ResponseEntity.ok(new MessageResponse("Successfully unfollowed user ID " + id));
     }
 
     @PutMapping("/me")

@@ -28,6 +28,9 @@ public class AdminServiceImpl implements AdminService {
     private final FollowRepository followRepository;
     private final AuditLogRepository auditLogRepository;
     private final EmailServiceImpl emailService;
+ 
+    private static final String USER = "User";
+    private static final String USERNAME = "username";
 
     @Override
     @Transactional
@@ -37,9 +40,9 @@ public class AdminServiceImpl implements AdminService {
         }
 
         User source = userRepository.findByUsername(sourceUsername)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", sourceUsername));
+                .orElseThrow(() -> new ResourceNotFoundException(USER, USERNAME, sourceUsername));
         User target = userRepository.findByUsername(targetUsername)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", targetUsername));
+                .orElseThrow(() -> new ResourceNotFoundException(USER, USERNAME, targetUsername));
 
         log.info("Admin {} merging user {} into {}", adminUsername, sourceUsername, targetUsername);
 
@@ -91,7 +94,7 @@ public class AdminServiceImpl implements AdminService {
     @Transactional
     public void updatePremiumStatus(String username, boolean isPremium, Integer durationDays, String adminUsername) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+                .orElseThrow(() -> new ResourceNotFoundException(USER, USERNAME, username));
 
         user.setPremium(isPremium);
         if (isPremium && durationDays != null) {
@@ -120,7 +123,7 @@ public class AdminServiceImpl implements AdminService {
     @Transactional
     public void restrictUser(String username, boolean restricted, String adminUsername) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+                .orElseThrow(() -> new ResourceNotFoundException(USER, USERNAME, username));
 
         // SECURITY CHECK: Cannot restrict an administrator
         if (restricted && user.getRoles().contains("ROLE_ADMIN")) {
