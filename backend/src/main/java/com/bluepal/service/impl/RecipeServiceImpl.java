@@ -245,7 +245,7 @@ public class RecipeServiceImpl implements RecipeService {
 					? userRepository.findFirstByUsernameIgnoreCasePrioritizePremium(currentUsername).orElse(null)
 					: null;
 
-			// Author check (Robust: check both ID and Username with NULL GUARDS)
+			// Author check (Robust: check both ID and Username with NULL GUARDS)...
 			boolean isAuthor = false;
 			if (user != null && recipe.getAuthor() != null) {
 				isAuthor = (recipe.getAuthor().getId() != null && recipe.getAuthor().getId().equals(user.getId())) ||

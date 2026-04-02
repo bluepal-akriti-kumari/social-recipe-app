@@ -1,7 +1,7 @@
 @echo off
 set "PATH=C:\Windows\System32;C:\Windows\System32\WindowsPowerShell\v1.0;%PATH%"
 set "MAVEN_OPTS=-Xmx1024m"
-set "SONAR_TOKEN=sqa_241d0b020fb198911363ae441bc9d6de4d579d7d"
+set "SONAR_TOKEN=squ_f324442f0e324fd9c0806fbf4ac48f95b059da9a"
 set "SONAR_KEY=Recipe-Backend"
 set "SONAR_URL=http://localhost:9000"
 
