@@ -27,6 +27,12 @@ import java.util.Map;
 @RequestMapping("/api")
 public class InteractionController {
 
+    private static final String AUTH_REQUIRED = "Auth required";
+    private static final String USERNAME_FIELD = "username";
+    private static final String RECIPE_FIELD = "Recipe";
+    private static final String LIKE_COUNT_KEY = "likeCount";
+    private static final String LIKED_KEY = "liked";
+
     private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
     private final RecipeRepository recipeRepository;
@@ -66,16 +72,15 @@ public class InteractionController {
     // ─── Like / Unlike Toggle ──────────────────────────────────────────────────
     @PostMapping("/recipes/{id}/like")
     @Transactional
-    public ResponseEntity<?> toggleLike(@PathVariable("id") Long id) {
+    public ResponseEntity<Map<String, Object>> toggleLike(@PathVariable("id") Long id) {
         String username = getCurrentUsername();
-        if (username == null) return ResponseEntity.status(401).body("Auth required");
+        if (username == null) return ResponseEntity.status(401).body(Map.of(LIKED_KEY, false));
 
         Map<String, Object> result = recipeService.toggleLike(id, username);
 
-        // Broadcast real-time stats after the toggle
         broadcastStats(id);
 
-        boolean isLiked = Boolean.TRUE.equals(result.get("liked"));
+        boolean isLiked = Boolean.TRUE.equals(result.get(LIKED_KEY));
         if (isLiked) {
             User user = userRepository.findByUsername(username).orElse(null);
             Recipe recipe = recipeRepository.findById(id).orElse(null);
@@ -96,14 +101,14 @@ public class InteractionController {
 
         String username = getCurrentUsername();
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+                .orElseThrow(() -> new ResourceNotFoundException("User", USERNAME_FIELD, username));
 
         if (user.isRestricted()) {
             return ResponseEntity.status(403).body(null);
         }
 
         Recipe recipe = recipeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
+                .orElseThrow(() -> new ResourceNotFoundException(RECIPE_FIELD, "id", id));
 
         Comment comment = Comment.builder()
                 .content(request.getContent())
@@ -120,7 +125,6 @@ public class InteractionController {
         Comment saved = commentRepository.save(comment);
         recipeRepository.incrementCommentCount(id);
 
-        // Send Notification
         notificationService.createAndSendNotification(
                 recipe.getAuthor(),
                 user,
@@ -128,12 +132,9 @@ public class InteractionController {
                 recipe.getId(),
                 user.getUsername() + " commented on your recipe: " + recipe.getTitle());
 
-        // Award reputation points for commenting
         userService.updateReputation(user.getUsername(), 10);
 
-        // Broadcast real-time stats
         broadcastStats(id);
-        // Broadcast global activity
         broadcastActivity(user.getUsername() + " commented on '" + recipe.getTitle() + "'");
 
         return ResponseEntity.ok(mapToCommentResponse(saved));
@@ -147,7 +148,7 @@ public class InteractionController {
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
         Recipe recipe = recipeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
+                .orElseThrow(() -> new ResourceNotFoundException(RECIPE_FIELD, "id", id));
 
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(
@@ -157,17 +158,16 @@ public class InteractionController {
 
     @DeleteMapping("/comments/{id}")
     @Transactional
-    public ResponseEntity<?> deleteComment(@PathVariable("id") Long id) {
+    public ResponseEntity<String> deleteComment(@PathVariable("id") Long id) {
         String username = getCurrentUsername();
-        if (username == null) return ResponseEntity.status(401).body("Auth required");
+        if (username == null) return ResponseEntity.status(401).body(AUTH_REQUIRED);
 
         Comment comment = commentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", id));
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+                .orElseThrow(() -> new ResourceNotFoundException("User", USERNAME_FIELD, username));
 
-        // RBAC: Author, Moderator, or Admin can delete
         boolean isAuthor = comment.getUser().getUsername().equals(username);
         boolean isModeratorOrAdmin = user.getRoles().stream().anyMatch(r -> r.equals("ROLE_ADMIN"));
 
@@ -184,12 +184,12 @@ public class InteractionController {
     }
 
     @PostMapping("/reports")
-    public ResponseEntity<?> reportContent(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<String> reportContent(@RequestBody Map<String, Object> request) {
         String username = getCurrentUsername();
-        if (username == null) return ResponseEntity.status(401).body("Auth required");
+        if (username == null) return ResponseEntity.status(401).body(AUTH_REQUIRED);
 
         User reporter = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+                .orElseThrow(() -> new ResourceNotFoundException("User", USERNAME_FIELD, username));
 
         moderationService.reportContent(
                 reporter,
@@ -211,7 +211,7 @@ public class InteractionController {
                 .createdAt(comment.getCreatedAt())
                 .replies(comment.getReplies() != null
                         ? comment.getReplies().stream().map(this::mapToCommentResponse)
-                                .collect(java.util.stream.Collectors.toList())
+                                .toList()
                         : new java.util.ArrayList<>())
                 .build();
     }
@@ -220,7 +220,7 @@ public class InteractionController {
         Recipe recipe = recipeRepository.findById(recipeId).orElse(null);
         if (recipe != null) {
             messagingTemplate.convertAndSend("/topic/recipes/" + recipeId + "/stats",
-                    Map.of("recipeId", recipeId, "likeCount", recipe.getLikeCount(),
+                    Map.of("recipeId", recipeId, LIKE_COUNT_KEY, recipe.getLikeCount(),
                             "commentCount", recipe.getCommentCount()));
         }
     }

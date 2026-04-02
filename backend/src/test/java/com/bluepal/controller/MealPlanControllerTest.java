@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(MealPlanController.class)
 @org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc(addFilters = false)
-public class MealPlanControllerTest {
+class MealPlanControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -52,9 +52,9 @@ public class MealPlanControllerTest {
     @Test
     @WithMockUser(username = "testuser")
     void addMealPlan_Success() throws Exception {
-        User user = new User();
-        user.setUsername("testuser");
-        when(userRepository.findByUsername(anyString())).thenReturn(Optional.of(user));
+        User mockUser = new User();
+        mockUser.setUsername("testuser");
+        when(userRepository.findByUsername(anyString())).thenReturn(Optional.of(mockUser));
         when(mealPlanService.addMealPlan(any(), any())).thenReturn(MealPlanResponse.builder().build());
 
         MealPlanRequest request = new MealPlanRequest();
@@ -71,9 +71,9 @@ public class MealPlanControllerTest {
     @Test
     @WithMockUser(username = "testuser")
     void getMealPlans_Success() throws Exception {
-        User user = new User();
-        user.setUsername("testuser");
-        when(userRepository.findByUsername(anyString())).thenReturn(Optional.of(user));
+        User mockUser = new User();
+        mockUser.setUsername("testuser");
+        when(userRepository.findByUsername(anyString())).thenReturn(Optional.of(mockUser));
         when(mealPlanService.getMealPlans(any(), any(), any())).thenReturn(Collections.emptyList());
 
         mockMvc.perform(get("/api/meal-planner")
@@ -85,17 +85,18 @@ public class MealPlanControllerTest {
     @Test
     @WithMockUser(username = "testuser")
     void deleteMealPlan_Success() throws Exception {
-        User user = new User();
-        user.setUsername("testuser");
-        when(userRepository.findByUsername(any())).thenReturn(Optional.of(user));
+        User mockUser = new User();
+        mockUser.setUsername("testuser");
+        when(userRepository.findByUsername(any())).thenReturn(Optional.of(mockUser));
         when(mealPlanService.getMealPlans(any(), any(), any())).thenReturn(Collections.emptyList());
 
         mockMvc.perform(delete("/api/meal-planner/1")
                         .with(csrf())
-                .with(user("testuser")))
+                        .with(user("testuser")))
                 .andDo(print())
                 .andExpect(status().isNoContent());
 
-        verify(mealPlanService).deleteMealPlan(eq(1L), eq(user));
+        // Pass values directly instead of wrapping in eq()
+        verify(mealPlanService).deleteMealPlan(1L, mockUser);
     }
 }

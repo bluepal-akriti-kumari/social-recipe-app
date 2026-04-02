@@ -1,15 +1,18 @@
 package com.bluepal.service.impl;
 
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class EmailServiceImpl {
 
+    private static final String NOREPLY_ADDRESS = "noreply@culinario.com";
+
     private final JavaMailSender mailSender;
-    
+
     @org.springframework.beans.factory.annotation.Value("${spring.mail.username:}")
     private String fromEmail;
 
@@ -23,18 +26,22 @@ public class EmailServiceImpl {
 
     @jakarta.annotation.PostConstruct
     public void init() {
-        System.out.println("DEBUG: Email Service initialized");
-        System.out.println("DEBUG: fromEmail is: " + fromEmail);
-        System.out.println("DEBUG: mailPassword is: " + (mailPassword != null && !mailPassword.isEmpty() ? "set (length " + mailPassword.length() + ")" : "not set"));
+        log.debug("Email Service initialized. fromEmail configured: {}", fromEmail != null && !fromEmail.isEmpty());
+        boolean passwordSet = mailPassword != null && !mailPassword.isEmpty();
+        log.debug("mailPassword: {}", passwordSet ? "set (length " + mailPassword.length() + ")" : "not set");
+    }
+
+    private String resolveFromAddress() {
+        return (fromEmail != null && !fromEmail.isEmpty()) ? fromEmail : NOREPLY_ADDRESS;
     }
 
     public void sendResetPasswordEmail(String to, String token) {
         if (mailSender == null) {
-            System.err.println("Mail sender not configured. Cannot send email to: " + to);
+            log.error("Mail sender not configured. Cannot send email to: {}", to);
             return;
         }
         SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromEmail != null && !fromEmail.isEmpty() ? fromEmail : "noreply@culinario.com");
+        message.setFrom(resolveFromAddress());
         message.setTo(to);
         message.setSubject("Password Reset OTP - CulinarIO");
         message.setText("Hello,\n\n"
@@ -42,41 +49,40 @@ public class EmailServiceImpl {
                 + "Your 6-Digit OTP is: " + token + "\n\n"
                 + "Please use this code in the application to reset your password. It will expire in 24 hours.\n"
                 + "If you did not request this, you can safely ignore this email.");
-        
+
         mailSender.send(message);
-        System.out.println("SUCCESS: Password reset email sent to: " + to);
+        log.info("Password reset email sent to: {}", to);
     }
 
     public void sendVerificationEmail(String to, String token) {
         if (mailSender == null) {
-            System.err.println("Mail sender not configured. Cannot send verification email to: " + to);
+            log.error("Mail sender not configured. Cannot send verification email to: {}", to);
             return;
         }
         SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromEmail != null && !fromEmail.isEmpty() ? fromEmail : "noreply@culinario.com");
+        message.setFrom(resolveFromAddress());
         message.setTo(to);
         message.setSubject("Verify Your Email - CulinarIO");
-        // Update URL to match frontend deployment or localhost
         String verificationUrl = "http://localhost:5173/verify-email?token=" + token;
         message.setText("Hello,\n\n"
                 + "Thank you for registering with CulinarIO! Please click the link below to verify your email address:\n\n"
                 + verificationUrl + "\n\n"
                 + "This link will expire in 24 hours.\n"
                 + "If you did not register for an account, you can safely ignore this email.");
-        
+
         mailSender.send(message);
-        System.out.println("SUCCESS: Verification email sent to: " + to);
+        log.info("Verification email sent to: {}", to);
     }
 
     public void sendRestrictionEmail(String to, String username, boolean isRestricted) {
         if (mailSender == null) {
-            System.err.println("Mail sender not configured. Cannot send restriction email to: " + to);
+            log.error("Mail sender not configured. Cannot send restriction email to: {}", to);
             return;
         }
         SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromEmail != null && !fromEmail.isEmpty() ? fromEmail : "noreply@culinario.com");
+        message.setFrom(resolveFromAddress());
         message.setTo(to);
-        
+
         if (isRestricted) {
             message.setSubject("Account Restricted - CulinarIO");
             message.setText("Hello " + username + ",\n\n"
@@ -89,8 +95,8 @@ public class EmailServiceImpl {
                     + "You can now log in and continue sharing your culinary journey with the community.\n\n"
                     + "Welcome back!");
         }
-        
+
         mailSender.send(message);
-        System.out.println("SUCCESS: Restriction status email sent to: " + to + " (Restricted: " + isRestricted + ")");
+        log.info("Restriction status email sent to: {} (Restricted: {})", to, isRestricted);
     }
 }

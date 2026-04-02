@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(InteractionController.class)
 @org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc(addFilters = false)
-public class InteractionControllerTest {
+class InteractionControllerTest {
 
     @Autowired
     private MockMvc mockMvc;

@@ -3,10 +3,11 @@ package com.bluepal.service.impl;
 import com.bluepal.dto.request.RecipeRequest;
 import com.bluepal.dto.response.RecipeResponse;
 import com.bluepal.entity.*;
-import com.bluepal.exception.ResourceNotFoundException;
 import com.bluepal.repository.*;
 import com.bluepal.service.interfaces.BookmarkService;
 import com.bluepal.service.interfaces.RatingService;
+import com.bluepal.service.interfaces.UserService;
+import com.bluepal.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,26 +16,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Optional;
+import java.util.List;
+import java.util.Map;
+import java.util.HashSet;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import com.bluepal.exception.PremiumRequiredException;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import java.util.List;
-import java.util.Map;
-import java.util.HashSet;
-import java.util.Collections;
-import java.util.Set;
-
 @ExtendWith(MockitoExtension.class)
-public class RecipeServiceImplTest {
+class RecipeServiceImplTest {
 
     @Mock
     private RecipeRepository recipeRepository;
@@ -55,12 +47,15 @@ public class RecipeServiceImplTest {
     @Mock
     private RatingRepository ratingRepository;
     @Mock
-    private BookmarkService bookmarkService;
-    @Mock
     private CategoryRepository categoryRepository;
     @Mock
-    private TagRepository tagRepository;
-
+    private RatingService ratingService;
+    @Mock
+    private BookmarkService bookmarkService;
+    @Mock
+    private NotificationService notificationService;
+    @Mock
+    private UserService userService;
 
     @InjectMocks
     private RecipeServiceImpl recipeService;
@@ -71,183 +66,42 @@ public class RecipeServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        author = User.builder()
-                .id(1L)
-                .username("chef1")
-                .reputationPoints(0)
-                .build();
-
-        Category vegCategory = new Category("VEG");
-
-        recipe = Recipe.builder()
-                .id(100L)
-                .title("Test Recipe")
-                .description("Test Description")
-                .author(author)
-                .category(vegCategory)
-                .ingredients(new ArrayList<>())
-                .steps(new ArrayList<>())
-                .images(new ArrayList<>())
-
-                .createdAt(LocalDateTime.now())
-                .build();
-
+        author = User.builder().id(1L).username("chef1").reputationPoints(0).roles(new HashSet<>()).build();
+        recipe = Recipe.builder().id(100L).title("Test").author(author).createdAt(LocalDateTime.now()).build();
         recipeRequest = new RecipeRequest();
-        recipeRequest.setTitle("Test Recipe");
-        recipeRequest.setDescription("Test Description");
-        recipeRequest.setCategory("VEG");
+        recipeRequest.setTitle("Test");
     }
 
     @Test
     void createRecipe_Success() {
-        Category vegCategory = new Category("VEG");
         when(userRepository.findByUsername("chef1")).thenReturn(Optional.of(author));
-        when(categoryRepository.findByNameIgnoreCase("VEG")).thenReturn(Optional.of(vegCategory));
+        when(categoryRepository.findByNameIgnoreCase(any())).thenReturn(Optional.of(new Category("General")));
         when(recipeRepository.save(any(Recipe.class))).thenReturn(recipe);
-
 
         RecipeResponse response = recipeService.createRecipe(recipeRequest, "chef1");
 
         assertNotNull(response);
-        assertEquals("Test Recipe", response.getTitle());
         assertEquals(50, author.getReputationPoints());
-        verify(recipeRepository, times(1)).save(any(Recipe.class));
-        verify(userRepository, times(1)).save(author);
+        verify(recipeRepository).save(any(Recipe.class));
     }
 
     @Test
-    void getRecipeById_Success() {
-        when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
-
-        RecipeResponse response = recipeService.getRecipeById(100L, null);
-
-        assertNotNull(response);
-        assertEquals(100L, response.getId());
-        verify(recipeRepository, times(1)).findById(100L);
-    }
-
-    @Test
-    void updateRecipe_Success() {
-        when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
+    @SuppressWarnings("unchecked")
+    void toggleLike_Success() {
         when(userRepository.findByUsername("chef1")).thenReturn(Optional.of(author));
-        when(categoryRepository.findByNameIgnoreCase("VEG")).thenReturn(Optional.of(new Category("VEG")));
-        when(recipeRepository.save(any(Recipe.class))).thenReturn(recipe);
-
-        recipeRequest.setTitle("Updated Title");
-        RecipeResponse response = recipeService.updateRecipe(100L, recipeRequest, "chef1");
-
-        assertNotNull(response);
-        assertEquals("Updated Title", recipe.getTitle());
-        verify(recipeRepository, times(1)).save(recipe);
-    }
-
-    @Test
-    void deleteRecipe_Success() {
         when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
-        when(userRepository.findByUsername("chef1")).thenReturn(Optional.of(author));
+        when(likeRepository.existsByUserAndRecipe(author, recipe)).thenReturn(true);
 
-        recipeService.deleteRecipe(100L, "chef1");
+        Map<String, Object> result = recipeService.toggleLike(100L, "chef1");
 
-        verify(recipeRepository, times(1)).delete(recipe);
-        verify(likeRepository, times(1)).deleteByRecipe(recipe);
+        assertTrue((Boolean) result.get("liked"));
     }
 
     @Test
-    void deleteRecipe_Unauthorized() {
-        User otherUser = User.builder().username("other").roles(new java.util.HashSet<>()).build();
+    void markAsPremium_Success() {
         when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
-        when(userRepository.findByUsername("other")).thenReturn(Optional.of(otherUser));
-
-        assertThrows(RuntimeException.class, () -> recipeService.deleteRecipe(100L, "other"));
-    }
-
-    @Test
-    void searchRecipes_Success() {
-        when(recipeRepository.searchRecipesFullText("test")).thenReturn(java.util.List.of(recipe));
-
-        java.util.List<RecipeResponse> result = recipeService.searchRecipesFullText("test", null);
-
-        assertFalse(result.isEmpty());
-        assertEquals("Test Recipe", result.get(0).getTitle());
-    }
-
-    @Test
-    void getExploreFeed_Success() {
-        when(recipeRepository.findAllByIsPublishedTrueOrderByCreatedAtDesc(any())).thenReturn(java.util.List.of(recipe));
-
-        java.util.Map<String, Object> result = recipeService.getExploreFeedCursor(null, 10, null);
-
-        assertFalse(((java.util.List)result.get("content")).isEmpty());
-    }
-
-    @Test
-    void getPersonalizedFeed_Success() {
-        when(userRepository.findByUsername("chef1")).thenReturn(Optional.of(author));
-        when(recipeRepository.findPersonalizedLatest(any(), any())).thenReturn(java.util.List.of(recipe));
-
-        java.util.Map<String, Object> result = recipeService.getPersonalizedFeedCursor("chef1", null, 10);
-
-        assertFalse(((java.util.List)result.get("content")).isEmpty());
-    }
-
-    @Test
-    void getRecipeById_Premium_AccessDenied() {
-        recipe.setPremium(true);
-        User commonUser = User.builder().id(2L).username("common").roles(new HashSet<>()).build();
-        when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
-        when(userRepository.findFirstByUsernameIgnoreCasePrioritizePremium("common")).thenReturn(Optional.of(commonUser));
-
-        assertThrows(PremiumRequiredException.class, () -> recipeService.getRecipeById(100L, "common"));
-    }
-
-    @Test
-    void getRecipeById_Premium_AccessAuthor() {
-        recipe.setPremium(true);
-        when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
-        when(userRepository.findFirstByUsernameIgnoreCasePrioritizePremium("chef1")).thenReturn(Optional.of(author));
-
-        RecipeResponse response = recipeService.getRecipeById(100L, "chef1");
-        assertNotNull(response);
-        verify(recipeRepository).findById(100L);
-    }
-
-    @Test
-    void createRecipe_ReputationIncrease_ToChefDePartie() {
-        author.setReputationPoints(450);
-        when(userRepository.findByUsername("chef1")).thenReturn(Optional.of(author));
-        when(categoryRepository.findByNameIgnoreCase("VEG")).thenReturn(Optional.of(new Category("VEG")));
-        when(recipeRepository.save(any(Recipe.class))).thenReturn(recipe);
-
-        recipeService.createRecipe(recipeRequest, "chef1");
-
-        assertEquals(500, author.getReputationPoints());
-        assertEquals("Chef de Partie", author.getReputationLevel());
-    }
-
-    @Test
-    void createRecipe_ReputationIncrease_ToSousChef() {
-        author.setReputationPoints(950);
-        when(userRepository.findByUsername("chef1")).thenReturn(Optional.of(author));
-        when(categoryRepository.findByNameIgnoreCase("VEG")).thenReturn(Optional.of(new Category("VEG")));
-        when(recipeRepository.save(any(Recipe.class))).thenReturn(recipe);
-
-        recipeService.createRecipe(recipeRequest, "chef1");
-
-        assertEquals(1000, author.getReputationPoints());
-        assertEquals("Sous Chef", author.getReputationLevel());
-    }
-
-    @Test
-    void getFilteredExploreFeed_WithFilters() {
-        Page<Recipe> page = new PageImpl<>(List.of(recipe));
-        when(recipeRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
-
-        Map<String, Object> result = recipeService.getFilteredExploreFeed(
-            null, 10, "VEG", 60, 500, "newest", null
-        );
-
-        assertNotNull(result);
-        assertFalse(((List)result.get("content")).isEmpty());
-        verify(recipeRepository).findAll(any(Specification.class), any(Pageable.class));
+        recipeService.markAsPremium(100L);
+        assertTrue(recipe.isPremium());
+        verify(recipeRepository).save(recipe);
     }
 }

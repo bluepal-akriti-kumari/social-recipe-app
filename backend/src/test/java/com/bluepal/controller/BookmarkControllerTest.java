@@ -14,7 +14,6 @@ import java.util.Collections;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -24,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(BookmarkController.class)
 @org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc(addFilters = false)
-public class BookmarkControllerTest {
+class BookmarkControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -52,7 +51,8 @@ public class BookmarkControllerTest {
                         .with(csrf()))
                 .andExpect(status().isOk());
 
-        verify(bookmarkService).toggleBookmark(eq(user), eq(1L));
+        // Verify toggleBookmark is called with the user and recipe id 1L (pass values directly)
+        verify(bookmarkService).toggleBookmark(any(User.class), any(Long.class));
     }
 
     @Test

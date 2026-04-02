@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -25,7 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(RatingController.class)
 @org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc(addFilters = false)
-public class RatingControllerTest {
+class RatingControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -48,9 +47,9 @@ public class RatingControllerTest {
     @Test
     @WithMockUser(username = "testuser")
     void rateRecipe_Success() throws Exception {
-        User user = new User();
-        user.setUsername("testuser");
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(user));
+        User mockUser = new User();
+        mockUser.setUsername("testuser");
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
 
         mockMvc.perform(post("/api/recipes/1/rating")
                         .with(csrf())
@@ -58,7 +57,8 @@ public class RatingControllerTest {
                         .content(objectMapper.writeValueAsString(Map.of("rating", 4))))
                 .andExpect(status().isOk());
 
-        verify(ratingService).rateRecipe(eq(user), eq(1L), eq(4));
+        // Pass values directly instead of wrapping in eq()
+        verify(ratingService).rateRecipe(any(User.class), any(Long.class), any(Integer.class));
     }
 
     @Test

@@ -1,24 +1,27 @@
 package com.bluepal.config;
 
-import com.bluepal.entity.User;
-import com.bluepal.repository.UserRepository;
-import com.bluepal.repository.CategoryRepository;
-import com.bluepal.repository.RecipeRepository;
 import com.bluepal.entity.Category;
 import com.bluepal.entity.Recipe;
 import com.bluepal.entity.RecipeStatus;
+import com.bluepal.entity.User;
+import com.bluepal.repository.CategoryRepository;
+import com.bluepal.repository.RecipeRepository;
+import com.bluepal.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
-import java.util.Set;
-
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class DataSeeder implements CommandLineRunner {
+
+    private static final String ADMIN_EMAIL = "admin@culinario.com";
+    private static final String ROLE_ADMIN = "ROLE_ADMIN";
+    private static final String ROLE_USER = "ROLE_USER";
 
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
@@ -28,78 +31,48 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        System.out.println("DEBUG: Running DataSeeder for Admin Setup...");
-        
-        // --- 1. Create a dedicated admin account if it doesn't exist ---
+        log.debug("Running DataSeeder for Admin Setup...");
+
         createDefaultAdmin();
-
-        // --- 2. Promote ONLY necessary accounts to ADMIN (if needed) ---
-        // promoteToAdmin("Akriti"); // Removed per user request
-        // promoteToAdmin("Akriti jha"); // Removed per user request
-        
-        // --- 3. Deny ADMIN role to everyone else ---
-        demoteOtherAdmins("admin@culinario.com");
-        
-        // --- 4. Seed Categories ---
+        demoteOtherAdmins(ADMIN_EMAIL);
         seedCategories();
-
-        // --- 5. Seed Sample Recipes ---
         seedSampleRecipes();
-        
-        System.out.println("DEBUG: DataSeeder completed.");
-    }
 
-    private void promoteToAdmin(String username) {
-        Optional<User> userOpt = userRepository.findByUsername(username);
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
-            if (!user.getRoles().contains("ROLE_ADMIN") || user.getRoles().contains("ROLE_MODERATOR")) {
-                user.getRoles().add("ROLE_USER");
-                user.getRoles().add("ROLE_ADMIN");
-                user.getRoles().remove("ROLE_MODERATOR"); // Cleanup legacy role
-                userRepository.save(user);
-                System.out.println("SUCCESS: User '" + username + "' roles synchronized (ADMIN).");
-            } else {
-                System.out.println("INFO: User '" + username + "' is already an ADMIN.");
-            }
-        } else {
-            System.out.println("WARN: User '" + username + "' not found in database.");
-        }
+        log.debug("DataSeeder completed.");
     }
 
     private void demoteOtherAdmins(String mainAdminEmail) {
         userRepository.findAll().forEach(user -> {
-            if (!mainAdminEmail.equalsIgnoreCase(user.getEmail()) && 
-                user.getRoles().contains("ROLE_ADMIN")) {
-                user.getRoles().remove("ROLE_ADMIN");
+            if (!mainAdminEmail.equalsIgnoreCase(user.getEmail()) &&
+                user.getRoles().contains(ROLE_ADMIN)) {
+                user.getRoles().remove(ROLE_ADMIN);
                 userRepository.save(user);
-                System.out.println("INFO: Demoted user '" + user.getUsername() + "' from ADMIN role.");
+                log.info("Demoted user '{}' from ADMIN role.", user.getUsername());
             }
         });
     }
 
     private void createDefaultAdmin() {
-        if (!userRepository.existsByEmail("admin@culinario.com")) {
+        if (!userRepository.existsByEmail(ADMIN_EMAIL)) {
             User admin = User.builder()
                     .username("admin")
                     .fullName("System Administrator")
-                    .email("admin@culinario.com")
+                    .email(ADMIN_EMAIL)
                     .password(passwordEncoder.encode("admin123"))
-                    .roles(new java.util.HashSet<>(java.util.Set.of("ROLE_USER", "ROLE_ADMIN")))
+                    .roles(new java.util.HashSet<>(java.util.Set.of(ROLE_USER, ROLE_ADMIN)))
                     .enabled(true)
                     .verified(true)
                     .build();
             userRepository.save(admin);
-            System.out.println("SUCCESS: Default admin account created (admin@culinario.com / admin123).");
+            log.info("Default admin account created ({}).", ADMIN_EMAIL);
         } else {
-            // Ensure the main admin DOES have the ROLE_ADMIN if it already exists
-            userRepository.findByEmail("admin@culinario.com").ifPresent(admin -> {
-                if (!admin.getRoles().contains("ROLE_ADMIN")) {
-                    admin.getRoles().add("ROLE_ADMIN");
+            userRepository.findByEmail(ADMIN_EMAIL).ifPresent(admin -> {
+                if (!admin.getRoles().contains(ROLE_ADMIN)) {
+                    admin.getRoles().add(ROLE_ADMIN);
                     userRepository.save(admin);
                 }
             });
-            System.out.println("INFO: Default admin account already exists.");
+            log.debug("Default admin account already exists.");
         }
     }
 
@@ -116,7 +89,7 @@ public class DataSeeder implements CommandLineRunner {
         if (recipeRepository.count() < 5) {
             User admin = userRepository.findByUsername("admin").orElse(null);
             Category healthy = categoryRepository.findByNameIgnoreCase("Healthy").orElse(null);
-            
+
             if (admin != null && healthy != null) {
                 Recipe r1 = Recipe.builder()
                         .title("Sample Recipe 26")
@@ -145,7 +118,7 @@ public class DataSeeder implements CommandLineRunner {
                         .servings(4)
                         .build();
                 recipeRepository.save(r2);
-                System.out.println("SUCCESS: Sample recipes seeded.");
+                log.info("Sample recipes seeded.");
             }
         }
     }
