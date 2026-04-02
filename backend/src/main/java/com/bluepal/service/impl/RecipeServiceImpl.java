@@ -35,6 +35,8 @@ public class RecipeServiceImpl implements RecipeService {
 	private final CategoryRepository categoryRepository;
 	private final com.bluepal.service.interfaces.RatingService ratingService;
 	private final com.bluepal.service.interfaces.BookmarkService bookmarkService;
+	private final com.bluepal.service.NotificationService notificationService;
+	private final com.bluepal.service.interfaces.UserService userService;
 
 	public RecipeServiceImpl(RecipeRepository recipeRepository, UserRepository userRepository,
 			NotificationRepository notificationRepository, MealPlanRepository mealPlanRepository,
@@ -43,7 +45,9 @@ public class RecipeServiceImpl implements RecipeService {
 			BookmarkRepository bookmarkRepository, RatingRepository ratingRepository,
 			CategoryRepository categoryRepository,
 			com.bluepal.service.interfaces.RatingService ratingService,
-			@Lazy com.bluepal.service.interfaces.BookmarkService bookmarkService) {
+			@Lazy com.bluepal.service.interfaces.BookmarkService bookmarkService,
+			com.bluepal.service.NotificationService notificationService,
+			@Lazy com.bluepal.service.interfaces.UserService userService) {
 		this.recipeRepository = recipeRepository;
 		this.userRepository = userRepository;
 		this.notificationRepository = notificationRepository;
@@ -56,6 +60,8 @@ public class RecipeServiceImpl implements RecipeService {
 		this.categoryRepository = categoryRepository;
 		this.ratingService = ratingService;
 		this.bookmarkService = bookmarkService;
+		this.notificationService = notificationService;
+		this.userService = userService;
 	}
 
 	@Override

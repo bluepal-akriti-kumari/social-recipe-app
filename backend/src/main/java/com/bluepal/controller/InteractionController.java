@@ -38,6 +38,11 @@ public class InteractionController {
     private final com.bluepal.service.NotificationService notificationService;
 
     private final com.bluepal.service.interfaces.UserService userService;
+<<<<<<< HEAD
+=======
+    private final com.bluepal.service.interfaces.RecipeService recipeService;
+
+>>>>>>> dev
     private final com.bluepal.service.impl.ModerationService moderationService;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -67,11 +72,11 @@ public class InteractionController {
 
     // ─── Like / Unlike Toggle ──────────────────────────────────────────────────
     @PostMapping("/recipes/{id}/like")
-    @Transactional
     public ResponseEntity<?> toggleLike(@PathVariable("id") Long id) {
         String username = getCurrentUsername();
         if (username == null) return ResponseEntity.status(401).body("Auth required");
 
+<<<<<<< HEAD
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
         Recipe recipe = recipeRepository.findById(id)
@@ -104,6 +109,11 @@ public class InteractionController {
             broadcastStats(id);
             return ResponseEntity.ok(Map.of("liked", false, "likeCount", Math.max(0, recipe.getLikeCount() - 1)));
         }
+=======
+        // Use the atomic service method instead of check-then-act logic here
+        Map<String, Object> result = recipeService.toggleLike(id, username);
+        return ResponseEntity.ok(result);
+>>>>>>> dev
     }
 
     // ─── Comments ──────────────────────────────────────────────────────────────

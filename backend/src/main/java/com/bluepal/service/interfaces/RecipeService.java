@@ -29,7 +29,11 @@ public interface RecipeService {
 
     RecipeResponse updateRecipe(Long id, RecipeRequest request, String username);
     void deleteRecipe(Long id, String username);
+<<<<<<< HEAD
     void markAsPremium(Long id);
     RecipeResponse mapToResponse(Recipe recipe, String currentUsername);
     Recipe getRecipeEntity(Long id);
+=======
+    Map<String, Object> toggleLike(Long id, String username);
+>>>>>>> dev
 }
