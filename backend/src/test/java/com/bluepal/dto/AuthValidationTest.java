@@ -13,7 +13,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class AuthValidationTest {
+class AuthValidationTest {
 
     private static Validator validator;
 
@@ -24,7 +24,7 @@ public class AuthValidationTest {
     }
 
     @Test
-    public void testValidRegisterRequest() {
+    void testValidRegisterRequest() {
         RegisterRequest request = new RegisterRequest();
         request.setUsername("Chef_Explorer");
         request.setEmail("chef@example.com");
@@ -36,7 +36,7 @@ public class AuthValidationTest {
     }
 
     @Test
-    public void testInvalidUsername_StartsWithNumber() {
+    void testInvalidUsername_StartsWithNumber() {
         RegisterRequest request = new RegisterRequest();
         request.setUsername("123Chef");
         request.setEmail("chef@example.com");
@@ -49,7 +49,7 @@ public class AuthValidationTest {
     }
 
     @Test
-    public void testInvalidUsername_TooShort() {
+    void testInvalidUsername_TooShort() {
         RegisterRequest request = new RegisterRequest();
         request.setUsername("ch");
         request.setEmail("chef@example.com");
@@ -61,7 +61,7 @@ public class AuthValidationTest {
     }
 
     @Test
-    public void testInvalidEmail() {
+    void testInvalidEmail() {
         RegisterRequest request = new RegisterRequest();
         request.setUsername("Chef_123");
         request.setEmail("invalid-email");
@@ -74,7 +74,7 @@ public class AuthValidationTest {
     }
 
     @Test
-    public void testInvalidPassword_NoSpecialChar() {
+    void testInvalidPassword_NoSpecialChar() {
         RegisterRequest request = new RegisterRequest();
         request.setUsername("Chef_123");
         request.setEmail("chef@example.com");

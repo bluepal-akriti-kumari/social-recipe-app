@@ -12,7 +12,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class EmailServiceImplTest {
+class EmailServiceImplTest {
 
     @Mock
     private JavaMailSender mailSender;
@@ -30,7 +30,8 @@ public class EmailServiceImplTest {
     @Test
     void sendResetPasswordEmail_NoMailSender_NoException() {
         EmailServiceImpl serviceNoMail = new EmailServiceImpl(null);
-        serviceNoMail.sendResetPasswordEmail("test@example.com", "123456");
-        // Should log error but not throw exception
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> 
+            serviceNoMail.sendResetPasswordEmail("test@example.com", "123456")
+        );
     }
 }

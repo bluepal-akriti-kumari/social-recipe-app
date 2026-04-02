@@ -18,8 +18,6 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import com.bluepal.dto.response.MessageResponse;
 import com.bluepal.exception.ResourceNotFoundException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -30,7 +28,6 @@ import java.util.Optional;
 @RequestMapping("/api/payments")
 public class StripeController {
     
-    private static final String MESSAGE_KEY = "message";
     private static final String USERNAME_KEY = "username";
 
     @Value("${stripe.api.key}")

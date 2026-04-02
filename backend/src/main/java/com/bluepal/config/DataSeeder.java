@@ -9,6 +9,7 @@ import com.bluepal.repository.RecipeRepository;
 import com.bluepal.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -52,13 +53,16 @@ public class DataSeeder implements CommandLineRunner {
         });
     }
 
+    @Value("${admin.initial.password:CulinarioAdmin@2026++}")
+    private String adminInitialPassword;
+
     private void createDefaultAdmin() {
         if (!userRepository.existsByEmail(ADMIN_EMAIL)) {
             User admin = User.builder()
                     .username("admin")
                     .fullName("System Administrator")
                     .email(ADMIN_EMAIL)
-                    .password(passwordEncoder.encode("CulinarioAdmin@2026++"))
+                    .password(passwordEncoder.encode(adminInitialPassword))
                     .roles(new java.util.HashSet<>(java.util.Set.of(ROLE_USER, ROLE_ADMIN)))
                     .enabled(true)
                     .verified(true)

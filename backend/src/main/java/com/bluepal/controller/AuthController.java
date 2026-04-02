@@ -45,6 +45,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/auth")
 public class AuthController {
 
+        private static final String USERNAME_FIELD = "username";
+
         private final AuthenticationManager authenticationManager;
         private final UserRepository userRepository;
         private final PasswordEncoder encoder;
@@ -169,7 +171,7 @@ public class AuthController {
                 String username = auth.getName();
                 User user = userRepository.findByUsername(username)
                                 .orElseThrow(() -> new com.bluepal.exception.ResourceNotFoundException("User",
-                                                "username", username));
+                                                USERNAME_FIELD, username));
 
                 String currentPassword = body.get("currentPassword");
                 String newPassword = body.get("newPassword");
@@ -194,7 +196,7 @@ public class AuthController {
                 String username = auth.getName();
                 User user = userRepository.findByUsername(username)
                                 .orElseThrow(() -> new com.bluepal.exception.ResourceNotFoundException("User",
-                                                "username", username));
+                                                USERNAME_FIELD, username));
                 userRepository.delete(user);
                 return ResponseEntity.ok(new MessageResponse("Account deleted successfully"));
         }
@@ -259,7 +261,7 @@ public class AuthController {
 
                 String username = authentication.getName();
                 User user = userRepository.findByUsernameIgnoreCase(username)
-                                .orElseThrow(() -> new com.bluepal.exception.ResourceNotFoundException("User", "username", username));
+                                .orElseThrow(() -> new com.bluepal.exception.ResourceNotFoundException("User", USERNAME_FIELD, username));
 
                 List<String> roles = user.getRoles().stream().toList();
 

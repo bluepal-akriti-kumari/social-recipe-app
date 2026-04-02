@@ -29,6 +29,10 @@ public class RecipeServiceImpl implements RecipeService {
 	private static final String RECIPE = "Recipe";
 	private static final String ID = "id";
 	private static final String USER = "User";
+	private static final String NEXT_CURSOR = "nextCursor";
+	private static final String CONTENT = "content";
+	private static final String CREATED_AT = "createdAt";
+	private static final String LIKE_COUNT_KEY = "likeCount";
 
 	private final RecipeRepository recipeRepository;
 	private final UserRepository userRepository;
@@ -257,6 +261,11 @@ public class RecipeServiceImpl implements RecipeService {
 	}
 
 	private void validateRecipeReadAccess(Recipe recipe, String currentUsername) {
+		checkRestrictedStatus(recipe, currentUsername);
+		checkPremiumStatus(recipe, currentUsername);
+	}
+
+	private void checkRestrictedStatus(Recipe recipe, String currentUsername) {
 		if (recipe.getStatus() == RecipeStatus.RESTRICTED) {
 			User user = currentUsername != null ? userRepository.findByUsernameIgnoreCase(currentUsername).orElse(null)
 					: null;
@@ -265,7 +274,9 @@ public class RecipeServiceImpl implements RecipeService {
 				throw new ResourceNotFoundException(RECIPE, ID, recipe.getId());
 			}
 		}
+	}
 
+	private void checkPremiumStatus(Recipe recipe, String currentUsername) {
 		if (recipe.isPremium()) {
 			User user = currentUsername != null
 					? userRepository.findFirstByUsernameIgnoreCasePrioritizePremium(currentUsername).orElse(null)
@@ -311,14 +322,14 @@ public class RecipeServiceImpl implements RecipeService {
 				recipes = recipeRepository.findExploreCursorPublished(cursor, limit);
 			}
 
-			List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
+			List<RecipeResponse> contentList = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
 					.toList();
 
-			String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
+			String nextCursorStr = contentList.isEmpty() ? "" : contentList.get(contentList.size() - 1).getCreatedAt().toString();
 
-			return Map.of("content", content, "nextCursor", nextCursor);
+			return Map.of(CONTENT, contentList, NEXT_CURSOR, nextCursorStr);
 		} catch (Exception e) {
-			return Map.of("content", List.of(), "nextCursor", "");
+			return Map.of(CONTENT, List.of(), NEXT_CURSOR, "");
 		}
 	}
 
@@ -427,24 +438,39 @@ public class RecipeServiceImpl implements RecipeService {
 	@Transactional
 	public RecipeResponse updateRecipe(Long id, RecipeRequest request, String username) {
 		Recipe recipe = recipeRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
+				.orElseThrow(() -> new ResourceNotFoundException(RECIPE, ID, id));
 
-		if (!recipe.getAuthor().getUsername().equals(username)) {
-			throw new RuntimeException("You are not authorized to update this recipe");
-		}
+		validateUpdateAccess(recipe, username);
 
 		User user = userRepository.findByUsername(username)
-				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+				.orElseThrow(() -> new ResourceNotFoundException(USER, USERNAME, username));
 
+		checkPremiumManagementAccess(user, request);
+
+		updateRecipeBasicInfo(recipe, request);
+		updateRecipeDetails(recipe, request);
+
+		return mapToResponse(recipeRepository.save(recipe), username);
+	}
+
+	private void validateUpdateAccess(Recipe recipe, String username) {
+		if (!recipe.getAuthor().getUsername().equals(username)) {
+			throw new org.springframework.security.access.AccessDeniedException("You are not authorized to update this recipe");
+		}
+	}
+
+	private void checkPremiumManagementAccess(User user, RecipeRequest request) {
 		if (request.isPremium()) {
 			boolean isPremium = user.hasActivePremium();
-			boolean isAdmin = user.getRoles().contains("ROLE_ADMIN");
+			boolean isAdmin = user.getRoles().contains(ROLE_ADMIN);
 			if (!isPremium && !isAdmin) {
 				throw new com.bluepal.exception.PremiumRequiredException(
 						"You must be a premium member to manage premium recipes.");
 			}
 		}
+	}
 
+	private void updateRecipeBasicInfo(Recipe recipe, RecipeRequest request) {
 		recipe.setTitle(request.getTitle());
 		recipe.setDescription(request.getDescription());
 		recipe.setImageUrl(request.getImageUrl());
@@ -456,7 +482,6 @@ public class RecipeServiceImpl implements RecipeService {
 		recipe.setCarbs(request.getCarbs());
 		recipe.setFats(request.getFats());
 
-		// Update category dynamically
 		if (request.getCategory() != null && !request.getCategory().isBlank()) {
 			String catName = request.getCategory().trim();
 			Category category = categoryRepository.findByNameIgnoreCase(catName)
@@ -466,39 +491,11 @@ public class RecipeServiceImpl implements RecipeService {
 
 		recipe.setPublished(request.isPublished());
 		recipe.setPremium(request.isPremium());
+	}
 
-		// Simple clear and re-add for ingredients/steps (can be optimized)
+	private void updateRecipeDetails(Recipe recipe, RecipeRequest request) {
 		new java.util.ArrayList<>(recipe.getIngredients()).forEach(recipe::removeIngredient);
-		if (request.getIngredients() != null) {
-			request.getIngredients().forEach(ir -> {
-				ShoppingCategory ingCat = ShoppingCategory.OTHER;
-				if (ir.getCategory() != null) {
-					try {
-						ingCat = ShoppingCategory.valueOf(ir.getCategory().toUpperCase());
-					} catch (IllegalArgumentException ignored) {
-					}
-				}
-				recipe.addIngredient(Ingredient.builder()
-						.name(ir.getName())
-						.quantity(ir.getQuantity())
-						.unit(ir.getUnit())
-						.category(ingCat)
-						.build());
-			});
-		}
-
-		new java.util.ArrayList<>(recipe.getSteps()).forEach(recipe::removeStep);
-		if (request.getSteps() != null) {
-			request.getSteps().forEach(sr -> recipe
-					.addStep(Step.builder().stepNumber(sr.getStepNumber()).instruction(sr.getInstruction()).build()));
-		}
-
-		new java.util.ArrayList<>(recipe.getImages()).forEach(recipe::removeImage);
-		if (request.getAdditionalImages() != null) {
-			request.getAdditionalImages().forEach(url -> recipe.addImage(RecipeImage.builder().imageUrl(url).build()));
-		}
-
-		return mapToResponse(recipeRepository.save(recipe), username);
+		processRecipeDetails(recipe, request); // Reuse existing utility
 	}
 
 	@Override
@@ -586,82 +583,75 @@ public class RecipeServiceImpl implements RecipeService {
 		try {
 			Specification<Recipe> spec = (root, query, cb) -> {
 				List<Predicate> predicates = new ArrayList<>();
-
-				// Always only show published recipes in explore
-				predicates.add(cb.isTrue(root.get("isPublished")));
-
-				if (cursor != null) {
-					predicates.add(cb.lessThan(root.get("createdAt"), cursor));
-				}
-
-				if (category != null && !category.isEmpty() && !"all".equalsIgnoreCase(category)) {
-					Category cat = categoryRepository.findByNameIgnoreCase(category.trim()).orElse(null);
-					if (cat != null) {
-						predicates.add(cb.equal(root.get("category"), cat));
-					}
-				}
-
-				if (maxTime != null) {
-					// Combined prep + cook time (using coalesce to handle null values)
-					Expression<Integer> prep = cb.coalesce(root.get("prepTimeMinutes"), 0);
-					Expression<Integer> cook = cb.coalesce(root.get("cookTimeMinutes"), 0);
-					predicates.add(cb.lessThanOrEqualTo(cb.sum(prep, cook), maxTime));
-				}
-
-				if (maxCalories != null) {
-					// Use coalesce to treat NULL calories as 0 for filtering purposes
-					predicates.add(cb.lessThanOrEqualTo(cb.coalesce(root.get("calories"), 0), maxCalories));
-				}
-
-				// Only add orderBy if it's not a count query
-				if (query != null && query.getResultType() != Long.class && query.getResultType() != long.class) {
-					List<Order> orders = new ArrayList<>();
-					
-					if (sort != null && !sort.isEmpty()) {
-						String[] sortParams = sort.split(",");
-						java.util.Set<String> sortSet = new java.util.HashSet<>(java.util.Arrays.asList(sortParams));
-
-						// Priority 1: Top Rated
-						if (sortSet.contains("rating")) {
-							orders.add(cb.desc(cb.coalesce(root.get("averageRating"), 0.0)));
-						}
-						
-						// Priority 2: Trending (Likes + Ratings)
-						if (sortSet.contains("trending")) {
-							Expression<Integer> likes = cb.coalesce(root.get("likeCount"), 0);
-							Expression<Integer> ratingsCount = cb.coalesce(root.get("ratingCount"), 0);
-							orders.add(cb.desc(cb.sum(likes, ratingsCount)));
-						}
-						
-						// Priority 3: Newest First
-						if (sortSet.contains("newest")) {
-							orders.add(cb.desc(root.get("createdAt")));
-						}
-					}
-
-					// Fallback to Newest if no valid sort options provided
-					if (orders.isEmpty()) {
-						orders.add(cb.desc(root.get("createdAt")));
-					}
-
-					query.orderBy(orders);
-				}
-
+				applyBaseFilters(predicates, root, cb, cursor, category, maxTime, maxCalories);
+				applySorting(query, root, cb, sort);
 				return cb.and(predicates.toArray(new Predicate[0]));
 			};
 
 			Pageable limit = PageRequest.of(0, size);
 			List<Recipe> recipes = recipeRepository.findAll(spec, limit).getContent();
 
-			List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
+			List<RecipeResponse> contentList = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
 					.toList();
 
-			String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
+			String nextCursorStr = contentList.isEmpty() ? "" : contentList.get(contentList.size() - 1).getCreatedAt().toString();
 
-			return Map.of("content", content, "nextCursor", nextCursor);
+			return Map.of(CONTENT, contentList, NEXT_CURSOR, nextCursorStr);
 		} catch (Exception e) {
 			log.error("ERROR in getFilteredExploreFeed: {}", e.getMessage());
-			return Map.of("content", List.of(), "nextCursor", "", "error", e.getMessage());
+			return Map.of(CONTENT, List.of(), NEXT_CURSOR, "", "error", e.getMessage());
+		}
+	}
+
+	private void applyBaseFilters(List<Predicate> predicates, Root<Recipe> root, CriteriaBuilder cb,
+			LocalDateTime cursor, String category, Integer maxTime, Integer maxCalories) {
+		predicates.add(cb.isTrue(root.get("isPublished")));
+
+		if (cursor != null) {
+			predicates.add(cb.lessThan(root.get(CREATED_AT), cursor));
+		}
+
+		if (category != null && !category.isEmpty() && !"all".equalsIgnoreCase(category)) {
+			Category cat = categoryRepository.findByNameIgnoreCase(category.trim()).orElse(null);
+			if (cat != null) {
+				predicates.add(cb.equal(root.get("category"), cat));
+			}
+		}
+
+		if (maxTime != null) {
+			Expression<Integer> prep = cb.coalesce(root.get("prepTimeMinutes"), 0);
+			Expression<Integer> cook = cb.coalesce(root.get("cookTimeMinutes"), 0);
+			predicates.add(cb.lessThanOrEqualTo(cb.sum(prep, cook), maxTime));
+		}
+
+		if (maxCalories != null) {
+			predicates.add(cb.lessThanOrEqualTo(cb.coalesce(root.get("calories"), 0), maxCalories));
+		}
+	}
+
+	private void applySorting(CriteriaQuery<?> query, Root<Recipe> root, CriteriaBuilder cb, String sort) {
+		if (query != null && query.getResultType() != Long.class && query.getResultType() != long.class) {
+			List<Order> orders = new ArrayList<>();
+			
+			if (sort != null && !sort.isEmpty()) {
+				java.util.Set<String> sortSet = new java.util.HashSet<>(java.util.Arrays.asList(sort.split(",")));
+				if (sortSet.contains("rating")) {
+					orders.add(cb.desc(cb.coalesce(root.get("averageRating"), 0.0)));
+				}
+				if (sortSet.contains("trending")) {
+					Expression<Integer> likes = cb.coalesce(root.get(LIKE_COUNT_KEY), 0);
+					Expression<Integer> ratingsCount = cb.coalesce(root.get("ratingCount"), 0);
+					orders.add(cb.desc(cb.sum(likes, ratingsCount)));
+				}
+				if (sortSet.contains("newest")) {
+					orders.add(cb.desc(root.get(CREATED_AT)));
+				}
+			}
+
+			if (orders.isEmpty()) {
+				orders.add(cb.desc(root.get(CREATED_AT)));
+			}
+			query.orderBy(orders);
 		}
 	}
 	@Override

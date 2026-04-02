@@ -35,7 +35,6 @@ public class InteractionController {
     private static final String LIKE_COUNT_KEY = "likeCount";
     private static final String LIKED_KEY = "liked";
 
-    private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
@@ -45,15 +44,13 @@ public class InteractionController {
     private final com.bluepal.service.impl.ModerationService moderationService;
     private final SimpMessagingTemplate messagingTemplate;
 
-    public InteractionController(LikeRepository likeRepository,
-                                 CommentRepository commentRepository,
+    public InteractionController(CommentRepository commentRepository,
                                  RecipeRepository recipeRepository, UserRepository userRepository,
                                  com.bluepal.service.NotificationService notificationService,
                                  com.bluepal.service.interfaces.UserService userService,
                                  com.bluepal.service.interfaces.RecipeService recipeService,
                                  com.bluepal.service.impl.ModerationService moderationService,
                                  SimpMessagingTemplate messagingTemplate) {
-        this.likeRepository = likeRepository;
         this.commentRepository = commentRepository;
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
@@ -223,7 +220,7 @@ public class InteractionController {
         Recipe recipe = recipeRepository.findById(recipeId).orElse(null);
         if (recipe != null) {
             messagingTemplate.convertAndSend("/topic/recipes/" + recipeId + "/stats",
-                    Map.of("recipeId", recipeId, "likeCount", recipe.getLikeCount(),
+                    Map.of("recipeId", recipeId, LIKE_COUNT_KEY, recipe.getLikeCount(),
                             "commentCount", recipe.getCommentCount()));
         }
     }

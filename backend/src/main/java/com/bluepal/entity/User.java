@@ -8,11 +8,13 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
+@Slf4j
 @Entity
 @Table(name = "users")
 @Data
@@ -115,9 +117,9 @@ public class User {
 
     public boolean hasActivePremium() {
         // Log the state for debugging (helps identify sync issues)
-        System.out.println("DEBUG: [PremiumCheck] User: " + (this.username != null ? this.username : this.id));
-        System.out.println("DEBUG: [PremiumCheck] Roles: " + this.roles);
-        System.out.println("DEBUG: [PremiumCheck] Flag: " + this.premium + ", Expiry: " + this.premiumExpiryDate);
+        log.debug("DEBUG: [PremiumCheck] User: {}", (this.username != null ? this.username : this.id));
+        log.debug("DEBUG: [PremiumCheck] Roles: {}", this.roles);
+        log.debug("DEBUG: [PremiumCheck] Flag: {}, Expiry: {}", this.premium, this.premiumExpiryDate);
         
         // 1. ADMINS automatically have premium access (standard fail-safe)
         if (this.roles != null && (this.roles.contains("ROLE_ADMIN") || this.roles.contains("ADMIN"))) {
