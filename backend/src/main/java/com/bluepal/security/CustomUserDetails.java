@@ -5,12 +5,16 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.io.Serial;
 import java.util.Collection;
-import java.util.stream.Collectors;
+import java.util.List;
 
 public class CustomUserDetails implements UserDetails {
 
-    private final User user;
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    private final transient User user;
 
     public CustomUserDetails(User user) {
         this.user = user;
@@ -20,7 +24,7 @@ public class CustomUserDetails implements UserDetails {
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return user.getRoles().stream()
                 .map(SimpleGrantedAuthority::new)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override

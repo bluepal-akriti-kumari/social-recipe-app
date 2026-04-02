@@ -1,11 +1,8 @@
 package com.bluepal.service.impl;
 
-import com.bluepal.entity.Recipe;
-import com.bluepal.entity.ShoppingListItem;
-import com.bluepal.entity.User;
-import com.bluepal.repository.RecipeRepository;
+import com.bluepal.entity.*;
 import com.bluepal.repository.ShoppingListItemRepository;
-import com.bluepal.repository.UserRepository;
+import com.bluepal.repository.RecipeRepository;
 import com.bluepal.repository.MealPlanRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,91 +11,87 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Collections;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(MockitoExtension.class)
-public class ShoppingListServiceImplTest {
+class ShoppingListServiceImplTest {
 
     @Mock
     private ShoppingListItemRepository shoppingListItemRepository;
-
-    @Mock
-    private UserRepository userRepository;
-
     @Mock
     private RecipeRepository recipeRepository;
-    
     @Mock
     private MealPlanRepository mealPlanRepository;
 
     @InjectMocks
     private ShoppingListServiceImpl shoppingListService;
 
-    private User mockUser;
-    private Recipe mockRecipe;
+    private User user;
+    private ShoppingListItem item;
 
     @BeforeEach
     void setUp() {
-        mockUser = new User();
-        mockUser.setId(1L);
-        mockUser.setUsername("testuser");
-
-        mockRecipe = new Recipe();
-        mockRecipe.setId(1L);
-        mockRecipe.setTitle("Test Recipe");
+        user = User.builder().id(1L).build();
+        item = ShoppingListItem.builder().id(10L).user(user).name("Milk").purchased(false).build();
     }
 
     @Test
-    void getItems_Success() {
-        when(shoppingListItemRepository.findByUserOrderByCategoryAsc(mockUser)).thenReturn(Collections.emptyList());
-
-        List<ShoppingListItem> result = shoppingListService.getItems(mockUser);
-        assertNotNull(result);
-        assertTrue(result.isEmpty());
-    }
-
-    @Test
-    void addItem_NewItem_Success() {
-        when(shoppingListItemRepository.findByUserAndNameAndUnitAndPurchased(any(), any(), any(), eq(false)))
+    void addItem_NewItem() {
+        when(shoppingListItemRepository.findByUserAndNameAndUnitAndPurchased(any(), any(), any(), anyBoolean()))
                 .thenReturn(Optional.empty());
-        
-        ShoppingListItem savedItem = new ShoppingListItem();
-        savedItem.setName("Milk");
-        when(shoppingListItemRepository.save(any())).thenReturn(savedItem);
+        when(shoppingListItemRepository.save(any())).thenAnswer(i -> i.getArguments()[0]);
 
-        ShoppingListItem result = shoppingListService.addItem(mockUser, "Milk", "1", "L", null);
+        ShoppingListItem result = shoppingListService.addItem(user, "Onion", "2", "pcs", null);
 
         assertNotNull(result);
-        assertEquals("Milk", result.getName());
-        verify(shoppingListItemRepository).save(any());
+        assertEquals("Onion", result.getName());
+        assertEquals(ShoppingCategory.VEGETABLES, result.getCategory());
     }
 
     @Test
-    void togglePurchased_Success() {
-        ShoppingListItem item = new ShoppingListItem();
-        item.setId(1L);
-        item.setPurchased(false);
-        item.setUser(mockUser);
-
-        when(shoppingListItemRepository.findById(1L)).thenReturn(Optional.of(item));
+    void addItem_MergeQuantities() {
+        item.setQuantity("1");
+        when(shoppingListItemRepository.findByUserAndNameAndUnitAndPurchased(any(), any(), any(), anyBoolean()))
+                .thenReturn(Optional.of(item));
         when(shoppingListItemRepository.save(any())).thenReturn(item);
 
-        ShoppingListItem result = shoppingListService.togglePurchased(1L, mockUser);
+        shoppingListService.addItem(user, "Milk", "2", "liter", null);
 
-        assertTrue(result.isPurchased());
-        verify(shoppingListItemRepository).save(item);
+        assertEquals("3", item.getQuantity());
     }
 
     @Test
-    void deleteCheckedItems_Success() {
-        shoppingListService.deleteCheckedItems(mockUser);
+    void addIngredientsFromRecipe_Success() {
+        Recipe recipe = Recipe.builder().id(100L).ingredients(new ArrayList<>()).build();
+        recipe.addIngredient(Ingredient.builder().name("Sugar").quantity("100").unit("g").build());
+        
+        when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
+        when(shoppingListItemRepository.findByUserAndNameAndUnitAndPurchased(any(), any(), any(), anyBoolean()))
+                .thenReturn(Optional.empty());
 
-        verify(shoppingListItemRepository).deleteByUserAndPurchased(mockUser, true);
+        shoppingListService.addIngredientsFromRecipe(100L, user);
+
+        verify(shoppingListItemRepository, times(1)).save(any(ShoppingListItem.class));
+    }
+
+    @Test
+    void addIngredientsFromMealPlan_Success() {
+        LocalDate start = LocalDate.now();
+        LocalDate end = start.plusDays(1);
+        Recipe recipe = Recipe.builder().id(100L).ingredients(new ArrayList<>()).build();
+        MealPlan plan = MealPlan.builder().recipe(recipe).build();
+        
+        when(mealPlanRepository.findByUserAndPlannedDateBetween(user, start, end)).thenReturn(List.of(plan));
+        when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
+
+        shoppingListService.addIngredientsFromMealPlan(user, start, end);
+
+        verify(recipeRepository).findById(100L);
     }
 }

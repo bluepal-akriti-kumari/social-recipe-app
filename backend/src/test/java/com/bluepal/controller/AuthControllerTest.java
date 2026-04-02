@@ -39,7 +39,7 @@ import org.springframework.security.core.Authentication;
 
 @WebMvcTest(controllers = AuthController.class)
 @org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc(addFilters = false)
-public class AuthControllerTest {
+class AuthControllerTest {
 
     @Autowired
     private MockMvc mockMvc;

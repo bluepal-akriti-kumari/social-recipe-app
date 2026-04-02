@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(ShoppingListController.class)
 @org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc(addFilters = false)
-public class ShoppingListControllerTest {
+class ShoppingListControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
