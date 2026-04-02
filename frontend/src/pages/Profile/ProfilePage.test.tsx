@@ -13,7 +13,7 @@ jest.mock('../../components/recipes/RecipeCard', () => () => <div data-testid="r
 
 jest.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    div: ({ children, whileHover, whileTap, transition, ...props }: any) => <div {...props}>{children}</div>,
   },
 }));
 
@@ -53,7 +53,7 @@ describe('ProfilePage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useAuth as jest.Mock).mockReturnValue({ user: { username: 'testchef' } });
+    (useAuth as jest.Mock).mockReturnValue({ user: { id: 1, username: 'testchef' } });
     (userService.getProfile as jest.Mock).mockResolvedValue(mockUser);
     (recipeService.getUserRecipes as jest.Mock).mockResolvedValue({ content: [], nextCursor: null });
     (recipeService.getUserLikedRecipes as jest.Mock).mockResolvedValue({ content: [], nextCursor: null });

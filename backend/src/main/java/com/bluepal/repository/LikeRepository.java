@@ -20,7 +20,7 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
     
     @Modifying
     @Transactional
-    void deleteByUserAndRecipe(User user, Recipe recipe);
+    long deleteByUserAndRecipe(User user, Recipe recipe);
     
     @Modifying
     @Transactional

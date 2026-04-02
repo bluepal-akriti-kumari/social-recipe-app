@@ -105,6 +105,99 @@ public class InteractionController {
                         return ResponseEntity.ok(
                                         Map.of("liked", false, "likeCount", Math.max(0, recipe.getLikeCount() - 1)));
                 }
+    private final LikeRepository likeRepository;
+    private final CommentRepository commentRepository;
+    private final RecipeRepository recipeRepository;
+    private final UserRepository userRepository;
+    private final com.bluepal.service.NotificationService notificationService;
+
+    private final com.bluepal.service.interfaces.UserService userService;
+    private final com.bluepal.service.interfaces.RecipeService recipeService;
+
+    private final com.bluepal.service.impl.ModerationService moderationService;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    public InteractionController(LikeRepository likeRepository, CommentRepository commentRepository,
+                                 RecipeRepository recipeRepository, UserRepository userRepository,
+                                 com.bluepal.service.NotificationService notificationService,
+                                 com.bluepal.service.interfaces.UserService userService,
+                                 com.bluepal.service.impl.ModerationService moderationService,
+                                 SimpMessagingTemplate messagingTemplate) {
+        this.likeRepository = likeRepository;
+        this.commentRepository = commentRepository;
+        this.recipeRepository = recipeRepository;
+        this.userRepository = userRepository;
+        this.notificationService = notificationService;
+        this.userService = userService;
+        this.moderationService = moderationService;
+        this.messagingTemplate = messagingTemplate;
+    }
+
+    private String getCurrentUsername() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
+            return auth.getName();
+        }
+        return null;
+    }
+
+    // ─── Like / Unlike Toggle ──────────────────────────────────────────────────
+    @PostMapping("/recipes/{id}/like")
+    public ResponseEntity<?> toggleLike(@PathVariable("id") Long id) {
+        String username = getCurrentUsername();
+        if (username == null) return ResponseEntity.status(401).body("Auth required");
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+        Recipe recipe = recipeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
+
+        likeRepository.toggleLikeAtomic(user.getId(), recipe.getId());
+        boolean isLiked = likeRepository.existsByUserAndRecipe(user, recipe);
+
+        if (isLiked) {
+            recipeRepository.incrementLikeCount(id);
+            // Send Notification
+            notificationService.createAndSendNotification(
+                    recipe.getAuthor(),
+                    user,
+                    com.bluepal.entity.NotificationType.LIKE,
+                    recipe.getId(),
+                    user.getUsername() + " liked your recipe: " + recipe.getTitle()
+            );
+            // Award reputation points
+            userService.updateReputation(recipe.getAuthor().getUsername(), 5);
+
+            // Broadcast real-time stats
+            broadcastStats(id);
+            // Broadcast global activity
+            broadcastActivity(user.getUsername() + " liked '" + recipe.getTitle() + "'");
+
+            return ResponseEntity.ok(Map.of("liked", true, "likeCount", recipe.getLikeCount() + 1));
+        } else {
+            recipeRepository.decrementLikeCount(id);
+            broadcastStats(id);
+            return ResponseEntity.ok(Map.of("liked", false, "likeCount", Math.max(0, recipe.getLikeCount() - 1)));
+        }
+        // Use the atomic service method instead of check-then-act logic here
+        Map<String, Object> result = recipeService.toggleLike(id, username);
+        return ResponseEntity.ok(result);
+    }
+
+    // ─── Comments ──────────────────────────────────────────────────────────────
+    @PostMapping("/recipes/{id}/comments")
+    @Transactional
+    public ResponseEntity<CommentResponse> addComment(
+            @PathVariable("id") Long id, 
+            @Valid @RequestBody CommentRequest request) {
+        
+        String username = getCurrentUsername();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+
+        if (user.isRestricted()) {
+            return ResponseEntity.status(403).body(null); // or handle error better in DTO if needed
+
         }
 
         // ─── Comments ──────────────────────────────────────────────────────────────
