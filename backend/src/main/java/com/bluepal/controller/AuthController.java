@@ -2,12 +2,14 @@ package com.bluepal.controller;
 
 import com.bluepal.dto.request.LoginRequest;
 import com.bluepal.dto.request.RegisterRequest;
+import com.bluepal.dto.response.MessageResponse;
 import com.bluepal.dto.response.JwtResponse;
 import com.bluepal.entity.User;
 import com.bluepal.repository.UserRepository;
 import com.bluepal.security.CustomUserDetails;
 import com.bluepal.security.JwtUtils;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -38,9 +40,12 @@ import java.util.HashMap;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
+        private static final String USERNAME_FIELD = "username";
 
         private final AuthenticationManager authenticationManager;
         private final UserRepository userRepository;
@@ -65,7 +70,7 @@ public class AuthController {
         }
 
         @PostMapping("/login")
-        public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+        public ResponseEntity<Object> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
                 try {
                         Authentication authentication = authenticationManager.authenticate(
                                         new UsernamePasswordAuthenticationToken(loginRequest.getUsername(),
@@ -79,7 +84,7 @@ public class AuthController {
 
                         List<String> roles = userDetails.getAuthorities().stream()
                                         .map(GrantedAuthority::getAuthority)
-                                        .collect(Collectors.toList());
+                                        .toList();
 
                         User userInstance = userRepository.findById(userDetails.getId()).orElse(null);
                         boolean isPremium = userInstance != null && userInstance.hasActivePremium();
@@ -92,26 +97,26 @@ public class AuthController {
                                         roles,
                                         isPremium));
                 } catch (org.springframework.security.authentication.LockedException | org.springframework.security.authentication.DisabledException e) {
-                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("your account is restricted by admin");
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new MessageResponse("your account is restricted by admin"));
                 } catch (org.springframework.security.core.AuthenticationException e) {
-                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Error: Invalid username or password!");
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Error: Invalid username or password!"));
                 }
     }
 
         @PostMapping("/register")
         @Transactional
-        public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest signUpRequest) {
+        public ResponseEntity<MessageResponse> registerUser(@Valid @RequestBody RegisterRequest signUpRequest) {
                 try {
                         if (userRepository.existsByUsername(signUpRequest.getUsername())) {
                                 return ResponseEntity
                                                 .badRequest()
-                                                .body("Error: Username is already taken!");
+                                                .body(new MessageResponse("Error: Username is already taken!"));
                         }
 
                         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
                                 return ResponseEntity
                                                 .badRequest()
-                                                .body("Error: Email is already in use!");
+                                                .body(new MessageResponse("Error: Email is already in use!"));
                         }
 
                         // Create new user's account
@@ -125,27 +130,26 @@ public class AuthController {
 
                         userRepository.save(user);
 
-                        return ResponseEntity.ok("Registration successful! You can now log in.");
+                        return ResponseEntity.ok(new MessageResponse("Registration successful! You can now log in."));
                 } catch (Exception e) {
-                        System.err.println("Registration failed: " + e.getMessage());
-                        e.printStackTrace();
-                        return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
+                        log.error("Registration failed: {}", e.getMessage());
+                        return ResponseEntity.internalServerError().body(new MessageResponse("Error: " + e.getMessage()));
                 }
         }
 
         @GetMapping("/verify-registration")
         @Transactional
-        public ResponseEntity<?> verifyRegistration(@RequestParam("token") String token) {
+        public ResponseEntity<MessageResponse> verifyRegistration(@RequestParam("token") String token) {
                 Optional<VerificationToken> tokenOpt = verificationTokenRepository.findByToken(token);
                 
                 if (tokenOpt.isEmpty()) {
-                        return ResponseEntity.badRequest().body("Error: Invalid verification token!");
+                        return ResponseEntity.badRequest().body(new MessageResponse("Error: Invalid verification token!"));
                 }
 
                 VerificationToken verificationToken = tokenOpt.get();
                 if (verificationToken.isExpired()) {
                         verificationTokenRepository.delete(verificationToken);
-                        return ResponseEntity.badRequest().body("Error: Verification token has expired!");
+                        return ResponseEntity.badRequest().body(new MessageResponse("Error: Verification token has expired!"));
                 }
 
                 User user = verificationToken.getUser();
@@ -154,55 +158,55 @@ public class AuthController {
 
                 verificationTokenRepository.delete(verificationToken);
 
-                return ResponseEntity.ok("Account verified successfully! You can now log in.");
+                return ResponseEntity.ok(new MessageResponse("Account verified successfully! You can now log in."));
         }
 
         @PostMapping("/change-password")
-        public ResponseEntity<?> changePassword(
+        public ResponseEntity<MessageResponse> changePassword(
                         @RequestBody java.util.Map<String, String> body,
                         org.springframework.security.core.Authentication auth) {
                 if (auth == null || !auth.isAuthenticated()) {
-                        return ResponseEntity.status(401).body("Unauthorized");
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Unauthorized"));
                 }
                 String username = auth.getName();
                 User user = userRepository.findByUsername(username)
                                 .orElseThrow(() -> new com.bluepal.exception.ResourceNotFoundException("User",
-                                                "username", username));
+                                                USERNAME_FIELD, username));
 
                 String currentPassword = body.get("currentPassword");
                 String newPassword = body.get("newPassword");
 
                 if (!encoder.matches(currentPassword, user.getPassword())) {
-                        return ResponseEntity.badRequest().body("Current password is incorrect");
+                        return ResponseEntity.badRequest().body(new MessageResponse("Current password is incorrect"));
                 }
                 if (newPassword == null || newPassword.length() < 6) {
-                        return ResponseEntity.badRequest().body("New password must be at least 6 characters");
+                        return ResponseEntity.badRequest().body(new MessageResponse("New password must be at least 6 characters"));
                 }
 
                 user.setPassword(encoder.encode(newPassword));
                 userRepository.save(user);
-                return ResponseEntity.ok("Password changed successfully");
+                return ResponseEntity.ok(new MessageResponse("Password changed successfully"));
         }
 
         @org.springframework.web.bind.annotation.DeleteMapping("/users/me")
-        public ResponseEntity<?> deleteAccount(org.springframework.security.core.Authentication auth) {
+        public ResponseEntity<MessageResponse> deleteAccount(org.springframework.security.core.Authentication auth) {
                 if (auth == null || !auth.isAuthenticated()) {
-                        return ResponseEntity.status(401).body("Unauthorized");
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Unauthorized"));
                 }
                 String username = auth.getName();
                 User user = userRepository.findByUsername(username)
                                 .orElseThrow(() -> new com.bluepal.exception.ResourceNotFoundException("User",
-                                                "username", username));
+                                                USERNAME_FIELD, username));
                 userRepository.delete(user);
-                return ResponseEntity.ok("Account deleted successfully");
+                return ResponseEntity.ok(new MessageResponse("Account deleted successfully"));
         }
 
         @PostMapping("/forgot-password")
         @Transactional
-        public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        public ResponseEntity<MessageResponse> forgotPassword(@RequestBody ForgotPasswordRequest request) {
                 Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
                 if (userOpt.isEmpty()) {
-                        return ResponseEntity.badRequest().body("Error: User with this email not found!");
+                        return ResponseEntity.badRequest().body(new MessageResponse("Error: User with this email not found!"));
                 }
                 User user = userOpt.get();
 
@@ -220,23 +224,23 @@ public class AuthController {
 
                 try {
                         emailService.sendResetPasswordEmail(user.getEmail(), token);
-                        return ResponseEntity.ok("Password reset email sent!");
+                        return ResponseEntity.ok(new MessageResponse("Password reset email sent!"));
                 } catch (Exception e) {
-                        System.err.println("CRITICAL: Failed to send OTP email to " + user.getEmail() + " : " + e.getMessage());
+                        log.error("CRITICAL: Failed to send OTP email to {} : {}", user.getEmail(), e.getMessage());
                         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                        .body("Error: Failed to send reset email. Please ensure the mail server is configured correctly.");
+                                        .body(new MessageResponse("Error: Failed to send reset email. Please ensure the mail server is configured correctly."));
                 }
         }
 
         @PostMapping("/reset-password")
         @Transactional
-        public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
+        public ResponseEntity<MessageResponse> resetPassword(@RequestBody ResetPasswordRequest request) {
                 PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.getToken())
                                 .orElseThrow(() -> new RuntimeException("Invalid or expired token"));
 
                 if (resetToken.isExpired()) {
                         passwordResetTokenRepository.delete(resetToken);
-                        return ResponseEntity.badRequest().body("Token has expired");
+                        return ResponseEntity.badRequest().body(new MessageResponse("Token has expired"));
                 }
 
                 User user = resetToken.getUser();
@@ -245,11 +249,11 @@ public class AuthController {
 
                 passwordResetTokenRepository.delete(resetToken);
 
-                return ResponseEntity.ok("Password reset successful!");
+                return ResponseEntity.ok(new MessageResponse("Password reset successful!"));
         }
 
         @GetMapping("/me")
-        public ResponseEntity<?> getCurrentUser() {
+        public ResponseEntity<JwtResponse> getCurrentUser() {
                 Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
                 if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
                         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -257,9 +261,9 @@ public class AuthController {
 
                 String username = authentication.getName();
                 User user = userRepository.findByUsernameIgnoreCase(username)
-                                .orElseThrow(() -> new com.bluepal.exception.ResourceNotFoundException("User", "username", username));
+                                .orElseThrow(() -> new com.bluepal.exception.ResourceNotFoundException("User", USERNAME_FIELD, username));
 
-                List<String> roles = user.getRoles().stream().collect(Collectors.toList());
+                List<String> roles = user.getRoles().stream().toList();
 
                 return ResponseEntity.ok(new JwtResponse(
                                 null, // No need to return the token again
@@ -275,11 +279,11 @@ public class AuthController {
         @ExceptionHandler(MethodArgumentNotValidException.class)
         public Map<String, String> handleValidationExceptions(MethodArgumentNotValidException ex) {
                 Map<String, String> errors = new HashMap<>();
-                ex.getBindingResult().getAllErrors().forEach((error) -> {
+                ex.getBindingResult().getAllErrors().forEach(error -> {
                         String fieldName = ((FieldError) error).getField();
                         String errorMessage = error.getDefaultMessage();
                         errors.put(fieldName, errorMessage);
-                        System.err.println("Validation error on field '" + fieldName + "': " + errorMessage);
+                        log.error("Validation error on field '{}': {}", fieldName, errorMessage);
                 });
                 return errors;
         }

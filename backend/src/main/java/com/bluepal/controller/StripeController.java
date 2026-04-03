@@ -11,17 +11,24 @@ import com.stripe.param.checkout.SessionCreateParams;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
+import com.bluepal.dto.response.MessageResponse;
+import com.bluepal.exception.ResourceNotFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/payments")
 public class StripeController {
+    
+    private static final String USERNAME_KEY = "username";
 
     @Value("${stripe.api.key}")
     private String stripeApiKey;
@@ -35,9 +42,13 @@ public class StripeController {
         this.userRepository = userRepository;
     }
 
-    @PostMapping("/create-checkout-session")
-    public ResponseEntity<Map<String, String>> createCheckoutSession() {
+    @PostConstruct
+    public void init() {
         Stripe.apiKey = stripeApiKey;
+    }
+
+    @PostMapping("/create-checkout-session")
+    public ResponseEntity<Object> createCheckoutSession() {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) {
@@ -48,12 +59,11 @@ public class StripeController {
 
         Optional<User> userOpt = userRepository.findByUsername(username);
         if (userOpt.isPresent() && userOpt.get().hasActivePremium()) {
-            Map<String, String> responseData = new HashMap<>();
-            responseData.put("message", "You already have an active premium membership. No need to pay again.");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(responseData);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new MessageResponse("You already have an active premium membership. No need to pay again."));
         }
 
-        Long userId = userOpt.get().getId();
+        User user = userOpt.orElseThrow(() -> new ResourceNotFoundException("User", USERNAME_KEY, username));
+        Long userId = user.getId();
 
         SessionCreateParams params = SessionCreateParams.builder()
                 .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
@@ -71,7 +81,7 @@ public class StripeController {
                                         .build())
                                 .build())
                         .build())
-                .putMetadata("username", username)
+                .putMetadata(USERNAME_KEY, username)
                 .build();
 
         try {
@@ -81,8 +91,8 @@ public class StripeController {
             responseData.put("url", session.getUrl());
             return ResponseEntity.ok(responseData);
         } catch (StripeException e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", e.getMessage()));
+            log.error("Stripe session creation failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new MessageResponse(e.getMessage()));
         }
     }
 
@@ -98,7 +108,7 @@ public class StripeController {
         if ("checkout.session.completed".equals(event.getType())) {
             Session session = (Session) event.getDataObjectDeserializer().getObject().orElse(null);
             if (session != null) {
-                String username = session.getMetadata().get("username");
+                String username = session.getMetadata().get(USERNAME_KEY);
                 upgradeUserToPremium(username);
             }
         }
@@ -116,26 +126,24 @@ public class StripeController {
                 user.setPremium(true);
                 user.setPremiumExpiryDate(java.time.LocalDateTime.now().plusDays(30));
                 userRepository.save(user);
-                System.out.println("SUCCESS: User " + username + " upgraded to Premium via Stripe. Valid until: " + user.getPremiumExpiryDate());
+                log.info("SUCCESS: User {} upgraded to Premium via Stripe. Valid until: {}", username, user.getPremiumExpiryDate());
             }
         }
     }
 
     @GetMapping("/verify-session")
-    public ResponseEntity<Map<String, String>> verifySession(@RequestParam("session_id") String sessionId) {
-        Stripe.apiKey = stripeApiKey;
+    public ResponseEntity<Object> verifySession(@RequestParam("session_id") String sessionId) {
         try {
             Session session = Session.retrieve(sessionId);
             if ("paid".equals(session.getPaymentStatus())) {
-                String username = session.getMetadata().get("username");
+                String username = session.getMetadata().get(USERNAME_KEY);
                 upgradeUserToPremium(username);
-                Map<String, String> responseData = new HashMap<>();
-                responseData.put("message", "Payment verified and user upgraded successfully.");
-                return ResponseEntity.ok(responseData);
+                return ResponseEntity.ok(new MessageResponse("Payment verified and user upgraded successfully."));
             } else {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
             }
         } catch (StripeException e) {
+            log.error("Stripe session verification failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

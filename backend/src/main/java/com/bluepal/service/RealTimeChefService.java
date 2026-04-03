@@ -24,16 +24,18 @@ public class RealTimeChefService {
     // Map of Session ID -> Recipe ID (to handle disconnects)
     private final Map<String, Long> sessionTracking = new ConcurrentHashMap<>();
 
+    private static final String TOPIC_RECIPES_PREFIX = "/topic/recipes/";
+
     @EventListener
     public void handleSubscribeEvent(SessionSubscribeEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String destination = headerAccessor.getDestination();
         String sessionId = headerAccessor.getSessionId();
 
-        if (destination != null && destination.startsWith("/topic/recipes/") && destination.endsWith("/stats")) {
+        if (destination != null && destination.startsWith(TOPIC_RECIPES_PREFIX) && destination.endsWith("/stats")) {
             try {
                 // Extract Recipe ID from /topic/recipes/{id}/stats
-                String idStr = destination.replace("/topic/recipes/", "").replace("/stats", "");
+                String idStr = destination.replace(TOPIC_RECIPES_PREFIX, "").replace("/stats", "");
                 Long recipeId = Long.parseLong(idStr);
                 
                 recipeViewers.computeIfAbsent(recipeId, k -> java.util.concurrent.ConcurrentHashMap.newKeySet()).add(sessionId);
@@ -70,6 +72,6 @@ public class RealTimeChefService {
 
     private void broadcastViewerCount(Long recipeId) {
         int count = recipeViewers.getOrDefault(recipeId, java.util.Collections.emptySet()).size();
-        messagingTemplate.convertAndSend("/topic/recipes/" + recipeId + "/viewers", Map.of("count", count));
+        messagingTemplate.convertAndSend(TOPIC_RECIPES_PREFIX + recipeId + "/viewers", Map.of("count", count));
     }
 }

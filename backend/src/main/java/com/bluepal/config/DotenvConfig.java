@@ -6,6 +6,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class DotenvConfig {
 
+    public DotenvConfig() {
+        // Required for CGLIB enhancement
+    }
+
     static {
         Dotenv dotenv = Dotenv.configure()
                 .directory("./")

@@ -14,7 +14,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class RecipeValidationTest {
+class RecipeValidationTest {
 
     private static Validator validator;
 
@@ -25,7 +25,7 @@ public class RecipeValidationTest {
     }
 
     @Test
-    public void testValidRecipeRequest() {
+    void testValidRecipeRequest() {
         RecipeRequest request = new RecipeRequest();
         request.setTitle("Valid Recipe Title");
         request.setCategory("VEG");
@@ -46,7 +46,7 @@ public class RecipeValidationTest {
     }
 
     @Test
-    public void testInvalidRecipe_NegativeTime() {
+    void testInvalidRecipe_NegativeTime() {
         RecipeRequest request = new RecipeRequest();
         request.setTitle("Recipe");
         request.setCategory("VEG");
@@ -60,7 +60,7 @@ public class RecipeValidationTest {
     }
 
     @Test
-    public void testInvalidRecipe_EmptyCategory() {
+    void testInvalidRecipe_EmptyCategory() {
         RecipeRequest request = new RecipeRequest();
         request.setTitle("Recipe");
         request.setCategory(null);

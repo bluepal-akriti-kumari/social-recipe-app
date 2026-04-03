@@ -10,6 +10,7 @@ import com.bluepal.repository.CommentRepository;
 import com.bluepal.repository.LikeRepository;
 import com.bluepal.repository.RecipeRepository;
 import com.bluepal.repository.UserRepository;
+import com.bluepal.dto.response.MessageResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api")
@@ -33,7 +35,6 @@ public class InteractionController {
     private static final String LIKE_COUNT_KEY = "likeCount";
     private static final String LIKED_KEY = "liked";
 
-    private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
@@ -43,14 +44,13 @@ public class InteractionController {
     private final com.bluepal.service.impl.ModerationService moderationService;
     private final SimpMessagingTemplate messagingTemplate;
 
-    public InteractionController(LikeRepository likeRepository, CommentRepository commentRepository,
+    public InteractionController(CommentRepository commentRepository,
                                  RecipeRepository recipeRepository, UserRepository userRepository,
                                  com.bluepal.service.NotificationService notificationService,
                                  com.bluepal.service.interfaces.UserService userService,
                                  com.bluepal.service.interfaces.RecipeService recipeService,
                                  com.bluepal.service.impl.ModerationService moderationService,
                                  SimpMessagingTemplate messagingTemplate) {
-        this.likeRepository = likeRepository;
         this.commentRepository = commentRepository;
         this.recipeRepository = recipeRepository;
         this.userRepository = userRepository;
@@ -74,7 +74,7 @@ public class InteractionController {
     @Transactional
     public ResponseEntity<Map<String, Object>> toggleLike(@PathVariable("id") Long id) {
         String username = getCurrentUsername();
-        if (username == null) return ResponseEntity.status(401).body(Map.of(LIKED_KEY, false));
+        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(LIKED_KEY, false));
 
         Map<String, Object> result = recipeService.toggleLike(id, username);
 
@@ -104,7 +104,7 @@ public class InteractionController {
                 .orElseThrow(() -> new ResourceNotFoundException("User", USERNAME_FIELD, username));
 
         if (user.isRestricted()) {
-            return ResponseEntity.status(403).body(null);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
         Recipe recipe = recipeRepository.findById(id)
@@ -158,9 +158,9 @@ public class InteractionController {
 
     @DeleteMapping("/comments/{id}")
     @Transactional
-    public ResponseEntity<String> deleteComment(@PathVariable("id") Long id) {
+    public ResponseEntity<Object> deleteComment(@PathVariable("id") Long id) {
         String username = getCurrentUsername();
-        if (username == null) return ResponseEntity.status(401).body(AUTH_REQUIRED);
+        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse(AUTH_REQUIRED));
 
         Comment comment = commentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", id));
@@ -172,7 +172,7 @@ public class InteractionController {
         boolean isModeratorOrAdmin = user.getRoles().stream().anyMatch(r -> r.equals("ROLE_ADMIN"));
 
         if (!isAuthor && !isModeratorOrAdmin) {
-            return ResponseEntity.status(403).body("Not authorized to delete this comment");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new MessageResponse("Not authorized to delete this comment"));
         }
 
         Recipe recipe = comment.getRecipe();
@@ -180,13 +180,13 @@ public class InteractionController {
 
         commentRepository.delete(comment);
         broadcastStats(recipe.getId());
-        return ResponseEntity.ok("Comment deleted successfully");
+        return ResponseEntity.ok(new MessageResponse("Comment deleted successfully"));
     }
 
     @PostMapping("/reports")
-    public ResponseEntity<String> reportContent(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<MessageResponse> reportContent(@RequestBody Map<String, Object> request) {
         String username = getCurrentUsername();
-        if (username == null) return ResponseEntity.status(401).body(AUTH_REQUIRED);
+        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse(AUTH_REQUIRED));
 
         User reporter = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", USERNAME_FIELD, username));
@@ -197,7 +197,7 @@ public class InteractionController {
                 (String) request.get("targetType"),
                 Long.valueOf(request.get("targetId").toString()));
 
-        return ResponseEntity.ok("Report submitted successfully");
+        return ResponseEntity.ok(new MessageResponse("Report submitted successfully"));
     }
 
     private CommentResponse mapToCommentResponse(Comment comment) {

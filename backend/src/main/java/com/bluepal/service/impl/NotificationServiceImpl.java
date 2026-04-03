@@ -40,7 +40,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Notification", "id", id));
 
         if (!notification.getRecipient().getUsername().equals(username)) {
-            throw new RuntimeException("Unauthorized");
+            throw new org.springframework.security.access.AccessDeniedException("Unauthorized to mark this notification as read");
         }
 
         notification.setRead(true);

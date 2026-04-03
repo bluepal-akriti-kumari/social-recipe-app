@@ -17,13 +17,15 @@ public class CloudinaryServiceImpl implements CloudinaryService {
         this.cloudinary = cloudinary;
     }
 
+    private static final String FOLDER_PARAM = "folder";
+
     @Override
     public Map<String, String> generateSignedUploadUrl(String folder) {
         try {
             String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
             Map<String, Object> params = ObjectUtils.asMap(
                     "timestamp", timestamp,
-                    "folder", folder
+                    FOLDER_PARAM, folder
             );
             String signature = cloudinary.apiSignRequest(params, cloudinary.config.apiSecret);
             return Map.of(
@@ -31,7 +33,7 @@ public class CloudinaryServiceImpl implements CloudinaryService {
                     "timestamp", timestamp,
                     "apiKey", cloudinary.config.apiKey,
                     "cloudName", cloudinary.config.cloudName,
-                    "folder", folder
+                    FOLDER_PARAM, folder
             );
         } catch (Exception e) {
             throw new RuntimeException("Could not generate Cloudinary signature", e);
@@ -41,8 +43,8 @@ public class CloudinaryServiceImpl implements CloudinaryService {
     @Override
     public String uploadImage(MultipartFile file, String folder) {
         try {
-            Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(),
-                    ObjectUtils.asMap("folder", folder));
+            java.util.Map uploadResult = cloudinary.uploader().upload(file.getBytes(),
+                    ObjectUtils.asMap(FOLDER_PARAM, folder));
             return (String) uploadResult.get("secure_url");
         } catch (Exception e) {
             throw new RuntimeException("Failed to upload image to Cloudinary", e);

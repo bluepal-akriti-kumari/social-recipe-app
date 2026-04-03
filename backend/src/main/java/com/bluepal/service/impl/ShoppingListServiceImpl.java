@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import com.bluepal.exception.ResourceNotFoundException;
 
 @Service
 @RequiredArgsConstructor
@@ -52,10 +53,10 @@ public class ShoppingListServiceImpl implements ShoppingListService {
     @Transactional
     public ShoppingListItem togglePurchased(Long id, User user) {
         ShoppingListItem item = shoppingListItemRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Item not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("ShoppingListItem", "id", id));
         
         if (!item.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
+            throw new org.springframework.security.access.AccessDeniedException("Unauthorized to toggle this item");
         }
         
         item.setPurchased(!item.isPurchased());
@@ -72,7 +73,7 @@ public class ShoppingListServiceImpl implements ShoppingListService {
     @Transactional
     public void addIngredientsFromRecipe(Long recipeId, User user) {
         Recipe recipe = recipeRepository.findById(recipeId)
-                .orElseThrow(() -> new RuntimeException("Recipe not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", recipeId));
         
         for (Ingredient ingredient : recipe.getIngredients()) {
             addItem(user, ingredient.getName(), ingredient.getQuantity(), ingredient.getUnit(), recipe);

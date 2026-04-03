@@ -22,6 +22,8 @@ public class ShoppingListController {
 
     private final ShoppingListService shoppingListService;
     private final UserRepository userRepository;
+    
+    private static final String USER_NOT_FOUND = "User not found";
 
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -35,7 +37,7 @@ public class ShoppingListController {
     public ResponseEntity<ShoppingListItemResponse> addItem(@RequestBody ShoppingListItemRequest request) {
         String username = getCurrentUsername();
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND));
         
         ShoppingListItem item = shoppingListService.addItem(user, request.getName(), request.getQuantity(), request.getUnit(), null);
         return ResponseEntity.ok(mapToResponse(item));
@@ -45,17 +47,17 @@ public class ShoppingListController {
     public ResponseEntity<List<ShoppingListItemResponse>> getItems() {
         String username = getCurrentUsername();
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND));
         
         List<ShoppingListItem> items = shoppingListService.getItems(user);
-        return ResponseEntity.ok(items.stream().map(this::mapToResponse).collect(Collectors.toList()));
+        return ResponseEntity.ok(items.stream().map(this::mapToResponse).toList());
     }
 
     @PatchMapping("/{id}/toggle")
     public ResponseEntity<ShoppingListItemResponse> togglePurchased(@PathVariable Long id) {
         String username = getCurrentUsername();
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND));
         
         ShoppingListItem item = shoppingListService.togglePurchased(id, user);
         return ResponseEntity.ok(mapToResponse(item));
@@ -65,33 +67,33 @@ public class ShoppingListController {
     public ResponseEntity<Void> deleteCheckedItems() {
         String username = getCurrentUsername();
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND));
         
         shoppingListService.deleteCheckedItems(user);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/from-recipe/{recipeId}")
-    public ResponseEntity<Void> addFromRecipe(@PathVariable Long recipeId) {
+    public ResponseEntity<com.bluepal.dto.response.MessageResponse> addFromRecipe(@PathVariable Long recipeId) {
         String username = getCurrentUsername();
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND));
         
         shoppingListService.addIngredientsFromRecipe(recipeId, user);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(new com.bluepal.dto.response.MessageResponse("Ingredients from recipe added to shopping list."));
     }
 
     @PostMapping("/from-meal-plan")
-    public ResponseEntity<Void> addFromMealPlan(
+    public ResponseEntity<com.bluepal.dto.response.MessageResponse> addFromMealPlan(
             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate startDate,
             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate endDate) {
         
         String username = getCurrentUsername();
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND));
         
         shoppingListService.addIngredientsFromMealPlan(user, startDate, endDate);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(new com.bluepal.dto.response.MessageResponse("Ingredients from meal plan added to shopping list."));
     }
 
     private ShoppingListItemResponse mapToResponse(ShoppingListItem item) {

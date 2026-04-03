@@ -2,7 +2,6 @@ package com.bluepal.controller;
 
 import com.bluepal.dto.request.MealPlanRequest;
 import com.bluepal.dto.response.MealPlanResponse;
-import com.bluepal.entity.MealPlan;
 import com.bluepal.entity.User;
 import com.bluepal.repository.UserRepository;
 import com.bluepal.service.interfaces.MealPlanService;
@@ -15,12 +14,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/meal-planner")
 @RequiredArgsConstructor
 public class MealPlanController {
+
+    private static final String USER_NOT_FOUND_MSG = "User not found";
 
     private final MealPlanService mealPlanService;
     private final UserRepository userRepository;
@@ -37,7 +37,7 @@ public class MealPlanController {
     public ResponseEntity<MealPlanResponse> addMealPlan(@RequestBody MealPlanRequest request) {
         String username = getCurrentUsername();
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND_MSG));
         
         return ResponseEntity.ok(mealPlanService.addMealPlan(user, request));
     }
@@ -49,7 +49,7 @@ public class MealPlanController {
         
         String username = getCurrentUsername();
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND_MSG));
         
         return ResponseEntity.ok(mealPlanService.updateMealPlan(id, request, user));
     }
@@ -61,7 +61,7 @@ public class MealPlanController {
         
         String username = getCurrentUsername();
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND_MSG));
         
         return ResponseEntity.ok(mealPlanService.getMealPlans(user, startDate, endDate));
     }
@@ -70,7 +70,7 @@ public class MealPlanController {
     public ResponseEntity<Void> deleteMealPlan(@PathVariable Long id) {
         String username = getCurrentUsername();
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND_MSG));
         
         mealPlanService.deleteMealPlan(id, user);
         return ResponseEntity.noContent().build();

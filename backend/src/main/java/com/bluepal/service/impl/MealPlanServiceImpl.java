@@ -12,10 +12,10 @@ import com.bluepal.service.interfaces.MealPlanService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.bluepal.exception.ResourceNotFoundException;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,13 +28,15 @@ public class MealPlanServiceImpl implements MealPlanService {
     @Transactional
     public MealPlanResponse addMealPlan(User user, MealPlanRequest request) {
         Recipe recipe = recipeRepository.findById(request.getRecipeId())
-                .orElseThrow(() -> new RuntimeException("Recipe not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", request.getRecipeId()));
 
         MealPlanStatus status = MealPlanStatus.PLANNED;
         if (request.getStatus() != null) {
             try {
                 status = MealPlanStatus.valueOf(request.getStatus().toUpperCase());
-            } catch (IllegalArgumentException ignored) {}
+            } catch (IllegalArgumentException ignored) {
+                // Default to PLANNED if status is invalid
+            }
         }
 
         MealPlan mealPlan = MealPlan.builder()
@@ -53,10 +55,10 @@ public class MealPlanServiceImpl implements MealPlanService {
     @Transactional
     public MealPlanResponse updateMealPlan(Long id, MealPlanRequest request, User user) {
         MealPlan mealPlan = mealPlanRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Meal plan not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("MealPlan", "id", id));
 
         if (!mealPlan.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
+            throw new org.springframework.security.access.AccessDeniedException("Unauthorized to update this meal plan");
         }
 
         if (request.getPlannedDate() != null) mealPlan.setPlannedDate(request.getPlannedDate());
@@ -66,7 +68,9 @@ public class MealPlanServiceImpl implements MealPlanService {
         if (request.getStatus() != null) {
             try {
                 mealPlan.setStatus(MealPlanStatus.valueOf(request.getStatus().toUpperCase()));
-            } catch (IllegalArgumentException ignored) {}
+            } catch (IllegalArgumentException ignored) {
+                // Keep existing status if invalid
+            }
         }
 
         return mapToResponse(mealPlanRepository.save(mealPlan));
@@ -76,7 +80,7 @@ public class MealPlanServiceImpl implements MealPlanService {
     @Transactional(readOnly = true)
     public List<MealPlanResponse> getMealPlans(User user, LocalDate startDate, LocalDate endDate) {
         List<MealPlan> plans = mealPlanRepository.findByUserAndPlannedDateBetween(user, startDate, endDate);
-        return plans.stream().map(this::mapToResponse).collect(Collectors.toList());
+        return plans.stream().map(this::mapToResponse).toList();
     }
 
     private MealPlanResponse mapToResponse(MealPlan mealPlan) {
@@ -101,10 +105,10 @@ public class MealPlanServiceImpl implements MealPlanService {
     @Transactional
     public void deleteMealPlan(Long id, User user) {
         MealPlan mealPlan = mealPlanRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Meal plan not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("MealPlan", "id", id));
         
         if (!mealPlan.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized");
+            throw new org.springframework.security.access.AccessDeniedException("Unauthorized to delete this meal plan");
         }
         
         mealPlanRepository.delete(mealPlan);
