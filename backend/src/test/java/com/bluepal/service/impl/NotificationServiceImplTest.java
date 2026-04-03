@@ -58,31 +58,51 @@ class NotificationServiceImplTest {
     }
 
     @Test
-    void markAsRead_Success() {
+    void markAsRead_Unauthorized_ThrowsException() {
+        User otherUser = new User();
+        otherUser.setUsername("other");
+
         Notification notification = new Notification();
         notification.setId(1L);
-        notification.setRecipient(mockUser);
-        notification.setRead(false);
+        notification.setRecipient(otherUser);
 
         when(notificationRepository.findById(1L)).thenReturn(Optional.of(notification));
 
-        notificationService.markAsRead(1L, "testuser");
-
-        assertTrue(notification.isRead());
-        verify(notificationRepository).save(notification);
+        assertThrows(org.springframework.security.access.AccessDeniedException.class, () -> 
+            notificationService.markAsRead(1L, "testuser")
+        );
     }
 
     @Test
-    void markAllAsRead_Success() {
-        Notification notification = new Notification();
-        notification.setRead(false);
-        List<Notification> unread = List.of(notification);
+    void markAsRead_NotFound_ThrowsException() {
+        when(notificationRepository.findById(1L)).thenReturn(Optional.empty());
 
-        when(notificationRepository.findByRecipientAndReadOrderByCreatedAtDesc(mockUser, false)).thenReturn(unread);
+        assertThrows(com.bluepal.exception.ResourceNotFoundException.class, () -> 
+            notificationService.markAsRead(1L, "testuser")
+        );
+    }
+
+    @Test
+    void markAllAsRead_Empty_Success() {
+        when(notificationRepository.findByRecipientAndReadOrderByCreatedAtDesc(mockUser, false)).thenReturn(Collections.emptyList());
 
         notificationService.markAllAsRead(mockUser);
 
-        assertTrue(notification.isRead());
-        verify(notificationRepository).saveAll(unread);
+        verify(notificationRepository).saveAll(Collections.emptyList());
+    }
+
+    @Test
+    void mapToResponse_SystemNotification_Success() {
+        Notification notification = new Notification();
+        notification.setSender(null); // System
+        notification.setMessage("Update available");
+
+        when(notificationRepository.findByRecipientOrderByCreatedAtDesc(any(), any()))
+                .thenReturn(new PageImpl<>(List.of(notification)));
+
+        Page<NotificationResponse> response = notificationService.getNotifications(mockUser, PageRequest.of(0, 10));
+        
+        assertEquals("System", response.getContent().get(0).getSenderUsername());
+        assertNull(response.getContent().get(0).getSenderUserId());
     }
 }
