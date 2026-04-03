@@ -7,7 +7,9 @@ import com.bluepal.dto.response.JwtResponse;
 import com.bluepal.entity.User;
 import com.bluepal.repository.UserRepository;
 import com.bluepal.security.CustomUserDetails;
+import com.bluepal.security.CustomUserDetails;
 import com.bluepal.security.JwtUtils;
+import com.bluepal.security.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -254,12 +256,11 @@ public class AuthController {
 
         @GetMapping("/me")
         public ResponseEntity<JwtResponse> getCurrentUser() {
-                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-                if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
+                String username = SecurityUtils.getCurrentUsername();
+                if (username == null) {
                         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
                 }
 
-                String username = authentication.getName();
                 User user = userRepository.findByUsernameIgnoreCase(username)
                                 .orElseThrow(() -> new com.bluepal.exception.ResourceNotFoundException("User", USERNAME_FIELD, username));
 

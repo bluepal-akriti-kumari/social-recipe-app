@@ -18,14 +18,18 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class BookmarkServiceImpl implements BookmarkService {
-
     private final BookmarkRepository bookmarkRepository;
     private final RecipeRepository recipeRepository;
-
-    @Lazy
     private final RecipeService recipeService;
+
+    public BookmarkServiceImpl(BookmarkRepository bookmarkRepository, 
+                               RecipeRepository recipeRepository,
+                               @Lazy RecipeService recipeService) {
+        this.bookmarkRepository = bookmarkRepository;
+        this.recipeRepository = recipeRepository;
+        this.recipeService = recipeService;
+    }
 
     @Override
     @Transactional

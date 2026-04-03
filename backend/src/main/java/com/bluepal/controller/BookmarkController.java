@@ -1,6 +1,7 @@
 package com.bluepal.controller;
 
 import com.bluepal.dto.response.RecipeResponse;
+import com.bluepal.security.SecurityUtils;
 import com.bluepal.dto.response.MessageResponse;
 import com.bluepal.entity.User;
 import com.bluepal.exception.ResourceNotFoundException;
@@ -24,11 +25,7 @@ public class BookmarkController {
     private final UserRepository userRepository;
 
     private String getCurrentUsername() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
-            return auth.getName();
-        }
-        return null;
+        return SecurityUtils.getCurrentUsername();
     }
 
     @PostMapping("/{recipeId}")

@@ -21,7 +21,7 @@ public interface RatingRepository extends JpaRepository<Rating, Long> {
 
     long countByRecipe(Recipe recipe);
 
-    @Query("SELECT AVG(r.rating) FROM Rating r WHERE r.recipe = :recipe")
+    @Query("SELECT AVG(r.score) FROM Rating r WHERE r.recipe = :recipe")
     Double getAverageRatingByRecipe(@Param("recipe") Recipe recipe);
 
     @Modifying

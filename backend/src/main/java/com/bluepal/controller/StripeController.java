@@ -38,12 +38,8 @@ public class StripeController {
 
     private final UserRepository userRepository;
 
-    public StripeController(UserRepository userRepository) {
+    public StripeController(UserRepository userRepository, @Value("${stripe.api.key}") String stripeApiKey) {
         this.userRepository = userRepository;
-    }
-
-    @PostConstruct
-    public void init() {
         Stripe.apiKey = stripeApiKey;
     }
 

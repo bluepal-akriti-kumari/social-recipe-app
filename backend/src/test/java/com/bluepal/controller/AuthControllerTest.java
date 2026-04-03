@@ -268,4 +268,112 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("testuser"));
     }
+    @Test
+    void registerUser_EmailTaken() throws Exception {
+        RegisterRequest request = new RegisterRequest();
+        request.setUsername("newuser");
+        request.setFullName("New User");
+        request.setEmail("taken@example.com");
+        request.setPassword("Password@123");
+
+        when(userRepository.existsByUsername("newuser")).thenReturn(false);
+        when(userRepository.existsByEmail("taken@example.com")).thenReturn(true);
+
+        mockMvc.perform(post("/api/auth/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Error: Email is already in use!"));
+    }
+
+    @Test
+    void verifyRegistration_InvalidToken() throws Exception {
+        when(verificationTokenRepository.findByToken("invalid")).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/auth/verify-registration")
+                        .param("token", "invalid"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Error: Invalid verification token!"));
+    }
+
+    @Test
+    void verifyRegistration_ExpiredToken() throws Exception {
+        VerificationToken token = new VerificationToken();
+        token.setExpiryDate(LocalDateTime.now().minusHours(1));
+        when(verificationTokenRepository.findByToken("expired")).thenReturn(Optional.of(token));
+
+        mockMvc.perform(get("/api/auth/verify-registration")
+                        .param("token", "expired"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Error: Verification token has expired!"));
+        
+        verify(verificationTokenRepository).delete(token);
+    }
+
+    @Test
+    void changePassword_IncorrectCurrentPassword() throws Exception {
+        User userRecord = User.builder().username("testuser").password("encoded").build();
+        Map<String, String> body = new HashMap<>();
+        body.put("currentPassword", "wrong");
+        body.put("newPassword", "newPass123");
+
+        Authentication auth = mock(Authentication.class);
+        when(auth.isAuthenticated()).thenReturn(true);
+        when(auth.getName()).thenReturn("testuser");
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(userRecord));
+        when(passwordEncoder.matches("wrong", "encoded")).thenReturn(false);
+
+        mockMvc.perform(post("/api/auth/change-password")
+                        .principal(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Current password is incorrect"));
+    }
+
+    @Test
+    void resetPassword_Success() throws Exception {
+        ResetPasswordRequest request = new ResetPasswordRequest();
+        request.setToken("valid-reset-token");
+        request.setNewPassword("newSecret123");
+        
+        User user = User.builder().id(1L).username("testuser").build();
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setToken("valid-reset-token");
+        resetToken.setExpiryDate(LocalDateTime.now().plusHours(1));
+        resetToken.setUser(user);
+
+        when(passwordResetTokenRepository.findByToken("valid-reset-token")).thenReturn(Optional.of(resetToken));
+        when(passwordEncoder.encode("newSecret123")).thenReturn("newEncoded");
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Password reset successful!"));
+
+        verify(userRepository).save(user);
+        verify(passwordResetTokenRepository).delete(resetToken);
+    }
+
+    @Test
+    void getCurrentUser_Unauthenticated() throws Exception {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void handleValidationExceptions_Success() throws Exception {
+        RegisterRequest request = new RegisterRequest();
+        request.setUsername(""); // Invalid: Empty
+
+        mockMvc.perform(post("/api/auth/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
 }

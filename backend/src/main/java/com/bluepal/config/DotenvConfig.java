@@ -6,7 +6,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class DotenvConfig {
 
-    public DotenvConfig() {
+    @SuppressWarnings("java:S1118")
+    protected DotenvConfig() {
         // Required for CGLIB enhancement
     }
 

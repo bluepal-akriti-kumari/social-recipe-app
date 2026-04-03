@@ -31,7 +31,7 @@ public class RatingServiceImpl implements RatingService {
         Rating rating = ratingRepository.findFirstByUserAndRecipeOrderByCreatedAtDesc(user, recipe)
                 .orElse(Rating.builder().user(user).recipe(recipe).build());
 
-        rating.setRating(ratingValue);
+        rating.setScore(ratingValue);
         ratingRepository.save(rating);
 
         // Update recipe average rating
@@ -41,7 +41,7 @@ public class RatingServiceImpl implements RatingService {
     @Override
     public Integer getUserRating(User user, Recipe recipe) {
         return ratingRepository.findFirstByUserAndRecipeOrderByCreatedAtDesc(user, recipe)
-                .map(Rating::getRating)
+                .map(Rating::getScore)
                 .orElse(0);
     }
 

@@ -31,8 +31,8 @@ public class Rating {
     @JoinColumn(name = "recipe_id", nullable = false)
     private Recipe recipe;
 
-    @Column(nullable = false)
-    private Integer rating; // 1-5 stars
+    @Column(name = "rating", nullable = false)
+    private Integer score; // 1-5 stars
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

@@ -7,7 +7,6 @@ import com.bluepal.entity.Recipe;
 import com.bluepal.entity.User;
 import com.bluepal.exception.ResourceNotFoundException;
 import com.bluepal.repository.CommentRepository;
-import com.bluepal.repository.LikeRepository;
 import com.bluepal.repository.RecipeRepository;
 import com.bluepal.repository.UserRepository;
 import com.bluepal.dto.response.MessageResponse;
@@ -16,17 +15,21 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import com.bluepal.security.SecurityUtils;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import com.bluepal.service.interfaces.NotificationService;
+import com.bluepal.service.interfaces.UserService;
+import com.bluepal.service.interfaces.RecipeService;
+import com.bluepal.service.impl.ModerationService;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api")
+@RequiredArgsConstructor
 public class InteractionController {
 
     private static final String AUTH_REQUIRED = "Auth required";
@@ -38,35 +41,15 @@ public class InteractionController {
     private final CommentRepository commentRepository;
     private final RecipeRepository recipeRepository;
     private final UserRepository userRepository;
-    private final com.bluepal.service.NotificationService notificationService;
-    private final com.bluepal.service.interfaces.UserService userService;
-    private final com.bluepal.service.interfaces.RecipeService recipeService;
-    private final com.bluepal.service.impl.ModerationService moderationService;
+    private final NotificationService notificationService;
+    private final UserService userService;
+    private final RecipeService recipeService;
+    private final ModerationService moderationService;
     private final SimpMessagingTemplate messagingTemplate;
 
-    public InteractionController(CommentRepository commentRepository,
-                                 RecipeRepository recipeRepository, UserRepository userRepository,
-                                 com.bluepal.service.NotificationService notificationService,
-                                 com.bluepal.service.interfaces.UserService userService,
-                                 com.bluepal.service.interfaces.RecipeService recipeService,
-                                 com.bluepal.service.impl.ModerationService moderationService,
-                                 SimpMessagingTemplate messagingTemplate) {
-        this.commentRepository = commentRepository;
-        this.recipeRepository = recipeRepository;
-        this.userRepository = userRepository;
-        this.notificationService = notificationService;
-        this.userService = userService;
-        this.recipeService = recipeService;
-        this.moderationService = moderationService;
-        this.messagingTemplate = messagingTemplate;
-    }
 
     private String getCurrentUsername() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
-            return auth.getName();
-        }
-        return null;
+        return SecurityUtils.getCurrentUsername();
     }
 
     // ─── Like / Unlike Toggle ──────────────────────────────────────────────────

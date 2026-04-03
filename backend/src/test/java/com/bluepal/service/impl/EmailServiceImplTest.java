@@ -30,7 +30,7 @@ class EmailServiceImplTest {
 
     @Test
     void init_Coverage() {
-        emailService.init();
+        assertDoesNotThrow(() -> emailService.init());
         // Just for coverage of logging statements
     }
 

@@ -69,7 +69,7 @@ class RatingServiceImplTest {
     @Test
     void getUserRating_Success() {
         Rating rating = new Rating();
-        rating.setRating(3);
+        rating.setScore(3);
         when(ratingRepository.findFirstByUserAndRecipeOrderByCreatedAtDesc(any(), any())).thenReturn(Optional.of(rating));
 
         Integer result = ratingService.getUserRating(mockUser, mockRecipe);

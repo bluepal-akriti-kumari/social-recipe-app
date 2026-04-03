@@ -6,7 +6,9 @@ import com.bluepal.entity.User;
 import com.bluepal.exception.ResourceNotFoundException;
 import com.bluepal.repository.FollowRepository;
 import com.bluepal.repository.UserRepository;
+import com.bluepal.service.interfaces.NotificationService;
 import com.bluepal.service.interfaces.UserService;
+import com.bluepal.entity.NotificationType;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,11 +26,11 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final com.bluepal.repository.RecipeRepository recipeRepository;
     private final FollowRepository followRepository;
-    private final com.bluepal.service.NotificationService notificationService;
+    private final NotificationService notificationService;
 
     public UserServiceImpl(UserRepository userRepository, com.bluepal.repository.RecipeRepository recipeRepository,
                            FollowRepository followRepository,
-                           com.bluepal.service.NotificationService notificationService) {
+                           NotificationService notificationService) {
         this.userRepository = userRepository;
         this.recipeRepository = recipeRepository;
         this.followRepository = followRepository;
@@ -193,7 +195,7 @@ public class UserServiceImpl implements UserService {
             notificationService.createAndSendNotification(
                     following,
                     follower,
-                    com.bluepal.entity.NotificationType.FOLLOW,
+                    NotificationType.FOLLOW,
                     null,
                     follower.getUsername() + " started following you"
             );

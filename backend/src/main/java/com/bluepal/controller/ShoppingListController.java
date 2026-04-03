@@ -8,12 +8,10 @@ import com.bluepal.repository.UserRepository;
 import com.bluepal.service.interfaces.ShoppingListService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import com.bluepal.security.SecurityUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/shopping-list")
@@ -26,11 +24,7 @@ public class ShoppingListController {
     private static final String USER_NOT_FOUND = "User not found";
 
     private String getCurrentUsername() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated() && !authentication.getPrincipal().equals("anonymousUser")) {
-            return authentication.getName();
-        }
-        return null;
+        return SecurityUtils.getCurrentUsername();
     }
 
     @PostMapping
