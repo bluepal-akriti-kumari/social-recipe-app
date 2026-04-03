@@ -11,13 +11,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,105 +37,151 @@ class ShoppingListServiceImplTest {
     @InjectMocks
     private ShoppingListServiceImpl shoppingListService;
 
-    private User user;
-    private Recipe recipe;
+    private User testUser;
+    private Recipe testRecipe;
 
     @BeforeEach
     void setUp() {
-        user = new User();
-        user.setId(1L);
-        user.setUsername("testuser");
+        testUser = new User();
+        testUser.setId(1L);
+        testUser.setUsername("testuser");
 
-        recipe = new Recipe();
-        recipe.setId(100L);
-        recipe.setTitle("Test Recipe");
-        recipe.setIngredients(List.of(
-            Ingredient.builder().name("Onion").quantity("1").unit("pcs").build(),
-            Ingredient.builder().name("Milk").quantity("500").unit("ml").build()
-        ));
+        testRecipe = new Recipe();
+        testRecipe.setId(100L);
+        testRecipe.setTitle("Pasta");
     }
 
     @Test
     void addItem_NewItem_Success() {
-        when(shoppingListItemRepository.findByUserAndNameAndUnitAndPurchased(any(), anyString(), anyString(), eq(false)))
-            .thenReturn(Optional.empty());
-        when(shoppingListItemRepository.save(any(ShoppingListItem.class))).thenAnswer(i -> i.getArgument(0));
+        when(shoppingListItemRepository.findByUserAndNameAndUnitAndPurchased(any(), anyString(), anyString(), anyBoolean()))
+                .thenReturn(Optional.empty());
+        when(shoppingListItemRepository.save(any(ShoppingListItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        ShoppingListItem item = shoppingListService.addItem(user, "Onion", "1", "pcs", recipe);
+        ShoppingListItem item = shoppingListService.addItem(testUser, "Tomato", "2", "kg", testRecipe);
 
         assertNotNull(item);
-        assertEquals("Onion", item.getName());
+        assertEquals("Tomato", item.getName());
+        assertEquals("2", item.getQuantity());
         assertEquals(ShoppingCategory.VEGETABLES, item.getCategory());
-        verify(shoppingListItemRepository).save(any());
     }
 
     @Test
-    void addItem_ExistingItem_MergesQuantities() {
+    void addItem_MergeQuantities_Numeric() {
         ShoppingListItem existing = ShoppingListItem.builder()
-            .user(user)
-            .name("Milk")
-            .quantity("500")
-            .unit("ml")
-            .build();
+                .name("Milk")
+                .quantity("1")
+                .unit("L")
+                .purchased(false)
+                .build();
 
-        when(shoppingListItemRepository.findByUserAndNameAndUnitAndPurchased(user, "Milk", "ml", false))
-            .thenReturn(Optional.of(existing));
-        when(shoppingListItemRepository.save(existing)).thenReturn(existing);
+        when(shoppingListItemRepository.findByUserAndNameAndUnitAndPurchased(any(), anyString(), anyString(), anyBoolean()))
+                .thenReturn(Optional.of(existing));
+        when(shoppingListItemRepository.save(any(ShoppingListItem.class))).thenReturn(existing);
 
-        shoppingListService.addItem(user, "Milk", "250", "ml", null);
+        ShoppingListItem item = shoppingListService.addItem(testUser, "Milk", "2", "L", null);
 
-        assertEquals("750", existing.getQuantity());
-        verify(shoppingListItemRepository).save(existing);
+        assertEquals("3", item.getQuantity());
     }
 
     @Test
-    void mergeQuantities_NonNumeric_Success() {
+    void addItem_MergeQuantities_Decimal() {
         ShoppingListItem existing = ShoppingListItem.builder()
-            .user(user)
-            .name("Salt")
-            .quantity("pinch")
-            .unit("to taste")
-            .build();
+                .quantity("1.5")
+                .build();
+        when(shoppingListItemRepository.findByUserAndNameAndUnitAndPurchased(any(), anyString(), anyString(), anyBoolean()))
+                .thenReturn(Optional.of(existing));
+        when(shoppingListItemRepository.save(any(ShoppingListItem.class))).thenReturn(existing);
 
-        when(shoppingListItemRepository.findByUserAndNameAndUnitAndPurchased(user, "Salt", "to taste", false))
-            .thenReturn(Optional.of(existing));
-        when(shoppingListItemRepository.save(existing)).thenReturn(existing);
+        ShoppingListItem item = shoppingListService.addItem(testUser, "Flour", "0.5", "kg", null);
 
-        shoppingListService.addItem(user, "Salt", "extra", "to taste", null);
+        assertEquals("2", item.getQuantity()); // Formats as 2 if long
+    }
 
-        assertEquals("pinch + extra", existing.getQuantity());
+    @Test
+    void addItem_MergeQuantities_NonNumeric() {
+        ShoppingListItem existing = ShoppingListItem.builder()
+                .quantity("a bit")
+                .build();
+        when(shoppingListItemRepository.findByUserAndNameAndUnitAndPurchased(any(), anyString(), anyString(), anyBoolean()))
+                .thenReturn(Optional.of(existing));
+        when(shoppingListItemRepository.save(any(ShoppingListItem.class))).thenReturn(existing);
+
+        ShoppingListItem item = shoppingListService.addItem(testUser, "Salt", "some", "pinch", null);
+
+        assertEquals("a bit + some", item.getQuantity());
     }
 
     @Test
     void togglePurchased_Success() {
         ShoppingListItem item = ShoppingListItem.builder()
-            .id(1L)
-            .user(user)
-            .purchased(false)
-            .build();
-
+                .id(1L)
+                .user(testUser)
+                .purchased(false)
+                .build();
         when(shoppingListItemRepository.findById(1L)).thenReturn(Optional.of(item));
         when(shoppingListItemRepository.save(any())).thenReturn(item);
 
-        shoppingListService.togglePurchased(1L, user);
+        ShoppingListItem result = shoppingListService.togglePurchased(1L, testUser);
 
-        assertTrue(item.isPurchased());
+        assertTrue(result.isPurchased());
     }
 
     @Test
-    void togglePurchased_NotFound() {
-        when(shoppingListItemRepository.findById(999L)).thenReturn(Optional.empty());
-        assertThrows(ResourceNotFoundException.class, () -> shoppingListService.togglePurchased(999L, user));
+    void togglePurchased_AccessDenied() {
+        User otherUser = new User();
+        otherUser.setId(2L);
+        ShoppingListItem item = ShoppingListItem.builder()
+                .id(1L)
+                .user(otherUser)
+                .build();
+        when(shoppingListItemRepository.findById(1L)).thenReturn(Optional.of(item));
+
+        assertThrows(AccessDeniedException.class, () -> shoppingListService.togglePurchased(1L, testUser));
     }
 
     @Test
     void addIngredientsFromRecipe_Success() {
-        when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
-        when(shoppingListItemRepository.findByUserAndNameAndUnitAndPurchased(any(), any(), any(), anyBoolean()))
-            .thenReturn(Optional.empty());
+        Ingredient i1 = new Ingredient(); i1.setName("Onion"); i1.setQuantity("1"); i1.setUnit("pc");
+        testRecipe.setIngredients(Collections.singletonList(i1));
 
-        shoppingListService.addIngredientsFromRecipe(100L, user);
+        when(recipeRepository.findById(100L)).thenReturn(Optional.of(testRecipe));
+        when(shoppingListItemRepository.findByUserAndNameAndUnitAndPurchased(any(), anyString(), anyString(), anyBoolean()))
+                .thenReturn(Optional.empty());
 
-        verify(shoppingListItemRepository, times(2)).save(any());
+        shoppingListService.addIngredientsFromRecipe(100L, testUser);
+
+        verify(shoppingListItemRepository, times(1)).save(any());
+    }
+
+    @Test
+    void addIngredientsFromMealPlan_Success() {
+        MealPlan plan = new MealPlan();
+        plan.setRecipe(testRecipe);
+        when(mealPlanRepository.findByUserAndPlannedDateBetween(any(), any(), any()))
+                .thenReturn(Collections.singletonList(plan));
+        when(recipeRepository.findById(100L)).thenReturn(Optional.of(testRecipe));
+
+        shoppingListService.addIngredientsFromMealPlan(testUser, LocalDate.now(), LocalDate.now());
+
+        verify(recipeRepository).findById(100L);
+    }
+
+    @Test
+    void mapToCategory_Coverage() {
+        // This is indirectly tested via addItem, but let's hit all branches
+        String[] contents = {"Garlic", "Cheese", "Beef", "Prawn", "Chili", "Pasta", "Apple", "SomethingElse"};
+        ShoppingCategory[] expected = {
+                ShoppingCategory.VEGETABLES, ShoppingCategory.DAIRY, ShoppingCategory.MEAT,
+                ShoppingCategory.SEAFOOD, ShoppingCategory.SPICES, ShoppingCategory.GRAINS,
+                ShoppingCategory.FRUITS, ShoppingCategory.OTHER
+        };
+
+        for (int i = 0; i < contents.length; i++) {
+            when(shoppingListItemRepository.findByUserAndNameAndUnitAndPurchased(any(), anyString(), anyString(), anyBoolean()))
+                    .thenReturn(Optional.empty());
+            when(shoppingListItemRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            ShoppingListItem item = shoppingListService.addItem(testUser, contents[i], "1", "unit", null);
+            assertEquals(expected[i], item.getCategory(), "Failed for " + contents[i]);
+        }
     }
 }
