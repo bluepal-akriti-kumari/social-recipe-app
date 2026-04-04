@@ -376,4 +376,40 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void forgotPassword_UserNotFound() throws Exception {
+        ForgotPasswordRequest request = new ForgotPasswordRequest();
+        request.setEmail("nonexistent@example.com");
+
+        when(userRepository.findByEmail("nonexistent@example.com")).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/api/auth/forgot-password")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Error: User with this email not found!"));
+    }
+
+    @Test
+    void resetPassword_TokenExpired() throws Exception {
+        ResetPasswordRequest request = new ResetPasswordRequest();
+        request.setToken("expired-token");
+        request.setNewPassword("newPass123");
+
+        PasswordResetToken expiredToken = new PasswordResetToken();
+        expiredToken.setExpiryDate(LocalDateTime.now().minusHours(1));
+
+        when(passwordResetTokenRepository.findByToken("expired-token")).thenReturn(Optional.of(expiredToken));
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Token has expired"));
+        
+        verify(passwordResetTokenRepository).delete(expiredToken);
+    }
 }

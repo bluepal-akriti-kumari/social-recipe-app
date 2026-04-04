@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -525,5 +526,35 @@ class RecipeServiceImplTest {
 
         assertEquals(0, result.get("likeCount"));
         verify(recipeRepository).decrementLikeCount(100L);
+    }
+
+    @Test
+    void isAuthor_MatchByUsername_Success() {
+        User otherUserObj = User.builder().id(2L).username("chef1").build(); // Same username, diff ID
+        boolean result = (boolean) ReflectionTestUtils.invokeMethod(recipeService, "isAuthor", recipe, otherUserObj);
+        assertTrue(result);
+    }
+
+    @Test
+    void isAdmin_SimpleAdminRole_Success() {
+        User adminUser = User.builder().roles(new HashSet<>(List.of("ADMIN"))).build();
+        boolean result = (boolean) ReflectionTestUtils.invokeMethod(recipeService, "isAdmin", adminUser);
+        assertTrue(result);
+    }
+
+    @Test
+    void getExploreFeedCursorByCategory_NotFound_ReturnsEmpty() {
+        when(categoryRepository.findByNameIgnoreCase("Unknown")).thenReturn(Optional.empty());
+        Map<String, Object> result = recipeService.getExploreFeedCursorByCategory("Unknown", null, 10, "chef1");
+        assertTrue(((List<?>) result.get("content")).isEmpty());
+    }
+
+    @Test
+    void resolveCategory_GeneralFallback_Success() {
+        when(categoryRepository.findByNameIgnoreCase("General")).thenReturn(Optional.empty());
+        when(categoryRepository.save(any())).thenAnswer(i -> i.getArguments()[0]);
+        
+        Category result = (Category) ReflectionTestUtils.invokeMethod(recipeService, "resolveCategory", "");
+        assertEquals("General", result.getName());
     }
 }
