@@ -7,7 +7,6 @@ import com.bluepal.dto.response.JwtResponse;
 import com.bluepal.entity.User;
 import com.bluepal.repository.UserRepository;
 import com.bluepal.security.CustomUserDetails;
-import com.bluepal.security.CustomUserDetails;
 import com.bluepal.security.JwtUtils;
 import com.bluepal.security.SecurityUtils;
 import jakarta.validation.Valid;
