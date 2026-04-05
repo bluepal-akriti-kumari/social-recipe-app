@@ -34,12 +34,10 @@ import com.bluepal.service.impl.EmailServiceImpl;
 
 import java.time.LocalDateTime;
 import java.security.SecureRandom;
-import java.util.UUID;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RestController

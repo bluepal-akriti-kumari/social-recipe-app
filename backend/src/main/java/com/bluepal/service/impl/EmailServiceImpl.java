@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 public class EmailServiceImpl {
 
     private static final String NOREPLY_ADDRESS = "noreply@culinario.com";
+    private static final String SMTP_ERROR_DETAILS = "SMTP Error Details: {}";
 
     private final JavaMailSender mailSender;
 
@@ -60,7 +61,7 @@ public class EmailServiceImpl {
             log.info("Password reset email sent to: {}", to);
         } catch (Exception e) {
             log.error("Failed to send reset email to {}. [DEV-MODE FALLBACK] OTP: {}", to, token);
-            log.error("SMTP Error Details: {}", e.getMessage());
+            log.error(SMTP_ERROR_DETAILS, e.getMessage());
             if (!devMode) {
                 throw e; // Re-throw in production to notify controller
             }
@@ -89,7 +90,7 @@ public class EmailServiceImpl {
             log.info("Verification email sent to: {}", to);
         } catch (Exception e) {
             log.error("Failed to send verification email to {}. [DEV-MODE FALLBACK] Token: {}", to, token);
-            log.error("SMTP Error Details: {}", e.getMessage());
+            log.error(SMTP_ERROR_DETAILS, e.getMessage());
             if (!devMode) {
                 throw e;
             }
@@ -124,7 +125,7 @@ public class EmailServiceImpl {
             log.info("Restriction status email sent to: {} (Restricted: {})", to, isRestricted);
         } catch (Exception e) {
             log.error("Failed to send restriction status email to {}. [DEV-MODE FALLBACK] Restricted: {}", to, isRestricted);
-            log.error("SMTP Error Details: {}", e.getMessage());
+            log.error(SMTP_ERROR_DETAILS, e.getMessage());
             if (!devMode) {
                 throw e;
             }

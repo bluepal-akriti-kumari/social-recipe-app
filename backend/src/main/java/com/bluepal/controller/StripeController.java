@@ -14,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import com.bluepal.dto.response.MessageResponse;
 import com.bluepal.exception.ResourceNotFoundException;
