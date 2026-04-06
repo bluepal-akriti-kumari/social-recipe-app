@@ -13,13 +13,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,6 +28,9 @@ class NotificationServiceImplTest {
 
     @Mock
     private NotificationRepository notificationRepository;
+
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
 
     @InjectMocks
     private NotificationServiceImpl notificationService;
@@ -104,5 +108,43 @@ class NotificationServiceImplTest {
         
         assertEquals("System", response.getContent().get(0).getSenderUsername());
         assertNull(response.getContent().get(0).getSenderUserId());
+    }
+
+    @Test
+    void createAndSendNotification_Success() {
+        User recipient = new User();
+        recipient.setId(2L);
+        recipient.setUsername("recipient");
+        
+        User sender = new User();
+        sender.setId(1L);
+        sender.setUsername("sender");
+
+        Notification mockSaved = Notification.builder()
+                .id(100L)
+                .recipient(recipient)
+                .sender(sender)
+                .type(com.bluepal.entity.NotificationType.LIKE)
+                .message("Liked your recipe")
+                .build();
+        
+        when(notificationRepository.save(any(Notification.class))).thenReturn(mockSaved);
+
+        notificationService.createAndSendNotification(recipient, sender, com.bluepal.entity.NotificationType.LIKE, 500L, "Liked your recipe");
+
+        verify(notificationRepository).save(any(Notification.class));
+        verify(messagingTemplate).convertAndSendToUser(eq("recipient"), eq("/queue/notifications"), any());
+    }
+
+    @Test
+    void createAndSendNotification_SelfNotification_Ignore() {
+        User sender = new User();
+        sender.setId(1L);
+        sender.setUsername("sender");
+
+        notificationService.createAndSendNotification(sender, sender, com.bluepal.entity.NotificationType.LIKE, 500L, "Liked own recipe");
+
+        verifyNoInteractions(notificationRepository);
+        verifyNoInteractions(messagingTemplate);
     }
 }

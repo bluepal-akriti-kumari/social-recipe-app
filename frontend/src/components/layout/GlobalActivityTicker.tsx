@@ -1,11 +1,13 @@
 import { Box, Typography, Slide } from '@mui/material';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import { useAuth } from '../../hooks/useAuth';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 const GlobalActivityTicker = () => {
     const { latestActivity } = useWebSocket();
+    const { user } = useAuth();
 
-    if (!latestActivity) return null;
+    if (!latestActivity || user?.roles?.includes('ROLE_ADMIN')) return null;
 
     return (
         <Box 

@@ -119,4 +119,60 @@ class StripeControllerTest {
             verify(userRepository).save(mockUser);
         }
     }
+
+    @Test
+    void verifySession_NotPaid_ReturnsBadRequest() throws StripeException {
+        try (MockedStatic<Session> mockedSession = mockStatic(Session.class)) {
+            Session session = mock(Session.class);
+            when(session.getPaymentStatus()).thenReturn("pending");
+            
+            mockedSession.when(() -> Session.retrieve("sess_123")).thenReturn(session);
+
+            ResponseEntity<Object> response = stripeController.verifySession("sess_123");
+            
+            assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        }
+    }
+
+    @Test
+    void handleStripeWebhook_ValidEvent_UpgradesUser() {
+        String payload = "{\"type\": \"checkout.session.completed\"}";
+        String sigHeader = "valid_sig";
+        
+        try (MockedStatic<com.stripe.net.Webhook> mockedWebhook = mockStatic(com.stripe.net.Webhook.class)) {
+            com.stripe.model.Event event = mock(com.stripe.model.Event.class);
+            when(event.getType()).thenReturn("checkout.session.completed");
+            
+            com.stripe.model.EventDataObjectDeserializer deserializer = mock(com.stripe.model.EventDataObjectDeserializer.class);
+            Session session = mock(Session.class);
+            java.util.Map<String, String> metadata = new java.util.HashMap<>();
+            metadata.put("username", "testuser");
+            
+            when(event.getDataObjectDeserializer()).thenReturn(deserializer);
+            when(deserializer.getObject()).thenReturn(Optional.of(session));
+            when(session.getMetadata()).thenReturn(metadata);
+            
+            mockedWebhook.when(() -> com.stripe.net.Webhook.constructEvent(anyString(), anyString(), anyString()))
+                .thenReturn(event);
+            
+            when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(mockUser));
+
+            ResponseEntity<String> response = stripeController.handleStripeWebhook(payload, sigHeader);
+            
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+            assertTrue(mockUser.isPremium());
+        }
+    }
+
+    @Test
+    void handleStripeWebhook_InvalidSignature_ReturnsBadRequest() {
+        try (MockedStatic<com.stripe.net.Webhook> mockedWebhook = mockStatic(com.stripe.net.Webhook.class)) {
+            mockedWebhook.when(() -> com.stripe.net.Webhook.constructEvent(anyString(), anyString(), anyString()))
+                .thenThrow(new RuntimeException("Invalid signature"));
+
+            ResponseEntity<String> response = stripeController.handleStripeWebhook("payload", "invalid_sig");
+            
+            assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        }
+    }
 }

@@ -2,7 +2,7 @@
 
 This document provides a comprehensive list of backend test cases for the Social Recipe App, covering all major modules and edge cases.
 
-**Current Test Status: 100% Passing (47 Test Suites Verified)**
+**Current Test Status: 100% Passing (208 Tests across 32 Test Suites Verified)**
 
 ## 1. Authentication & Security (AuthModule)
 - **tc-01** User registration with valid data (backend) | **Result: PASSED**
@@ -98,15 +98,12 @@ This document provides a comprehensive list of backend test cases for the Social
 - **tc-81** Access admin endpoints as ROLE_USER (Access Denied) (backend) | **Result: PASSED**
 - **tc-82** Access admin endpoints without token (Unauthorized) (backend) | **Result: PASSED**
 
-## 7. Meal Plans & Shopping Lists
+## 7. Meal Plans
 - **tc-83** Create new meal plan (backend) | **Result: PASSED**
 - **tc-84** Add recipe to meal plan for specific date (backend) | **Result: PASSED**
 - **tc-85** Remove recipe from meal plan (backend) | **Result: PASSED**
 - **tc-86** Get weekly meal plan for user (backend) | **Result: PASSED**
-- **tc-87** Generate shopping list from meal plan (backend) | **Result: PASSED**
-- **tc-88** Manually add item to shopping list (backend) | **Result: PASSED**
-- **tc-89** Mark shopping list item as purchased (backend) | **Result: PASSED**
-- **tc-90** Clear shopping list (backend) | **Result: PASSED**
+
 
 ## 8. Notifications (NotificationModule)
 - **tc-91** Retrieve notifications for current user (backend) | **Result: PASSED**
@@ -132,4 +129,4 @@ This document provides a comprehensive list of backend test cases for the Social
 - **tc-107** Link account with external provider (OAuth2 logic) | **Result: PASSED**
 
 ---
-*Results Updated: 2026-03-31 (Post Full Suite Execution)*
+*Results Updated: 2026-04-05 (Post Full Suite Execution)*

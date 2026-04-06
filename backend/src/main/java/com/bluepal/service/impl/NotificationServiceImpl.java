@@ -9,6 +9,8 @@ import com.bluepal.service.interfaces.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import com.bluepal.entity.NotificationType;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +21,36 @@ import java.util.List;
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    @Override
+    @Transactional
+    public void createAndSendNotification(User recipient, User sender, NotificationType type, Long recipeId, String message) {
+        // Don't notify yourself
+        if (recipient.getId().equals(sender.getId())) {
+            return;
+        }
+
+        Notification notification = Notification.builder()
+                .recipient(recipient)
+                .sender(sender)
+                .type(type)
+                .recipeId(recipeId)
+                .message(message)
+                .read(false)
+                .build();
+
+        Notification saved = notificationRepository.save(notification);
+
+        NotificationResponse response = mapToResponse(saved);
+
+        // Send via WebSocket
+        messagingTemplate.convertAndSendToUser(
+                recipient.getUsername(),
+                "/queue/notifications",
+                response
+        );
+    }
 
     @Override
     @Transactional(readOnly = true)

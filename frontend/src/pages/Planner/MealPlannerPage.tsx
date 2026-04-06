@@ -105,23 +105,7 @@ const MealPlannerPage = () => {
           >
             Create Plan
           </Button>
-          {/* <Button 
-            variant="outlined" 
-            startIcon={<ShoppingCartIcon />}
-            onClick={handleGenerateShoppingList}
-            sx={{ 
-                borderRadius: '16px', 
-                fontWeight: 900, 
-                px: 3, 
-                py: 1.2,
-                color: 'text.primary',
-                borderColor: 'divider',
-                textTransform: 'none',
-                '&:hover': { bgcolor: 'rgba(0,0,0,0.03)', borderColor: 'text.primary' }
-            }}
-          >
-            Shopping List
-          </Button> */}
+
           <Box sx={{ p: 0.8, borderRadius: '18px', display: 'flex', alignItems: 'center', bgcolor: '#f1f5f9', border: '1px solid #e2e8f0' }}>
             <IconButton onClick={() => setCurrentDate(addDays(currentDate, -7))}>
               <ChevronLeftIcon />

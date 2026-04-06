@@ -52,6 +52,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
   const [latestActivity, setLatestActivity] = useState<string | null>(null);
 
   const fetchUnreadCount = useCallback(async () => {
+    if (user?.roles?.includes('ROLE_ADMIN')) return;
     try {
       const response = await fetch('/api/notifications/unread-count', {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
@@ -63,9 +64,10 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('Failed to fetch unread count', error);
     }
-  }, []);
+  }, [user]);
 
   const fetchInitialNotifications = useCallback(async () => {
+    if (user?.roles?.includes('ROLE_ADMIN')) return;
     try {
       const token = localStorage.getItem('token');
       const response = await fetch('/api/notifications?page=0&size=20', {
@@ -78,7 +80,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('Failed to fetch initial notifications', error);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -98,12 +100,14 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
         console.log('Connected to WebSocket');
         
         // 1. Personal Notifications
-        client.subscribe(`/user/${user.username}/queue/notifications`, (message: any) => {
-          const newNotification: Notification = JSON.parse(message.body);
-          setNotifications((prev) => [newNotification, ...prev]);
-          setUnreadCount((prev) => prev + 1);
-          window.dispatchEvent(new CustomEvent('new_notification', { detail: newNotification }));
-        });
+        if (!user.roles?.includes('ROLE_ADMIN')) {
+          client.subscribe(`/user/${user.username}/queue/notifications`, (message: any) => {
+            const newNotification: Notification = JSON.parse(message.body);
+            setNotifications((prev) => [newNotification, ...prev]);
+            setUnreadCount((prev) => prev + 1);
+            window.dispatchEvent(new CustomEvent('new_notification', { detail: newNotification }));
+          });
+        }
 
         // 2. Global Activity
         client.subscribe('/topic/activity', (message: any) => {

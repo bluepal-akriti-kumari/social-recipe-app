@@ -9,6 +9,7 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import CommentIcon from '@mui/icons-material/Comment';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 
 interface Notification {
   id: number;
@@ -24,6 +25,7 @@ interface Notification {
 const NotificationToaster = () => {
   const [notification, setNotification] = useState<Notification | null>(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     const handleNewNotification = (event: any) => {
@@ -36,7 +38,7 @@ const NotificationToaster = () => {
     return () => window.removeEventListener('new_notification', handleNewNotification);
   }, []);
 
-  if (!notification) return null;
+  if (!notification || user?.roles?.includes('ROLE_ADMIN')) return null;
 
   const getIcon = () => {
     switch (notification.type) {

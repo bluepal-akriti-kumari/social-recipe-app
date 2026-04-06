@@ -18,6 +18,6 @@ public class CommentResponse {
     private Long userId;
     private String userProfilePictureUrl;
     private Long parentId;
-    private java.time.LocalDateTime createdAt;
+    private LocalDateTime createdAt;
     private java.util.List<CommentResponse> replies;
 }

@@ -5,6 +5,7 @@ import com.bluepal.dto.response.RecipeResponse;
 import com.bluepal.entity.*;
 import com.bluepal.exception.ResourceNotFoundException;
 import com.bluepal.repository.*;
+import com.bluepal.service.interfaces.NotificationService;
 import com.bluepal.service.interfaces.RecipeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
@@ -46,7 +47,7 @@ public class RecipeServiceImpl implements RecipeService {
 	private final CategoryRepository categoryRepository;
 	private final com.bluepal.service.interfaces.RatingService ratingService;
 	private final com.bluepal.service.interfaces.BookmarkService bookmarkService;
-	private final com.bluepal.service.NotificationService notificationService;
+	private final NotificationService notificationService;
 	private final com.bluepal.service.interfaces.UserService userService;
 
 	public RecipeServiceImpl(RecipeRepository recipeRepository, UserRepository userRepository,
@@ -57,7 +58,7 @@ public class RecipeServiceImpl implements RecipeService {
 			CategoryRepository categoryRepository,
 			com.bluepal.service.interfaces.RatingService ratingService,
 			@Lazy com.bluepal.service.interfaces.BookmarkService bookmarkService,
-			com.bluepal.service.NotificationService notificationService,
+			NotificationService notificationService,
 			@Lazy com.bluepal.service.interfaces.UserService userService) {
 		this.recipeRepository = recipeRepository;
 		this.userRepository = userRepository;
@@ -131,24 +132,29 @@ public class RecipeServiceImpl implements RecipeService {
 	}
 
 	private Recipe buildRecipeEntity(RecipeRequest request, User author, Category category) {
-		return Recipe.builder()
-				.title(request.getTitle())
-				.description(request.getDescription())
-				.imageUrl(request.getImageUrl())
-				.prepTimeMinutes(request.getPrepTimeMinutes())
-				.cookTimeMinutes(request.getCookTimeMinutes())
-				.servings(request.getServings())
+		Recipe recipe = Recipe.builder()
 				.author(author)
 				.category(category)
-				.isPublished(request.isPublished())
-				.isPremium(request.isPremium())
-				.calories(request.getCalories())
-				.protein(request.getProtein())
-				.carbs(request.getCarbs())
-				.fats(request.getFats())
 				.likeCount(0)
 				.commentCount(0)
 				.build();
+		applyRequestToEntity(recipe, request);
+		return recipe;
+	}
+
+	private void applyRequestToEntity(Recipe recipe, RecipeRequest request) {
+		recipe.setTitle(request.getTitle());
+		recipe.setDescription(request.getDescription());
+		recipe.setImageUrl(request.getImageUrl());
+		recipe.setPrepTimeMinutes(request.getPrepTimeMinutes());
+		recipe.setCookTimeMinutes(request.getCookTimeMinutes());
+		recipe.setServings(request.getServings());
+		recipe.setPublished(request.isPublished());
+		recipe.setPremium(request.isPremium());
+		recipe.setCalories(request.getCalories());
+		recipe.setProtein(request.getProtein());
+		recipe.setCarbs(request.getCarbs());
+		recipe.setFats(request.getFats());
 	}
 
 	private void processRecipeDetails(Recipe recipe, RecipeRequest request) {
@@ -158,7 +164,8 @@ public class RecipeServiceImpl implements RecipeService {
 				if (ir.getCategory() != null) {
 					try {
 						ingCat = ShoppingCategory.valueOf(ir.getCategory().toUpperCase());
-					} catch (IllegalArgumentException ignored) {
+					} catch (IllegalArgumentException e) {
+						log.warn("Invalid ingredient category: {}, defaulting to OTHER", ir.getCategory());
 					}
 				}
 				recipe.addIngredient(Ingredient.builder()
@@ -306,7 +313,7 @@ public class RecipeServiceImpl implements RecipeService {
 
 	private boolean isAdmin(User user) {
 		if (user == null) return false;
-		return user.getRoles().contains("ROLE_ADMIN") || user.getRoles().contains("ADMIN");
+		return user.getRoles().contains(ROLE_ADMIN) || user.getRoles().contains("ADMIN");
 	}
 
 	@Override
@@ -337,7 +344,7 @@ public class RecipeServiceImpl implements RecipeService {
 	@Transactional(readOnly = true)
 	public Map<String, Object> getPersonalizedFeedCursor(String username, LocalDateTime cursor, int size) {
 		User user = userRepository.findByUsername(username)
-				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+				.orElseThrow(() -> new ResourceNotFoundException(USER, USERNAME, username));
 
 		Pageable limit = PageRequest.of(0, size);
 		List<Recipe> recipes;
@@ -353,7 +360,7 @@ public class RecipeServiceImpl implements RecipeService {
 
 		String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
 
-		return Map.of("content", content, "nextCursor", nextCursor);
+		return Map.of(CONTENT, content, NEXT_CURSOR, nextCursor);
 	}
 
 	@Override
@@ -387,12 +394,12 @@ public class RecipeServiceImpl implements RecipeService {
 			List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
 					.toList();
 
-			String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
+			String nextCursorOfResults = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
 
-			return Map.of("content", content, "nextCursor", nextCursor);
+			return Map.of(CONTENT, content, NEXT_CURSOR, nextCursorOfResults);
 		} catch (Exception e) {
 			log.error("FATAL ERROR in getUserRecipes for ID {}: {}", userId, e.getMessage());
-			return Map.of("content", List.of(), "nextCursor", "", "error", e.getMessage());
+			return Map.of(CONTENT, List.of(), NEXT_CURSOR, "", "error", e.getMessage());
 		}
 	}
 
@@ -425,12 +432,12 @@ public class RecipeServiceImpl implements RecipeService {
 			List<RecipeResponse> content = recipes.stream().map(r -> this.mapToResponse(r, currentUsername))
 					.toList();
 
-			String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
+			String nextCursorOfResults = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
 
-			return Map.of("content", content, "nextCursor", nextCursor);
+			return Map.of(CONTENT, content, NEXT_CURSOR, nextCursorOfResults);
 		} catch (Exception e) {
 			log.error("ERROR: Failed to fetch liked recipes for ID {}: {}", userId, e.getMessage());
-			return Map.of("content", List.of(), "nextCursor", "");
+			return Map.of(CONTENT, List.of(), NEXT_CURSOR, "");
 		}
 	}
 
@@ -471,16 +478,7 @@ public class RecipeServiceImpl implements RecipeService {
 	}
 
 	private void updateRecipeBasicInfo(Recipe recipe, RecipeRequest request) {
-		recipe.setTitle(request.getTitle());
-		recipe.setDescription(request.getDescription());
-		recipe.setImageUrl(request.getImageUrl());
-		recipe.setPrepTimeMinutes(request.getPrepTimeMinutes());
-		recipe.setCookTimeMinutes(request.getCookTimeMinutes());
-		recipe.setServings(request.getServings());
-		recipe.setCalories(request.getCalories());
-		recipe.setProtein(request.getProtein());
-		recipe.setCarbs(request.getCarbs());
-		recipe.setFats(request.getFats());
+		applyRequestToEntity(recipe, request);
 
 		if (request.getCategory() != null && !request.getCategory().isBlank()) {
 			String catName = request.getCategory().trim();
@@ -488,9 +486,6 @@ public class RecipeServiceImpl implements RecipeService {
 					.orElseGet(() -> categoryRepository.save(new Category(catName)));
 			recipe.setCategory(category);
 		}
-
-		recipe.setPublished(request.isPublished());
-		recipe.setPremium(request.isPremium());
 	}
 
 	private void updateRecipeDetails(Recipe recipe, RecipeRequest request) {
@@ -502,17 +497,17 @@ public class RecipeServiceImpl implements RecipeService {
 	@Transactional
 	public void deleteRecipe(Long id, String username) {
 		Recipe recipe = recipeRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("Recipe", "id", id));
+				.orElseThrow(() -> new ResourceNotFoundException(RECIPE, ID, id));
 
 		User user = userRepository.findByUsername(username)
-				.orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+				.orElseThrow(() -> new ResourceNotFoundException(USER, USERNAME, username));
 
 		boolean isAuthor = recipe.getAuthor().getUsername().equals(username);
 		boolean isModeratorOrAdmin = user.getRoles().stream()
 				.anyMatch(r -> r.equals(ROLE_ADMIN));
 
 		if (!isAuthor && !isModeratorOrAdmin) {
-			throw new RuntimeException("You are not authorized to delete this recipe");
+			throw new org.springframework.security.access.AccessDeniedException("You are not authorized to delete this recipe");
 		}
 
 		// Cascade delete related entities
@@ -570,9 +565,9 @@ public class RecipeServiceImpl implements RecipeService {
 
 			String nextCursor = content.isEmpty() ? "" : content.get(content.size() - 1).getCreatedAt().toString();
 
-			return Map.of("content", content, "nextCursor", nextCursor);
+			return Map.of(CONTENT, content, NEXT_CURSOR, nextCursor);
 		} catch (ResourceNotFoundException e) {
-			return Map.of("content", List.of(), "nextCursor", "");
+			return Map.of(CONTENT, List.of(), NEXT_CURSOR, "");
 		}
 	}
 
@@ -630,28 +625,38 @@ public class RecipeServiceImpl implements RecipeService {
 	}
 
 	private void applySorting(CriteriaQuery<?> query, Root<Recipe> root, CriteriaBuilder cb, String sort) {
-		if (query != null && query.getResultType() != Long.class && query.getResultType() != long.class) {
+		if (isSortableQuery(query)) {
 			List<Order> orders = new ArrayList<>();
-			
-			if (sort != null && !sort.isEmpty()) {
-				java.util.Set<String> sortSet = new java.util.HashSet<>(java.util.Arrays.asList(sort.split(",")));
-				if (sortSet.contains("rating")) {
-					orders.add(cb.desc(cb.coalesce(root.get("averageRating"), 0.0)));
-				}
-				if (sortSet.contains("trending")) {
-					Expression<Integer> likes = cb.coalesce(root.get(LIKE_COUNT_KEY), 0);
-					Expression<Integer> ratingsCount = cb.coalesce(root.get("ratingCount"), 0);
-					orders.add(cb.desc(cb.sum(likes, ratingsCount)));
-				}
-				if (sortSet.contains("newest")) {
-					orders.add(cb.desc(root.get(CREATED_AT)));
-				}
-			}
+			addRequestedSortOrders(orders, root, cb, sort);
+			addDefaultSortOrderIfEmpty(orders, root, cb);
+			query.orderBy(orders);
+		}
+	}
 
-			if (orders.isEmpty()) {
+	private boolean isSortableQuery(CriteriaQuery<?> query) {
+		return query != null && query.getResultType() != Long.class && query.getResultType() != long.class;
+	}
+
+	private void addRequestedSortOrders(List<Order> orders, Root<Recipe> root, CriteriaBuilder cb, String sort) {
+		if (sort != null && !sort.isEmpty()) {
+			java.util.Set<String> sortSet = new java.util.HashSet<>(java.util.Arrays.asList(sort.split(",")));
+			if (sortSet.contains("rating")) {
+				orders.add(cb.desc(cb.coalesce(root.get("averageRating"), 0.0)));
+			}
+			if (sortSet.contains("trending")) {
+				Expression<Integer> likes = cb.coalesce(root.get(LIKE_COUNT_KEY), 0);
+				Expression<Integer> ratingsCount = cb.coalesce(root.get("ratingCount"), 0);
+				orders.add(cb.desc(cb.sum(likes, ratingsCount)));
+			}
+			if (sortSet.contains("newest")) {
 				orders.add(cb.desc(root.get(CREATED_AT)));
 			}
-			query.orderBy(orders);
+		}
+	}
+
+	private void addDefaultSortOrderIfEmpty(List<Order> orders, Root<Recipe> root, CriteriaBuilder cb) {
+		if (orders.isEmpty()) {
+			orders.add(cb.desc(root.get(CREATED_AT)));
 		}
 	}
 	@Override
@@ -682,10 +687,10 @@ public class RecipeServiceImpl implements RecipeService {
 					user.getUsername() + " liked your recipe: " + recipe.getTitle());
 			// Award reputation points to recipe author
 			userService.updateReputation(recipe.getAuthor().getUsername(), 5);
-			return Map.of("liked", true, "likeCount", recipe.getLikeCount() + 1);
+			return Map.of("liked", true, LIKE_COUNT_KEY, recipe.getLikeCount() + 1);
 		} else {
 			recipeRepository.decrementLikeCount(id);
-			return Map.of("liked", false, "likeCount", Math.max(0, recipe.getLikeCount() - 1));
+			return Map.of("liked", false, LIKE_COUNT_KEY, Math.max(0, recipe.getLikeCount() - 1));
 		}
 	}
 }

@@ -11,8 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import com.bluepal.security.SecurityUtils;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
@@ -28,11 +27,7 @@ public class NotificationController {
     private final UserRepository userRepository;
 
     private String getCurrentUsername() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
-            return auth.getName();
-        }
-        return null;
+        return SecurityUtils.getCurrentUsername();
     }
 
     @GetMapping

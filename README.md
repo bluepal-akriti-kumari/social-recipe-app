@@ -67,3 +67,4 @@ Detailed implementation plans and architecture walkthroughs are available in the
 
 ## 📜 License
 MIT License
+file:///E:/ReceipeApp/ARCHITECTURE_VISUAL.html

@@ -8,9 +8,9 @@ import com.bluepal.repository.CommentRepository;
 import com.bluepal.repository.LikeRepository;
 import com.bluepal.repository.RecipeRepository;
 import com.bluepal.repository.UserRepository;
-import com.bluepal.service.NotificationService;
-import com.bluepal.service.interfaces.RecipeService;
+import com.bluepal.service.interfaces.NotificationService;
 import com.bluepal.service.interfaces.UserService;
+import com.bluepal.service.interfaces.RecipeService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -213,7 +213,7 @@ class InteractionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Report submitted successfully"));
 
-        verify(moderationService).reportContent(eq(mockUser), eq("Spam"), eq("RECIPE"), eq(1L));
+        verify(moderationService).reportContent(mockUser, "Spam", "RECIPE", 1L);
     }
 }
 

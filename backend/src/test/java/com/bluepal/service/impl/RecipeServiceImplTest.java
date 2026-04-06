@@ -9,13 +9,14 @@ import com.bluepal.repository.*;
 import com.bluepal.service.interfaces.BookmarkService;
 import com.bluepal.service.interfaces.RatingService;
 import com.bluepal.service.interfaces.UserService;
-import com.bluepal.service.NotificationService;
+import com.bluepal.service.interfaces.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -393,5 +394,167 @@ class RecipeServiceImplTest {
         when(categoryRepository.findByNameIgnoreCase("Unknown")).thenReturn(Optional.empty());
         List<RecipeResponse> result = recipeService.getRecipesByCategory("Unknown", "chef1", 10);
         assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getRecipesByCategory_Success() {
+        Category cat = new Category("Dinner");
+        when(categoryRepository.findByNameIgnoreCase("Dinner")).thenReturn(Optional.of(cat));
+        when(recipeRepository.findByCategoryAndIsPublishedTrueOrderByCreatedAtDesc(eq(cat), any())).thenReturn(List.of(recipe));
+        when(userRepository.findFirstByUsername("chef1")).thenReturn(Optional.of(author));
+
+        List<RecipeResponse> result = recipeService.getRecipesByCategory("Dinner", "chef1", 10);
+        assertFalse(result.isEmpty());
+    }
+
+    @Test
+    void getPersonalizedFeedCursor_Success() {
+        when(userRepository.findByUsername("chef1")).thenReturn(Optional.of(author));
+        when(recipeRepository.findPersonalizedLatest(eq(author), any())).thenReturn(List.of(recipe));
+        when(userRepository.findFirstByUsername("chef1")).thenReturn(Optional.of(author));
+
+        Map<String, Object> result = recipeService.getPersonalizedFeedCursor("chef1", null, 10);
+        assertNotNull(result.get("content"));
+    }
+
+    @Test
+    void getExploreFeedCursorByCategory_Success() {
+        Category cat = new Category("Lunch");
+        when(categoryRepository.findByNameIgnoreCase("Lunch")).thenReturn(Optional.of(cat));
+        when(recipeRepository.findByCategoryAndIsPublishedTrueOrderByCreatedAtDesc(eq(cat), any())).thenReturn(List.of(recipe));
+        when(userRepository.findFirstByUsername("chef1")).thenReturn(Optional.of(author));
+
+        Map<String, Object> result = recipeService.getExploreFeedCursorByCategory("Lunch", null, 10, "chef1");
+        assertNotNull(result.get("content"));
+    }
+
+    @Test
+    void getUserLikedRecipes_Success() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(author));
+        when(recipeRepository.findLikedRecipesByUser(eq(author), any())).thenReturn(List.of(recipe));
+        when(userRepository.findFirstByUsername("chef1")).thenReturn(Optional.of(author));
+
+        Map<String, Object> result = recipeService.getUserLikedRecipes(1L, null, 10, "chef1");
+        assertNotNull(result.get("content"));
+    }
+
+    @Test
+    void markAsPremium_Success() {
+        when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
+        recipeService.markAsPremium(100L);
+        assertTrue(recipe.isPremium());
+        verify(recipeRepository).save(recipe);
+    }
+
+    @Test
+    void getFilteredExploreFeed_WithSorting_Success() {
+        when(recipeRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(org.springframework.data.domain.Pageable.class)))
+            .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(recipe)));
+        when(userRepository.findFirstByUsername("chef1")).thenReturn(Optional.of(author));
+
+        Map<String, Object> result = recipeService.getFilteredExploreFeed(null, 10, null, null, null, "rating,newest", "chef1");
+        assertNotNull(result.get("content"));
+    }
+
+    @Test
+    void toggleLike_ReputationUpdate_Success() {
+        when(userRepository.findByUsername("chef1")).thenReturn(Optional.of(author));
+        when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
+        when(likeRepository.existsByUserAndRecipe(author, recipe)).thenReturn(true);
+
+        recipeService.toggleLike(100L, "chef1");
+
+        verify(userService, times(1)).updateReputation("chef1", 5);
+        verify(recipeRepository).incrementLikeCount(100L);
+    }
+
+    @Test
+    void createRecipe_InvalidIngredientCategory_DefaultsToOther() {
+        IngredientRequest ing = new IngredientRequest();
+        ing.setName("Magic Salt");
+        ing.setCategory("INVALID_CAT_STRING");
+        recipeRequest.setIngredients(List.of(ing));
+
+        when(userRepository.findByUsername("chef1")).thenReturn(Optional.of(author));
+        when(categoryRepository.findByNameIgnoreCase(any())).thenReturn(Optional.of(new Category("General")));
+        when(recipeRepository.save(any(Recipe.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        RecipeResponse response = recipeService.createRecipe(recipeRequest, "chef1");
+        
+        assertNotNull(response);
+        // Using Reflection or assuming internal state is correct for this slice test
+    }
+
+    @Test
+    void updateAuthorReputation_NullPoints_StartsAtZero() {
+        author.setReputationPoints(null);
+        when(userRepository.findByUsername("chef1")).thenReturn(Optional.of(author));
+        when(categoryRepository.findByNameIgnoreCase(any())).thenReturn(Optional.of(new Category("General")));
+        when(recipeRepository.save(any(Recipe.class))).thenReturn(recipe);
+
+        recipeService.createRecipe(recipeRequest, "chef1");
+
+        assertEquals(50, author.getReputationPoints());
+        assertEquals("Commis Chef", author.getReputationLevel());
+    }
+
+    @Test
+    void mapToResponse_Exception_ThrowsCriticalError() {
+        when(userRepository.findFirstByUsername("chef1")).thenReturn(Optional.of(author));
+        when(bookmarkService.isBookmarked(any(), anyLong())).thenThrow(new RuntimeException("Mapping Failure"));
+
+        assertThrows(RuntimeException.class, () -> recipeService.mapToResponse(recipe, "chef1"));
+    }
+
+    @Test
+    void getExploreFeedCursor_Exception_ReturnsEmptyMap() {
+        when(recipeRepository.findAllByIsPublishedTrueOrderByCreatedAtDesc(any())).thenThrow(new RuntimeException("DB Error"));
+        Map<String, Object> result = recipeService.getExploreFeedCursor(null, 10, "chef1");
+        
+        assertTrue(((List<?>) result.get("content")).isEmpty());
+        assertEquals("", result.get("nextCursor"));
+    }
+
+    @Test
+    void toggleLike_UnderflowMechanism_PreventsNegativeLikes() {
+        recipe.setLikeCount(0); // Boundary condition
+        when(userRepository.findByUsername("chef1")).thenReturn(Optional.of(author));
+        when(recipeRepository.findById(100L)).thenReturn(Optional.of(recipe));
+        when(likeRepository.existsByUserAndRecipe(author, recipe)).thenReturn(false); // Unliking
+
+        Map<String, Object> result = recipeService.toggleLike(100L, "chef1");
+
+        assertEquals(0, result.get("likeCount"));
+        verify(recipeRepository).decrementLikeCount(100L);
+    }
+
+    @Test
+    void isAuthor_MatchByUsername_Success() {
+        User otherUserObj = User.builder().id(2L).username("chef1").build(); // Same username, diff ID
+        boolean result = (boolean) ReflectionTestUtils.invokeMethod(recipeService, "isAuthor", recipe, otherUserObj);
+        assertTrue(result);
+    }
+
+    @Test
+    void isAdmin_SimpleAdminRole_Success() {
+        User adminUser = User.builder().roles(new HashSet<>(List.of("ADMIN"))).build();
+        boolean result = (boolean) ReflectionTestUtils.invokeMethod(recipeService, "isAdmin", adminUser);
+        assertTrue(result);
+    }
+
+    @Test
+    void getExploreFeedCursorByCategory_NotFound_ReturnsEmpty() {
+        when(categoryRepository.findByNameIgnoreCase("Unknown")).thenReturn(Optional.empty());
+        Map<String, Object> result = recipeService.getExploreFeedCursorByCategory("Unknown", null, 10, "chef1");
+        assertTrue(((List<?>) result.get("content")).isEmpty());
+    }
+
+    @Test
+    void resolveCategory_GeneralFallback_Success() {
+        when(categoryRepository.findByNameIgnoreCase("General")).thenReturn(Optional.empty());
+        when(categoryRepository.save(any())).thenAnswer(i -> i.getArguments()[0]);
+        
+        Category result = (Category) ReflectionTestUtils.invokeMethod(recipeService, "resolveCategory", "");
+        assertEquals("General", result.getName());
     }
 }

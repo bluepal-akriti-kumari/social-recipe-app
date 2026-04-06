@@ -8,8 +8,7 @@ import com.bluepal.service.interfaces.MealPlanService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import com.bluepal.security.SecurityUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -26,11 +25,7 @@ public class MealPlanController {
     private final UserRepository userRepository;
 
     private String getCurrentUsername() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated() && !authentication.getPrincipal().equals("anonymousUser")) {
-            return authentication.getName();
-        }
-        return null;
+        return SecurityUtils.getCurrentUsername();
     }
 
     @PostMapping

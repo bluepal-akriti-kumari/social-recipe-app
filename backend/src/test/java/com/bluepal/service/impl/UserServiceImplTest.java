@@ -8,7 +8,7 @@ import com.bluepal.exception.ResourceNotFoundException;
 import com.bluepal.repository.FollowRepository;
 import com.bluepal.repository.RecipeRepository;
 import com.bluepal.repository.UserRepository;
-import com.bluepal.service.NotificationService;
+import com.bluepal.service.interfaces.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

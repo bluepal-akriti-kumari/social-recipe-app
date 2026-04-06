@@ -2,12 +2,12 @@ package com.bluepal.controller;
 
 import com.bluepal.dto.request.RecipeRequest;
 import com.bluepal.dto.response.RecipeResponse;
+import com.bluepal.security.SecurityUtils;
 import com.bluepal.service.interfaces.CloudinaryService;
 import com.bluepal.service.interfaces.RecipeService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -28,11 +28,7 @@ public class RecipeController {
     }
 
     private String getCurrentUsername() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
-            return auth.getName();
-        }
-        return null;
+        return SecurityUtils.getCurrentUsername();
     }
 
     // ─── Feeds (Aligned with Spec) ─────────────────────────────────────────────
