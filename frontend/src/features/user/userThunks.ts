@@ -10,8 +10,10 @@ export const getProfileThunk = (userId: number) => async (dispatch: AppDispatch)
   try {
     const data = await userService.getProfile(userId);
     dispatch(fetchProfileSuccess(data));
-  } catch (err: any) {
-    const message = err.response?.data?.error || err.response?.data || 'Failed to fetch profile';
+  } catch (err: unknown) {
+    const error = err as { response?: { data?: string | { error?: string } } };
+    const data = error.response?.data;
+    const message = (typeof data === 'object' ? data?.error : data) || 'Failed to fetch profile';
     dispatch(fetchProfileFailure(typeof message === 'string' ? message : JSON.stringify(message)));
   }
 };
@@ -20,9 +22,9 @@ export const followUserThunk = (userId: number) => async (dispatch: AppDispatch)
   dispatch(toggleFollow());
   try {
     await userService.followUser(userId);
-  } catch (err: any) {
+  } catch {
     dispatch(toggleFollow());
-    console.error('Follow failed', err);
+    console.error('Follow failed');
   }
 };
 
@@ -30,9 +32,9 @@ export const unfollowUserThunk = (userId: number) => async (dispatch: AppDispatc
   dispatch(toggleFollow());
   try {
     await userService.unfollowUser(userId);
-  } catch (err: any) {
+  } catch {
     dispatch(toggleFollow());
-    console.error('Unfollow failed', err);
+    console.error('Unfollow failed');
   }
 };
 
@@ -41,8 +43,10 @@ export const updateProfileThunk = (data: { bio?: string; profilePictureUrl?: str
   try {
     const updatedProfile = await userService.updateProfile(data);
     dispatch(updateProfileSuccess(updatedProfile));
-  } catch (err: any) {
-    const message = err.response?.data?.error || err.response?.data || 'Failed to update profile';
+  } catch (err: unknown) {
+    const error = err as { response?: { data?: string | { error?: string } } };
+    const data = error.response?.data;
+    const message = (typeof data === 'object' ? data?.error : data) || 'Failed to update profile';
     dispatch(fetchProfileFailure(typeof message === 'string' ? message : JSON.stringify(message)));
     throw err;
   }

@@ -122,9 +122,10 @@ const CreateRecipeForm: React.FC<CreateRecipeFormProps> = ({ onSuccess, onCancel
       queryClient.invalidateQueries({ queryKey: ['recipes'] });
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
       if (onSuccess) onSuccess();
-    } catch (err: any) {
-      const responseData = err.response?.data;
-      const errorMessage = responseData?.message || responseData?.error || (typeof responseData === 'string' ? responseData : err.message) || 'Failed to create recipe';
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: string | { message?: string; error?: string } }; message?: string };
+      const responseData = error.response?.data;
+      const errorMessage = (typeof responseData === 'object' ? (responseData?.message || responseData?.error) : responseData) || error.message || 'Failed to create recipe';
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);

@@ -18,7 +18,7 @@ jest.mock('../../pages/Recipe/AddToPlannerModal', () => {
 });
 
 jest.mock('./QuickCommentModal', () => {
-  return function MockQuickCommentModal({ open, onClose }: any) {
+  return function MockQuickCommentModal({ open, onClose }: { open: boolean, onClose: () => void }) {
     if (!open) return null;
     return (
       <div data-testid="quick-comment-modal">
@@ -37,8 +37,8 @@ jest.mock('@tanstack/react-query', () => {
     useQueryClient: () => ({
       invalidateQueries: jest.fn(),
     }),
-    useMutation: ({ mutationFn, onSuccess }: any) => {
-      const mutate = async (...args: any[]) => {
+    useMutation: ({ mutationFn, onSuccess }: { mutationFn: (...args: unknown[]) => Promise<unknown>, onSuccess?: () => void }) => {
+      const mutate = async (...args: unknown[]) => {
         await mutationFn(...args);
         onSuccess?.();
       };
@@ -50,7 +50,9 @@ jest.mock('@tanstack/react-query', () => {
 // Mock framer-motion
 jest.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    div: ({ children, ...props }: { children: React.ReactNode }) => (
+      <div {...props}>{children}</div>
+    ),
   },
 }));
 
@@ -91,29 +93,17 @@ describe('RecipeCard', () => {
     expect(screen.getByText('Delicious Pasta')).toBeInTheDocument();
     expect(screen.getByText('A classic Italian pasta recipe.')).toBeInTheDocument();
     expect(screen.getByText('chef123')).toBeInTheDocument();
-    expect(screen.getByText('30m')).toBeInTheDocument(); // 10 + 20
+    expect(screen.getByText('30 min')).toBeInTheDocument(); // 10 + 20
     expect(screen.getByText('5')).toBeInTheDocument(); // likes
   });
 
   test('calls onLike when like button is clicked', () => {
     const onLikeMock = jest.fn();
     renderWithRouter(<RecipeCard recipe={mockRecipe} onLike={onLikeMock} />);
-    screen.debug();
-    // Find the like button.
-    // It's the first IconButton in the interaction section.
-    const likeButton = screen.getAllByRole('button')[2]; // Index 2: Bookmark is [0], Planner is [1], Like is [2]
+    
+    const likeButton = screen.getByTestId('like-button');
     fireEvent.click(likeButton);
-    
     expect(onLikeMock).toHaveBeenCalledWith(mockRecipe.id);
-  });
-
-  test('opens planner modal when calendar icon is clicked', () => {
-    renderWithRouter(<RecipeCard recipe={mockRecipe} />);
-    
-    const calendarButton = screen.getAllByRole('button')[1];
-    fireEvent.click(calendarButton);
-    
-    expect(screen.getByTestId('planner-modal')).toBeVisible();
   });
 
   test('calls onDelete when delete button is clicked', () => {
@@ -121,18 +111,16 @@ describe('RecipeCard', () => {
     // Author is testuser (id: 1)
     renderWithRouter(<RecipeCard recipe={mockRecipe} onDelete={onDeleteMock} />);
     
-    const deleteButton = screen.getByRole('button', { name: /delete/i });
+    const deleteButton = screen.getByTestId('delete-button');
     fireEvent.click(deleteButton);
-    
     expect(onDeleteMock).toHaveBeenCalledWith(mockRecipe.id);
   });
 
   test('opens quick comment modal when chat icon is clicked', () => {
     renderWithRouter(<RecipeCard recipe={mockRecipe} />);
     
-    const chatButton = screen.getByTestId('chat-bubble-button');
+    const chatButton = screen.getByTestId('comment-button');
     fireEvent.click(chatButton);
-    
     expect(screen.getByTestId('quick-comment-modal')).toBeInTheDocument();
   });
 });

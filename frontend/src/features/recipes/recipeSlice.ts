@@ -1,14 +1,14 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 // REMOVED PageResponse as it is no longer exported or needed
-import type { RecipeSummary, RecipeDetail } from '../../services/recipe.service';
+import type { RecipeSummary, RecipeDetail, CursorResponse, Comment } from '../../services/recipe.service';
 
 interface RecipeState {
   exploreFeed: RecipeSummary[];
   personalizedFeed: RecipeSummary[];
   userRecipes: RecipeSummary[];
   recipeDetail: RecipeDetail | null;
-  comments: any[];
+  comments: Comment[];
   loading: boolean;
   error: string | null;
   nextCursor: string | null; // For Infinite Scroll
@@ -38,10 +38,10 @@ const recipeSlice = createSlice({
       state.error = null;
     },
     // Updated to handle the new backend Cursor structure: { content: [], nextCursor: "" }
-    fetchExploreSuccess(state, action: PayloadAction<any>) {
+    fetchExploreSuccess(state, action: PayloadAction<CursorResponse<RecipeSummary>>) {
       state.loading = false;
 
-      const newContent = (action.payload.content || []).filter((r: any) => {
+      const newContent = (action.payload.content || []).filter((r: RecipeSummary) => {
         if (!r.id || isNaN(Number(r.id))) {
           console.warn('Backend returned a recipe without a valid ID:', r);
           return false;
@@ -52,7 +52,7 @@ const recipeSlice = createSlice({
 
       // Filter out duplicates by ID to prevent "same key" React warnings
       const existingIds = new Set(state.exploreFeed.map(r => r.id));
-      const uniqueNewRecipes = newContent.filter((r: any) => !existingIds.has(r.id));
+      const uniqueNewRecipes = newContent.filter((r: RecipeSummary) => !existingIds.has(r.id));
 
       // If it's a fresh load (no cursor) replace, otherwise append
       if (!state.nextCursor) {
@@ -72,16 +72,16 @@ const recipeSlice = createSlice({
       }
       state.recipeDetail = action.payload;
     },
-    fetchCommentsSuccess(state, action: PayloadAction<any[]>) {
+    fetchCommentsSuccess(state, action: PayloadAction<Comment[]>) {
       state.comments = action.payload;
     },
-    addCommentSuccess(state, action: PayloadAction<any>) {
+    addCommentSuccess(state, action: PayloadAction<Comment>) {
       state.comments = [action.payload, ...state.comments];
       if (state.recipeDetail) {
         state.recipeDetail.commentCount += 1;
       }
     },
-    fetchFailure(state, action: PayloadAction<any>) {
+    fetchFailure(state, action: PayloadAction<string | { message?: string; error?: string } | undefined>) {
       state.loading = false;
       const payload = action.payload;
       state.error = typeof payload === 'string' 

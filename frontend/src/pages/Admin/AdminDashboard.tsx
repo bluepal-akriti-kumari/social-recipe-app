@@ -8,7 +8,6 @@ import {
 } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import PeopleIcon from '@mui/icons-material/People';
-import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
@@ -30,15 +29,6 @@ interface User {
   premium: boolean; // Renamed
   profilePictureUrl: string;
   reputationPoints: number;
-}
-
-interface Recipe {
-  id: number;
-  title: string;
-  status: 'ACTIVE' | 'RESTRICTED';
-  author: { username: string };
-  isPremium: boolean;
-  createdAt: string;
 }
 
 interface AuditLog {
@@ -73,28 +63,19 @@ const AdminDashboard = () => {
 
 
   const { 
-    data: recipes = [], 
-    isLoading: isRecipesLoading 
-  } = useQuery({
-    queryKey: ['admin', 'recipes'],
-    queryFn: () => api.get<Recipe[]>('/admin/recipes').then(res => res.data),
-  });
-
-  const { 
-    data: stats = { totalUsers: 0, totalRecipes: 0 }, 
+    data: stats = { totalUsers: 0 }, 
     isLoading: isStatsLoading 
   } = useQuery({
     queryKey: ['admin', 'stats'],
-    queryFn: () => api.get<any>('/admin/stats').then(res => ({
+    queryFn: () => api.get<{ totalUsers: number }>('/admin/stats').then(res => ({
       totalUsers: res.data.totalUsers || 0,
-      totalRecipes: res.data.totalRecipes || 0
     })),
   });
 
   const { data: auditLogs = [] } = useQuery({
     queryKey: ['admin', 'audit-logs'],
     queryFn: () => api.get<AuditLog[]>('/admin/audit-logs').then(res => res.data),
-    enabled: tabValue === 2
+    enabled: tabValue === 1
   });
 
   // --- Mutations ---
@@ -113,26 +94,6 @@ const AdminDashboard = () => {
   
 
 
-  const toggleRecipePremiumMutation = useMutation({
-    mutationFn: (id: number) => api.patch(`/admin/recipes/${id}/premium`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'recipes'] });
-      toast.success('Recipe premium status updated');
-    },
-    onError: () => toast.error('Failed to update premium status'),
-  });
-
-  const deleteRecipeMutation = useMutation({
-    mutationFn: (id: number) => api.delete(`/admin/recipes/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'recipes'] });
-      queryClient.invalidateQueries({ queryKey: ['recipes'] });
-      toast.success('Recipe deleted');
-    },
-  });
-
-
-
   const premiumOverrideMutation = useMutation({
     mutationFn: ({ username, isPremium, durationDays }: { username: string, isPremium: boolean, durationDays?: number }) => 
       api.patch(`/admin/users/${username}/premium-override`, { isPremium, durationDays }),
@@ -144,7 +105,7 @@ const AdminDashboard = () => {
     onError: () => toast.error('Failed to override premium'),
   });
 
-  const isLoading = isUsersLoading || isStatsLoading || isRecipesLoading;
+  const isLoading = isUsersLoading || isStatsLoading;
 
   if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
 
@@ -157,7 +118,7 @@ const AdminDashboard = () => {
 
         {/* Stats Grid */}
         <Grid container spacing={3} sx={{ mb: 6 }}>
-          <Grid size={{ xs: 12, sm: 6 }}>
+          <Grid size={{ xs: 12 }}>
             <Card className="glass-card" sx={{ borderRadius: 2 }}>
               <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ p: 1.5, bgcolor: 'primary.light', borderRadius: 1.5, display: 'flex' }}>
@@ -170,25 +131,11 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Card className="glass-card" sx={{ borderRadius: 2 }}>
-              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={{ p: 1.5, bgcolor: 'secondary.light', borderRadius: 1.5, display: 'flex' }}>
-                  <RestaurantMenuIcon sx={{ color: 'secondary.main' }} />
-                </Box>
-                <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 950 }}>{stats.totalRecipes}</Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>TOTAL RECIPES</Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
         </Grid>
 
         <Box sx={{ mb: 4, borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ '& .MuiTab-root': { fontWeight: 900 } }}>
             <Tab icon={<PeopleIcon />} label="User Management" />
-            <Tab icon={<RestaurantMenuIcon />} label="Recipe Management" />
             <Tab icon={<HistoryIcon />} label="Audit Logs" />
           </Tabs>
         </Box>
@@ -279,63 +226,6 @@ const AdminDashboard = () => {
         )}
 
         {tabValue === 1 && (
-          <Paper className="glass-card" sx={{ borderRadius: 2, overflow: 'hidden' }}>
-            <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-              <Typography variant="h6" sx={{ fontWeight: 900 }}>Recipe Management</Typography>
-            </Box>
-            <TableContainer>
-              <Table>
-                <TableHead sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 900 }}>Recipe</TableCell>
-                    <TableCell sx={{ fontWeight: 900 }}>Author</TableCell>
-                    <TableCell sx={{ fontWeight: 900 }}>Premium</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 900 }}>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {recipes.map((recipe) => (
-                    <TableRow key={recipe.id} hover>
-                      <TableCell sx={{ fontWeight: 800 }}>{recipe.title}</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>{recipe.author.username}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={recipe.isPremium ? "Premium" : "Standard"} 
-                          size="small" 
-                          variant={recipe.isPremium ? "filled" : "outlined"}
-                          sx={{ 
-                            fontWeight: 900, 
-                            bgcolor: recipe.isPremium ? '#FFD700' : 'transparent',
-                            color: recipe.isPremium ? 'black' : 'text.secondary',
-                            cursor: 'pointer'
-                          }} 
-                          onClick={() => toggleRecipePremiumMutation.mutate(recipe.id)}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Button 
-                          size="small" 
-                          variant="contained" 
-                          color="error"
-                          sx={{ borderRadius: 1.5 }}
-                          onClick={() => {
-                            if (window.confirm('Delete this recipe permanently?')) {
-                              deleteRecipeMutation.mutate(recipe.id);
-                            }
-                          }}
-                        >
-                          Delete
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        )}
-
-        {tabValue === 2 && (
           /* Audit Logs Table */
           <Paper className="glass-card" sx={{ borderRadius: 2, overflow: 'hidden' }}>
             <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 1 }}>

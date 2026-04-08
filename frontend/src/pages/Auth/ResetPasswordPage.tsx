@@ -18,9 +18,11 @@ const ResetPasswordPage = () => {
       await api.post('/auth/reset-password', { token, newPassword });
       toast.success('Password reset successful! Please login.');
       navigate('/login');
-    } catch (err: any) {
-      const message = err.response?.data?.message || err.response?.data || 'Failed to reset password';
-      toast.error(typeof message === 'string' ? message : 'Failed to reset password');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: string | { message?: string } } };
+      const message = error.response?.data;
+      const errorMessage = (typeof message === 'object' ? message?.message : message) || 'Failed to reset password';
+      toast.error(typeof errorMessage === 'string' ? errorMessage : 'Failed to reset password');
     } finally {
       setLoading(false);
     }

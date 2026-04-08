@@ -167,9 +167,11 @@ const RecipeEditPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['recipe', id] });
       queryClient.invalidateQueries({ queryKey: ['recipes'] });
       navigate(`/recipes/${id}`);
-    } catch (err: any) {
-      const responseData = err.response?.data;
-      const errorMessage = responseData?.message || responseData?.error || (typeof responseData === 'string' ? responseData : err.message) || 'Failed to update recipe';
+      navigate(`/recipes/${id}`);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: string | { message?: string; error?: string } }; message?: string };
+      const responseData = error.response?.data;
+      const errorMessage = (typeof responseData === 'object' ? (responseData?.message || responseData?.error) : responseData) || error.message || 'Failed to update recipe';
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);

@@ -4,14 +4,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import RecipeDetailPage from './RecipeDetailPage';
 import { recipeService } from '../../services/recipe.service';
 import { useAuth } from '../../hooks/useAuth';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import '@testing-library/jest-dom';
 
 // Mock dependencies
 jest.mock('../../services/recipe.service');
 jest.mock('../../hooks/useAuth');
+jest.mock('../../hooks/useWebSocket');
 jest.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    div: ({ children, ...props }: { children: React.ReactNode }) => <div {...props}>{children}</div>,
   },
 }));
 
@@ -44,7 +46,12 @@ describe('RecipeDetailPage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useAuth as jest.Mock).mockReturnValue({ user: { username: 'testuser' } });
+    (useAuth as jest.Mock).mockReturnValue({ user: { username: 'testuser', roles: [] } });
+    (useWebSocket as jest.Mock).mockReturnValue({
+      subscribeToRecipe: jest.fn(() => jest.fn()),
+      recipeStats: {},
+      viewerCounts: {},
+    });
     (recipeService.getRecipeById as jest.Mock).mockResolvedValue(mockRecipeDetail);
     (recipeService.getComments as jest.Mock).mockResolvedValue({ content: [] });
   });
@@ -97,6 +104,6 @@ describe('RecipeDetailPage', () => {
       </QueryClientProvider>
     );
     
-    expect(await screen.findByRole('progressbar')).toBeInTheDocument();
+    expect(await screen.findByTestId('recipe-loading')).toBeInTheDocument();
   });
 });

@@ -42,7 +42,7 @@ const RegisterPage = () => {
       fullName: data.fullName,
       email: data.email, 
       password: data.password 
-    }) as any);
+    }));
   };
 
   return (

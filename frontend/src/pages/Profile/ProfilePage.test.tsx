@@ -1,10 +1,8 @@
 // Mock dependencies first
 jest.mock('../../hooks/useAuth');
-jest.mock('react-redux', () => ({
-  useSelector: jest.fn(),
-  useDispatch: jest.fn(() => jest.fn()),
-  Provider: ({ children }: any) => <div>{children}</div>,
-}));
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
+import authReducer from '../../features/auth/authSlice';
 
 // Mock child components
 jest.mock('../../components/home/CommunitySidebar', () => () => <div data-testid="sidebar">Sidebar</div>);
@@ -13,7 +11,7 @@ jest.mock('../../components/recipes/RecipeCard', () => () => <div data-testid="r
 
 jest.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, whileHover, whileTap, transition, ...props }: any) => <div {...props}>{children}</div>,
+    div: ({ children, ...props }: { children: React.ReactNode }) => <div {...props}>{children}</div>,
   },
 }));
 
@@ -39,7 +37,8 @@ const mockUser = {
   bio: 'Test Bio',
   isVerified: true,
   isFollowing: false,
-  recipeCount: 0
+  recipeCount: 0,
+  roles: []
 };
 
 describe('ProfilePage', () => {
@@ -51,9 +50,20 @@ describe('ProfilePage', () => {
     },
   });
 
+  const renderWithProviders = (ui: React.ReactElement) => {
+    const store = configureStore({
+      reducer: { auth: authReducer },
+    });
+    return render(
+      <Provider store={store}>
+        {ui}
+      </Provider>
+    );
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
-    (useAuth as jest.Mock).mockReturnValue({ user: { id: 1, username: 'testchef' } });
+    (useAuth as jest.Mock).mockReturnValue({ user: { id: 1, username: 'testuser', roles: [] } });
     (userService.getProfile as jest.Mock).mockResolvedValue(mockUser);
     (recipeService.getUserRecipes as jest.Mock).mockResolvedValue({ content: [], nextCursor: null });
     (recipeService.getUserLikedRecipes as jest.Mock).mockResolvedValue({ content: [], nextCursor: null });
@@ -61,7 +71,7 @@ describe('ProfilePage', () => {
 
   test('renders profile information correctly', async () => {
     const testQueryClient = createTestQueryClient();
-    render(
+    renderWithProviders(
       <QueryClientProvider client={testQueryClient}>
         <MemoryRouter initialEntries={['/profile/1']}>
           <Routes>
@@ -70,16 +80,15 @@ describe('ProfilePage', () => {
         </MemoryRouter>
       </QueryClientProvider>
     );
-    
-    expect(await screen.findByText(/testchef/i, {}, { timeout: 3000 })).toBeInTheDocument();
-    expect(screen.getByText('100')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'testchef', level: 2 })).toBeInTheDocument();
+    expect(await screen.findByText('100')).toBeInTheDocument();
   });
 
   test('shows loading state initially', async () => {
     const testQueryClient = createTestQueryClient();
     (userService.getProfile as jest.Mock).mockReturnValue(new Promise(() => {}));
     
-    render(
+    renderWithProviders(
       <QueryClientProvider client={testQueryClient}>
         <MemoryRouter initialEntries={['/profile/1']}>
           <Routes>
@@ -89,14 +98,14 @@ describe('ProfilePage', () => {
       </QueryClientProvider>
     );
     
-    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    expect(await screen.findByTestId('profile-loading')).toBeInTheDocument();
   });
 
   test('displays error message when user not found', async () => {
     const testQueryClient = createTestQueryClient();
     (userService.getProfile as jest.Mock).mockRejectedValue(new Error('User not found'));
     
-    render(
+    renderWithProviders(
       <QueryClientProvider client={testQueryClient}>
         <MemoryRouter initialEntries={['/profile/1']}>
           <Routes>

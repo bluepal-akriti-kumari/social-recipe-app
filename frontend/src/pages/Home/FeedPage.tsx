@@ -10,6 +10,7 @@ import FilterSidebar from '../../components/discovery/FilterSidebar';
 import { recipeService } from '../../services/recipe.service';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import type { User } from '../../features/auth/authSlice';
 
 const FeedPage = () => {
   const { user } = useAuth();
@@ -52,10 +53,10 @@ const FeedPage = () => {
     queryKey: ['recipes', 'explore', selectedCategory, filters],
     queryFn: async ({ pageParam }) => {
       if (selectedCategory === 'OWN' && user) {
-        return recipeService.getUserRecipes((user as any).id, pageParam, 12);
+        return recipeService.getUserRecipes((user as User).id, pageParam as string, 12);
       }
       return recipeService.getExploreFeed(
-        pageParam, 
+        pageParam as string, 
         selectedCategory, 
         12, 
         filters.maxTime, 
@@ -126,7 +127,9 @@ const FeedPage = () => {
   };
 
   const currentLoading = searchQuery ? isSearchLoading : isExploreLoading;
-  const currentError = searchQuery ? (searchError as any)?.message : (exploreError as any)?.message;
+  const currentError = searchQuery 
+    ? (searchError as { message?: string })?.message 
+    : (exploreError as { message?: string })?.message;
   const displayFeed = searchQuery ? (searchData || []) : exploreFeed;
 
   return (

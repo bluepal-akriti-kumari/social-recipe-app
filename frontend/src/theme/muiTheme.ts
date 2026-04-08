@@ -1,4 +1,4 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, type Shadows } from '@mui/material/styles';
 
 const theme = createTheme({
   palette: {
@@ -52,7 +52,7 @@ const theme = createTheme({
     '0 25px 50px rgba(0,0,0,0.1)',
     '0 4px 20px rgba(44, 62, 80, 0.05)', // Specialized soft shadow
     ...Array(18).fill('none'),
-  ] as any,
+  ] as Shadows,
   components: {
     MuiButton: {
       styleOverrides: {

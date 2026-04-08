@@ -19,6 +19,7 @@ import StarIcon from '@mui/icons-material/Star';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import { useAuth } from '../../hooks/useAuth';
+import type { User } from '../../features/auth/authSlice';
 import AddToPlannerModal from '../../pages/Recipe/AddToPlannerModal';
 import { recipeService, type RecipeSummary } from '../../services/recipe.service';
 import QuickCommentModal from './QuickCommentModal';
@@ -35,7 +36,7 @@ const RecipeCard = ({ recipe, onLike, onBookmark, onDelete }: RecipeCardProps) =
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isAuthenticated } = useAuth();
-  const premium = Boolean((user as any)?.premium);
+  const premium = Boolean((user as User | null)?.premium);
   
   // DIAGNOSTIC LOG: Help verify premium status sync
   useEffect(() => {
@@ -55,11 +56,11 @@ const RecipeCard = ({ recipe, onLike, onBookmark, onDelete }: RecipeCardProps) =
     onError: () => toast.error('Failed to submit rating'),
   });
 
-  const handleRate = (e: any, newValue: number | null) => {
+  const handleRate = (e: React.SyntheticEvent | Event, newValue: number | null) => {
     e.stopPropagation();
     if (!isAuthenticated) return navigate('/login');
     if (!newValue) return;
-    if ((user as any)?.id === recipe.author?.id) {
+    if ((user as User | null)?.id === recipe.author?.id) {
         toast.error("You can't rate your own masterpiece! 😉");
         return;
     }
@@ -67,7 +68,7 @@ const RecipeCard = ({ recipe, onLike, onBookmark, onDelete }: RecipeCardProps) =
   };
 
   const handleNavigate = () => {
-    const isAuthor = (user as any)?.id === recipe.author?.id;
+    const isAuthor = (user as User | null)?.id === recipe.author?.id;
     if (recipe.isPremium && !isAuthor && !premium) {
       toast.error('This is a Premium Recipe. Please upgrade to view.', {
         icon: '💎',
@@ -185,6 +186,7 @@ const RecipeCard = ({ recipe, onLike, onBookmark, onDelete }: RecipeCardProps) =
 
           <IconButton
             size="small"
+            data-testid="bookmark-button"
             onClick={(e) => handleInteraction(e, onBookmark)}
             sx={{ 
               position: 'absolute', 
@@ -202,9 +204,10 @@ const RecipeCard = ({ recipe, onLike, onBookmark, onDelete }: RecipeCardProps) =
           </IconButton>
 
           {/* Delete Button for Author/Admin */}
-          {(onDelete && ((user as any)?.id === recipe.author?.id || (user as any)?.roles?.includes('ROLE_ADMIN'))) && (
+          {(onDelete && ((user as User | null)?.id === recipe.author?.id || (user as User | null)?.roles?.includes('ROLE_ADMIN'))) && (
             <IconButton
               size="small"
+              data-testid="delete-button"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(recipe.id);
@@ -320,7 +323,7 @@ const RecipeCard = ({ recipe, onLike, onBookmark, onDelete }: RecipeCardProps) =
               value={recipe.averageRating || 0} 
               precision={0.5} 
               onChange={handleRate}
-              readOnly={!isAuthenticated || (user as any)?.id === recipe.author?.id} 
+              readOnly={!isAuthenticated || (user as User | null)?.id === recipe.author?.id} 
               size="small" 
               sx={{ 
                 color: 'primary.main', 
@@ -356,6 +359,7 @@ const RecipeCard = ({ recipe, onLike, onBookmark, onDelete }: RecipeCardProps) =
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <IconButton 
                   size="small" 
+                  data-testid="like-button"
                   onClick={(e) => handleInteraction(e, onLike)}
                   sx={{ 
                     p: 0,
@@ -372,6 +376,7 @@ const RecipeCard = ({ recipe, onLike, onBookmark, onDelete }: RecipeCardProps) =
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.disabled' }}>
                 <IconButton 
                   size="small" 
+                  data-testid="comment-button"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (!isAuthenticated) return navigate('/login');

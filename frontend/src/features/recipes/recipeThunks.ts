@@ -13,8 +13,9 @@ export const getExploreFeedThunk = (cursor?: string) => async (dispatch: AppDisp
     // API now expects a string cursor for LocalDateTime pagination
     const data = await recipeService.getExploreFeed(cursor);
     dispatch(fetchExploreSuccess(data));
-  } catch (err: any) {
-    dispatch(fetchFailure(err.response?.data || 'Failed to fetch explore feed'));
+  } catch (err: unknown) {
+    const error = err as { response?: { data?: string | { message?: string } } };
+    dispatch(fetchFailure(error.response?.data || 'Failed to fetch explore feed'));
   }
 };
 
@@ -23,8 +24,9 @@ export const getRecipeByIdThunk = (id: number) => async (dispatch: AppDispatch) 
   try {
     const data = await recipeService.getRecipeById(id);
     dispatch(fetchDetailSuccess(data));
-  } catch (err: any) {
-    dispatch(fetchFailure(err.response?.data || 'Failed to fetch recipe details'));
+  } catch (err: unknown) {
+    const error = err as { response?: { data?: string | { message?: string } } };
+    dispatch(fetchFailure(error.response?.data || 'Failed to fetch recipe details'));
   }
 };
 
@@ -33,10 +35,10 @@ export const likeRecipeThunk = (id: number) => async (dispatch: AppDispatch) => 
   dispatch(toggleLike(id));
   try {
     await recipeService.likeRecipe(id);
-  } catch (err: any) {
+  } catch {
     // Revert on failure
     dispatch(toggleLike(id));
-    console.error('Failed to like recipe', err);
+    console.error('Failed to like recipe');
   }
 };
 
@@ -44,8 +46,8 @@ export const getCommentsThunk = (recipeId: number) => async (dispatch: AppDispat
   try {
     const data = await recipeService.getComments(recipeId);
     dispatch(fetchCommentsSuccess(data.content));
-  } catch (err: any) {
-    console.error('Failed to fetch comments', err);
+  } catch {
+    console.error('Failed to fetch comments');
   }
 };
 
@@ -53,7 +55,7 @@ export const addCommentThunk = (recipeId: number, content: string, parentId?: nu
   try {
     const data = await recipeService.addComment(recipeId, content, parentId);
     dispatch(addCommentSuccess(data));
-  } catch (err: any) {
-    console.error('Failed to add comment', err);
+  } catch {
+    console.error('Failed to add comment');
   }
 };

@@ -34,7 +34,7 @@ const LoginPage = () => {
   }, [isAuthenticated, navigate, dispatch]);
 
   const onSubmit = (data: LoginFormValues) => {
-    dispatch(loginThunk(data) as any);
+    dispatch(loginThunk(data));
   };
 
   return (

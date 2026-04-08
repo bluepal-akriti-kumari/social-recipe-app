@@ -18,9 +18,11 @@ const ForgotPasswordPage = () => {
       await api.post('/auth/forgot-password', { email });
       setSuccess(true);
       toast.success('Reset email sent!');
-    } catch (err: any) {
-      const message = err.response?.data?.message || err.response?.data || 'Failed to send reset email';
-      toast.error(typeof message === 'string' ? message : 'Failed to send reset email');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: string | { message?: string } } };
+      const message = error.response?.data;
+      const errorMessage = (typeof message === 'object' ? message?.message : message) || 'Failed to send reset email';
+      toast.error(typeof errorMessage === 'string' ? errorMessage : 'Failed to send reset email');
     } finally {
       setLoading(false);
     }

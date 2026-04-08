@@ -58,6 +58,19 @@ export interface CursorResponse<T> {
   nextCursor: string;
 }
 
+export interface Comment {
+  id: number;
+  content: string;
+  createdAt: string;
+  author: {
+    id: number;
+    username: string;
+    profilePictureUrl: string;
+  };
+  parentId?: number;
+  replies?: Comment[];
+}
+
 export const recipeService = {
   // Updated for Cursor-based Pagination
   getExploreFeed: (cursor?: string, category?: string, size = 12, maxTime?: number, maxCalories?: number, sort = 'newest'): Promise<CursorResponse<RecipeSummary>> =>

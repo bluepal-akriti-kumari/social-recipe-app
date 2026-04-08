@@ -28,12 +28,24 @@ import EditIcon from '@mui/icons-material/Edit';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
+import type { User } from '../../features/auth/authSlice';
 import { useWebSocket } from '../../hooks/useWebSocket';
-import { recipeService } from '../../services/recipe.service';
+import { recipeService, type Comment } from '../../services/recipe.service';
 import AddToPlannerModal from './AddToPlannerModal';
 import { toast } from 'react-hot-toast';
 
-const CommentItem = ({ comment, index, onReply, onDelete, onReport, currentUser, isDeleting, depth = 0 }: any) => {
+interface CommentItemProps {
+  comment: Comment & { userProfilePictureUrl?: string; userId?: number; username?: string };
+  index: number;
+  onReply: (data: { id: number; username: string }) => void;
+  onDelete: (id: number) => void;
+  onReport: (data: { type: string; id: number }) => void;
+  currentUser: User | null;
+  isDeleting: boolean;
+  depth?: number;
+}
+
+const CommentItem = ({ comment, index, onReply, onDelete, onReport, currentUser, isDeleting, depth = 0 }: CommentItemProps) => {
   const navigate = useNavigate();
   return (
     <motion.div 
@@ -79,12 +91,12 @@ const CommentItem = ({ comment, index, onReply, onDelete, onReport, currentUser,
                 size="small" 
                 startIcon={<ChatBubbleOutlineIcon sx={{ fontSize: '16px !important' }} />}
                 sx={{ p: 0, minWidth: 0, color: 'primary.main', fontWeight: 800, textTransform: 'none', '&:hover': { opacity: 0.8 } }} 
-                onClick={() => onReply({ id: comment.id, username: comment.username })}
+                onClick={() => onReply({ id: comment.id, username: comment.username || comment.author.username })}
               >
                 Reply
               </Button>
               {currentUser && (currentUser.username === comment.username || 
-                currentUser.roles?.some((r: any) => r === 'ROLE_ADMIN')) && (
+                currentUser.roles?.some((r: string) => r === 'ROLE_ADMIN')) && (
                 <Button 
                   size="small" 
                   startIcon={isDeleting ? <CircularProgress size={12} /> : <DeleteOutlineIcon sx={{ fontSize: '16px !important' }} />}
@@ -111,7 +123,7 @@ const CommentItem = ({ comment, index, onReply, onDelete, onReport, currentUser,
       </Paper>
       {comment.replies && comment.replies.length > 0 && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1.5 }}>
-          {comment.replies.map((reply: any, rIdx: number) => (
+          {comment.replies.map((reply: Comment, rIdx: number) => (
             <CommentItem 
               key={reply.id} 
               comment={reply} 
@@ -148,12 +160,12 @@ const RecipeDetailPage = () => {
   // --- Mutations ---
   const upgradeMutation = useMutation({
     mutationFn: () => userService.upgradeToPremium(),
-    onSuccess: (res: any) => {
+    onSuccess: (res: { url?: string }) => {
       if (res?.url) {
         window.location.href = res.url;
       }
     },
-    onError: (error: any) => {
+    onError: (error: { response?: { data?: { message?: string; error?: string } } }) => {
       const responseData = error.response?.data;
       const errorMessage = responseData?.message || responseData?.error || (typeof responseData === 'string' ? responseData : 'Stripe Checkout failed. Please try again later.');
       toast.error(errorMessage);
@@ -306,7 +318,7 @@ const RecipeDetailPage = () => {
   // Image logic
   const displayImage = activeImage || recipeDetail?.imageUrl;
 
-  const premium = Boolean((currentUser as any)?.premium);
+  const premium = Boolean((currentUser as User | null)?.premium);
   
   // DIAGNOSTIC LOG: Help verify premium status sync
   useEffect(() => {
@@ -316,10 +328,15 @@ const RecipeDetailPage = () => {
   }, [recipeDetail, currentUser?.username, premium]);
 
   if (isRecipeLoading) {
-    return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }} data-testid="recipe-loading">
+        <CircularProgress />
+      </Box>
+    );
   }
 
-  if ((recipeError as any)?.response?.status === 402 || (recipeError as any)?.response?.status === 403) {
+  const recipeErrorCode = (recipeError as { response?: { status?: number } })?.response?.status;
+  if (recipeErrorCode === 402 || recipeErrorCode === 403) {
     return (
       <Box sx={{ minHeight: '80vh', display: 'flex', alignItems: 'center', py: 12 }}>
         <Container maxWidth="sm">
@@ -430,8 +447,9 @@ const RecipeDetailPage = () => {
                   }}
                   onError={(e) => {
                     console.warn("Failed to load recipe image:", displayImage);
-                    (e.target as any).style.display = 'none';
-                    (e.target as any).parentElement.classList.add('no-image-fallback');
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.parentElement?.classList.add('no-image-fallback');
                   }}
                 />
               ) : (
@@ -563,7 +581,7 @@ const RecipeDetailPage = () => {
               </Typography>
             </Box>
             <Box sx={{ mb: 3, display: 'flex', gap: 1 }}>
-              {currentUser && recipeDetail.author.username === (currentUser as any).username && (
+              {currentUser && recipeDetail.author.username === (currentUser as User).username && (
                 <Button
                   variant="outlined"
                   startIcon={<EditIcon />}
@@ -574,8 +592,8 @@ const RecipeDetailPage = () => {
                   Edit Recipe
                 </Button>
               )}
-              {currentUser && ((currentUser as any).username === recipeDetail.author.username || 
-                (currentUser as any).roles?.some((r: any) => r === 'ROLE_ADMIN')) && (
+              {currentUser && ((currentUser as User).username === recipeDetail.author.username || 
+                (currentUser as User).roles?.some((r: string) => r === 'ROLE_ADMIN')) && (
                 <Button
                   variant="outlined"
                   color="error"
@@ -729,7 +747,7 @@ const RecipeDetailPage = () => {
                   )}
                   <Box sx={{ display: 'flex', gap: 2.5 }}>
                     <Avatar 
-                      src={(currentUser as any)?.profilePictureUrl} 
+                      src={(currentUser as User | null)?.profilePictureUrl} 
                       sx={{ width: 48, height: 48, border: '2px solid white', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} 
                     />
                     <TextField 
@@ -776,14 +794,14 @@ const RecipeDetailPage = () => {
               </Paper>
               
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {comments.map((comment: any, index: number) => (
+                {comments.map((comment: Comment & { userProfilePictureUrl?: string; userId?: number; username?: string }, index: number) => (
                   <CommentItem 
                     key={comment.id} 
                     comment={comment} 
                     index={index}
                     onReply={setReplyingTo}
                     onDelete={handleDeleteComment}
-                    onReport={(data: any) => setReportData(data)}
+                    onReport={(data: { type: string; id: number }) => setReportData(data)}
                     currentUser={currentUser}
                     isDeleting={deleteCommentMutation.isPending && deleteCommentMutation.variables === comment.id}
                   />

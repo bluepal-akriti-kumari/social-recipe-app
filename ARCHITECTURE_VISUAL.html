@@ -182,7 +182,7 @@
         participant Notifications
         participant Admin
 
-        Note over User, Admin: Phase 1: Onboarding
+        Note over User, Admin: Phase 1: Onboarding & Identity
         User->>Frontend: Register (Email/Password)
         Frontend->>Backend: Post /api/auth/register
         Backend-->>Database: Save User (Pending)
@@ -191,7 +191,7 @@
         Frontend->>Backend: Post /api/auth/verify
         Backend-->>Database: Mark User Verified
         
-        Note over User, Admin: Phase 2: Creation & Post
+        Note over User, Admin: Phase 2: Content Creation & Media
         User->>Frontend: Create Recipe (Images)
         Frontend->>Backend: Request Upload Signature
         Backend-->>Frontend: Returns Cloudinary Policy
@@ -199,15 +199,28 @@
         Cloudinary-->>Frontend: Secure Image URL
         Frontend->>Backend: Post Recipe DTO + Image URL
         Backend-->>Database: Save Recipe & Award Points
-        Backend-->>Notifications: Broadcast: New Recipe
+        Backend-->>Notifications: Broadcast: New Recipe (WebSocket)
         
-        Note over User, Admin: Phase 3: Meal Planning
+        Note over User, Admin: Phase 3: Planning & Groceries
         User->>Frontend: Add Recipe to Meal Plan
         Frontend->>Backend: Post /api/meal-planner
         Backend-->>Database: Save Meal Entry
-        Backend-->>Frontend: Success (Plan Updated)
+        User->>Frontend: Generate Shopping List
+        Frontend->>Backend: Get /api/shopping-list
+        Backend-->>Database: Aggregate Ingredients
+        Backend-->>Frontend: Compiled List by Category
 
-        Note over User, Admin: Phase 4: Social & Premium
+        Note over User, Admin: Phase 4: Social Connectivity & Discovery
+        User->>Frontend: Follow Creator
+        Frontend->>Backend: Post /api/users/{id}/follow
+        Backend-->>Database: Update Relationship
+        Backend-->>Notifications: Emit: "New Follower" Alert
+        User->>Frontend: View Personalized Feed
+        Frontend->>Backend: Get /api/recipes/feed (Following Only)
+        Backend-->>Database: Query Social Graph + Newest Content
+        Backend-->>Frontend: Tailored JSON Content
+
+        Note over User, Admin: Phase 5: Monetization (Stripe)
         User->>Frontend: View Premium Recipe
         Frontend->>Backend: Get Recipe Detail
         Backend-->>Frontend: 402 Premium Required
@@ -217,7 +230,7 @@
         Backend-->>Database: Update User: ROLE_PREMIUM
         User->>Frontend: View Recipe (Access Granted)
 
-        Note over User, Admin: Phase 5: Administration & Moderation
+        Note over User, Admin: Phase 6: Administration & Compliance
         Admin->>Frontend: Access Dashboard Statistics
         Frontend->>Backend: GET /api/admin/dashboard
         Backend-->>Database: Fetch Site Metrics
@@ -231,15 +244,15 @@
     <div class="tech-stack">
         <div class="tech-item">
             <h3>Frontend</h3>
-            <p>React 19, MUI, Tailwind, RTK</p>
+            <p>React 19, MUI, Tailwind, RTK, TanStack Query</p>
         </div>
         <div class="tech-item">
             <h3>Backend</h3>
-            <p>Spring Boot 3.4, JPA, WebSocket</p>
+            <p>Spring Boot 3.4, JPA, WebSocket (STOMP)</p>
         </div>
         <div class="tech-item">
-            <h3>Database</h3>
-            <p>PostgreSQL 16</p>
+            <h3>Reliability</h3>
+            <p>Vitest, ESLint, JaCoCo Coverage</p>
         </div>
         <div class="tech-item">
             <h3>Development Access</h3>
@@ -249,8 +262,8 @@
             </p>
         </div>
         <div class="tech-item">
-            <h3>Integrations</h3>
-            <p>Stripe & Cloudinary</p>
+            <h3>Cloud Media</h3>
+            <p>Cloudinary CDN & SDK</p>
         </div>
     </div>
 

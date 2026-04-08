@@ -20,7 +20,7 @@ import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../services/api';
-import { recipeService } from '../../services/recipe.service';
+import { recipeService, type RecipeSummary } from '../../services/recipe.service';
 import RecipeCard from '../../components/recipes/RecipeCard';
 import EditProfileModal from '../../components/profile/EditProfileModal';
 import { userService, type UserProfile } from '../../services/user.service';
@@ -79,7 +79,7 @@ const ProfilePage = () => {
       toast.error('Upgrade cancelled. No worries, you can try again later!', { id: 'upgrade-cancel' });
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [id, queryClient]);
+  }, [id, queryClient, dispatch]);
 
   // --- Data Fetching (React Query) ---
   const { 
@@ -94,8 +94,7 @@ const ProfilePage = () => {
 
   const isOwnProfile = currentUser?.username === profile?.username;
   const isAdmin = profile?.roles?.includes('ROLE_ADMIN') || false;
-
-  const [additionalRecipes, setAdditionalRecipes] = useState<any[]>([]);
+  const [additionalRecipes, setAdditionalRecipes] = useState<RecipeSummary[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
 
   const { 
@@ -114,13 +113,12 @@ const ProfilePage = () => {
   });
 
   const {
-    data: adminStats = { totalUsers: 0, totalRecipes: 0 },
+    data: adminStats = { totalUsers: 0 },
     isLoading: isAdminStatsLoading
   } = useQuery({
     queryKey: ['admin', 'stats'],
-    queryFn: () => api.get<any>('/admin/stats').then(res => ({
+    queryFn: () => api.get<{ totalUsers: number }>('/admin/stats').then(res => ({
       totalUsers: res.data.totalUsers || 0,
-      totalRecipes: res.data.totalRecipes || 0
     })),
     enabled: !!id && !!profile && isAdmin && isOwnProfile,
   });
@@ -199,7 +197,7 @@ const ProfilePage = () => {
     try {
       const data = await userService.getFollowers(Number(id));
       setModalUsers(data);
-    } catch (err) {
+    } catch {
       toast.error('Failed to load followers');
     } finally {
       setIsUserListLoading(false);
@@ -214,21 +212,25 @@ const ProfilePage = () => {
     try {
       const data = await userService.getFollowing(Number(id));
       setModalUsers(data);
-    } catch (err) {
+    } catch {
       toast.error('Failed to load following');
     } finally {
       setIsUserListLoading(false);
     }
   };
 
-  if (isProfileLoading && !profile) {
-    return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
+  if (isProfileLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 15 }} data-testid="profile-loading">
+        <CircularProgress size={60} thickness={4} />
+      </Box>
+    );
   }
 
   if (profileError || !profile) {
     return (
       <Container maxWidth="md" sx={{ py: 6 }}>
-        <Alert severity="error">{(profileError as any)?.message || 'User not found'}</Alert>
+        <Alert severity="error">{(profileError as Error)?.message || 'User not found'}</Alert>
       </Container>
     );
   }
@@ -643,7 +645,7 @@ const ProfilePage = () => {
                           </Box>
                           
                           <Grid container spacing={3}>
-                            <Grid size={{ xs: 12, sm: 6 }}>
+                            <Grid size={{ xs: 12 }}>
                               <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.1)', transition: 'transform 0.3s ease', '&:hover': { transform: 'translateY(-5px)' } }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                                   <Avatar sx={{ bgcolor: 'primary.main', width: 44, height: 44 }}>
@@ -656,22 +658,6 @@ const ProfilePage = () => {
                                 </Box>
                                 <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
                                   Active user base growth is monitored daily for platform integrity.
-                                </Typography>
-                              </Box>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                              <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'rgba(236, 72, 153, 0.05)', border: '1px solid rgba(236, 72, 153, 0.1)', transition: 'transform 0.3s ease', '&:hover': { transform: 'translateY(-5px)' } }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                                  <Avatar sx={{ bgcolor: '#ec4899', width: 44, height: 44 }}>
-                                    <RestaurantMenuIcon sx={{ color: 'white' }} />
-                                  </Avatar>
-                                  <Box>
-                                    <Typography variant="h4" sx={{ fontWeight: 950 }}>{adminStats.totalRecipes}</Typography>
-                                    <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase' }}>Global Recipe Database</Typography>
-                                  </Box>
-                                </Box>
-                                <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                                  Quality control and moderation are active across all shared creations.
                                 </Typography>
                               </Box>
                             </Grid>
@@ -724,8 +710,7 @@ const ProfilePage = () => {
                             </Typography>
                             {[
                               { label: 'Manage Users', path: '/admin?tab=0' },
-                              { label: 'Content Moderation', path: '/admin?tab=1' },
-                              { label: 'Security Audit', path: '/admin?tab=2' },
+                              { label: 'Security Audit', path: '/admin?tab=1' },
                             ].map((item) => (
                               <Button
                                 key={item.label}

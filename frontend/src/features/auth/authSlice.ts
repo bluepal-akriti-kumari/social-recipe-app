@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 
-interface User {
+export interface User {
   id: number;
   username: string;
   fullName: string;
@@ -57,8 +57,9 @@ const authSlice = createSlice({
       state.loading = false;
       const user = action.payload.user;
       // Normalization: Ensure 'premium' key is used
-      if (user && 'isPremiumUser' in (user as any)) {
-         user.premium = (user as any).isPremiumUser;
+      const legacyUser = user as User & { isPremiumUser?: boolean };
+      if (legacyUser && 'isPremiumUser' in legacyUser) {
+         user.premium = legacyUser.isPremiumUser;
       }
       state.user = user;
       state.token = action.payload.token;
@@ -66,7 +67,7 @@ const authSlice = createSlice({
       localStorage.setItem('token', action.payload.token);
       localStorage.setItem('user', JSON.stringify(user));
     },
-    loginFailure(state, action: PayloadAction<any>) {
+    loginFailure(state, action: PayloadAction<string | { message?: string; error?: string } | undefined>) {
       state.loading = false;
       const payload = action.payload;
       state.error = typeof payload === 'string' 

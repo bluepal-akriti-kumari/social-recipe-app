@@ -8,7 +8,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import { useState } from 'react';
 import RecipeCard from '../../components/recipes/RecipeCard';
 import { useQuery } from '@tanstack/react-query';
-import { recipeService } from '../../services/recipe.service';
+import { recipeService, type RecipeSummary } from '../../services/recipe.service';
 
 const CommunityDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -80,7 +80,7 @@ const CommunityDetailPage = () => {
         </Box>
 
         <Grid container spacing={3}>
-          {recipes.map((recipe: any) => (
+          {recipes.map((recipe: RecipeSummary) => (
             <Grid size={{ xs: 12, sm: 6, md: 4 }} key={recipe.id}>
               <RecipeCard recipe={recipe} />
             </Grid>

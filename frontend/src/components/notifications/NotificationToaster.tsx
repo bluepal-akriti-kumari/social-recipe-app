@@ -28,8 +28,9 @@ const NotificationToaster = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    const handleNewNotification = (event: any) => {
-      setNotification(event.detail);
+    const handleNewNotification = (event: Event) => {
+      const customEvent = event as CustomEvent<Notification>;
+      setNotification(customEvent.detail);
       // Auto close after 5 seconds
       setTimeout(() => setNotification(null), 5000);
     };

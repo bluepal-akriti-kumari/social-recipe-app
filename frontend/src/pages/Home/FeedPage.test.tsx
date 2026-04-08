@@ -3,17 +3,19 @@ import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import FeedPage from './FeedPage';
 import { recipeService } from '../../services/recipe.service';
+import { useAuth } from '../../hooks/useAuth';
 import '@testing-library/jest-dom';
 
 // Mock dependencies
 jest.mock('../../services/recipe.service');
+jest.mock('../../hooks/useAuth');
 jest.mock('../../components/discovery/FeaturedRecipeCarousel', () => () => <div data-testid="carousel">Carousel</div>);
 jest.mock('../../components/discovery/CategoryQuickBar', () => () => <div data-testid="category-bar">Category Bar</div>);
 jest.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    div: ({ children, ...props }: { children: React.ReactNode }) => <div {...props}>{children}</div>,
   },
-  AnimatePresence: ({ children }: any) => <>{children}</>,
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 const queryClient = new QueryClient({
@@ -36,7 +38,12 @@ const renderWithProviders = (ui: React.ReactElement) => {
 
 describe('FeedPage', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     queryClient.clear();
+    (useAuth as jest.Mock).mockReturnValue({
+      user: { id: 1, username: 'testuser', roles: ['ROLE_USER'] },
+      isAuthenticated: true
+    });
   });
 
   test('renders header and discovery components', () => {

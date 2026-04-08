@@ -10,6 +10,7 @@ import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import type { User } from '../../features/auth/authSlice';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useModal } from '../../context/ModalContext';
 import { Badge } from '@mui/material';
@@ -58,12 +59,12 @@ const Navbar = () => {
 
   const upgradeMutation = useMutation({
     mutationFn: () => userService.upgradeToPremium(),
-    onSuccess: (res: any) => {
+    onSuccess: (res: { url?: string }) => {
       if (res?.url) {
         window.location.href = res.url;
       }
     },
-    onError: (error: any) => {
+    onError: (error: { response?: { data?: string | { message?: string; error?: string } } }) => {
       const responseData = error.response?.data;
       const errorMessage = responseData?.message || responseData?.error || (typeof responseData === 'string' ? responseData : 'Stripe Checkout failed. Please try again later.');
       toast.error(errorMessage, { id: 'upgrade-error' });
@@ -208,7 +209,7 @@ const Navbar = () => {
 
 
 
-              {user && !(user as any).premium && (
+              {user && !(user as User).premium && (
                 <Tooltip title="Upgrade for Premium Recipes">
                   <Button 
                     variant="outlined" 
@@ -232,7 +233,7 @@ const Navbar = () => {
                 </Tooltip>
               )}
 
-              {user && !(user as any).roles?.includes('ROLE_ADMIN') && (
+              {user && !(user as User).roles?.includes('ROLE_ADMIN') && (
                 <Tooltip title="Create a Recipe">
                   <Button 
                     variant="contained" 
@@ -255,7 +256,7 @@ const Navbar = () => {
                 </Tooltip>
               )}
 
-              {user && !(user as any).roles?.includes('ROLE_ADMIN') && (
+              {user && !(user as User).roles?.includes('ROLE_ADMIN') && (
                 <>
                   <Tooltip title="Notifications">
                     <IconButton 
@@ -390,7 +391,7 @@ const Navbar = () => {
                   >
                     {user?.username?.[0]?.toUpperCase()}
                   </Avatar>
-                  {user && (user as any).premium && (
+                  {user && (user as User).premium && (
                     <Box 
                       sx={{ 
                         position: 'absolute', top: -4, right: -4, 

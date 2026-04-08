@@ -21,7 +21,7 @@ const ShoppingListPage = () => {
     try {
       const data = await shoppingListService.getItems();
       setItems(data);
-    } catch (err) {
+    } catch {
       setError('Failed to load shopping list');
     } finally {
       setLoading(false);
@@ -36,8 +36,8 @@ const ShoppingListPage = () => {
     try {
       const updated = await shoppingListService.togglePurchased(id);
       setItems(items.map(item => item.id === id ? updated : item));
-    } catch (err) {
-      console.error('Toggle failed', err);
+    } catch {
+      console.error('Toggle failed');
     }
   };
 
@@ -48,8 +48,8 @@ const ShoppingListPage = () => {
       const item = await shoppingListService.addItem({ name: newItemName });
       setItems([...items, item]);
       setNewItemName('');
-    } catch (err) {
-      console.error('Add failed', err);
+    } catch {
+      console.error('Add failed');
     }
   };
 
@@ -57,8 +57,8 @@ const ShoppingListPage = () => {
     try {
       await shoppingListService.deleteChecked();
       setItems(items.filter(item => !item.purchased));
-    } catch (err) {
-      console.error('Delete checked failed', err);
+    } catch {
+      console.error('Delete checked failed');
     }
   };
 

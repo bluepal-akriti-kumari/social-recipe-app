@@ -1,6 +1,7 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
-import { Client } from '@stomp/stompjs';
+import { Client, type IMessage, type IFrame } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { useAuth } from './useAuth';
 
@@ -101,7 +102,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
         
         // 1. Personal Notifications
         if (!user.roles?.includes('ROLE_ADMIN')) {
-          client.subscribe(`/user/${user.username}/queue/notifications`, (message: any) => {
+          client.subscribe(`/user/${user.username}/queue/notifications`, (message: IMessage) => {
             const newNotification: Notification = JSON.parse(message.body);
             setNotifications((prev) => [newNotification, ...prev]);
             setUnreadCount((prev) => prev + 1);
@@ -110,7 +111,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
         }
 
         // 2. Global Activity
-        client.subscribe('/topic/activity', (message: any) => {
+        client.subscribe('/topic/activity', (message: IMessage) => {
           const activity = JSON.parse(message.body);
           setLatestActivity(activity.message);
           // Hide after 5 seconds
@@ -118,7 +119,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
         });
       };
 
-      client.onStompError = (frame: any) => {
+      client.onStompError = (frame: IFrame) => {
         console.error('Broker reported error: ' + frame.headers['message']);
         console.error('Additional details: ' + frame.body);
       };
@@ -166,13 +167,13 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     if (!stompClient || !stompClient.connected) return () => {};
 
     // Subscribe to stats
-    const statsSub = stompClient.subscribe(`/topic/recipes/${id}/stats`, (message: any) => {
+    const statsSub = stompClient.subscribe(`/topic/recipes/${id}/stats`, (message: IMessage) => {
       const stats: RecipeStats & { recipeId: number } = JSON.parse(message.body);
       setRecipeStats((prev) => ({ ...prev, [id]: { likeCount: stats.likeCount, commentCount: stats.commentCount } }));
     });
 
     // Subscribe to viewers
-    const viewerSub = stompClient.subscribe(`/topic/recipes/${id}/viewers`, (message: any) => {
+    const viewerSub = stompClient.subscribe(`/topic/recipes/${id}/viewers`, (message: IMessage) => {
       const data = JSON.parse(message.body);
       setViewerCounts((prev) => ({ ...prev, [id]: data.count }));
     });

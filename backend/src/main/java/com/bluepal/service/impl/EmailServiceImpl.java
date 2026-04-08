@@ -79,7 +79,7 @@ public class EmailServiceImpl {
             message.setFrom(resolveFromAddress());
             message.setTo(to);
             message.setSubject("Verify Your Email - CulinarIO");
-            String verificationUrl = "http://localhost:5173/verify-email?token=" + token;
+            String verificationUrl = "http://172.30.224.1:5173/verify-email?token=" + token;
             message.setText("Hello,\n\n"
                     + "Thank you for registering with CulinarIO! Please click the link below to verify your email address:\n\n"
                     + verificationUrl + "\n\n"

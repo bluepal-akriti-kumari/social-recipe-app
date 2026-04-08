@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Container, Typography, Box, Paper, Grid, 
   IconButton, Card, CardMedia, CardContent,
@@ -30,23 +30,23 @@ const MealPlannerPage = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedType, setSelectedType] = useState<string | undefined>(undefined);
 
-  const fetchPlans = async () => {
+  const fetchPlans = useCallback(async () => {
     setLoading(true);
     try {
       const start = format(startOfMonth(currentDate), 'yyyy-MM-dd');
       const end = format(endOfMonth(currentDate), 'yyyy-MM-dd');
       const data = await mealPlanService.getMealPlans(start, end);
       setPlans(data);
-    } catch (err) {
+    } catch {
       setError('Failed to load meal plans');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentDate]);
 
   useEffect(() => {
     fetchPlans();
-  }, [currentDate]);
+  }, [fetchPlans]);
 
   const handleDelete = async (id: number) => {
     try {
@@ -55,8 +55,8 @@ const MealPlannerPage = () => {
         setPlans(plans.filter(p => p.id !== id));
         toast.success('Meal removed');
       }
-    } catch (err) {
-      console.error('Delete failed', err);
+    } catch {
+      console.error('Delete failed');
       toast.error('Failed to remove meal');
     }
   };
@@ -66,7 +66,7 @@ const MealPlannerPage = () => {
       const updated = await mealPlanService.updateMealPlan(id, { status });
       setPlans(plans.map(p => p.id === id ? updated : p));
       toast.success(`Marked as ${status.toLowerCase()}`);
-    } catch (err) {
+    } catch {
       toast.error('Failed to update status');
     }
   };

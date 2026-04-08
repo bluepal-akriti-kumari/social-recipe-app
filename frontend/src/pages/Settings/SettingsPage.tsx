@@ -40,8 +40,9 @@ const SettingsPage = () => {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (err: any) {
-      setPwError(err.response?.data || 'Failed to change password');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: string } };
+      setPwError(error.response?.data || 'Failed to change password');
     } finally {
       setPwLoading(false);
     }

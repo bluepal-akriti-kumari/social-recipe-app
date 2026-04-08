@@ -7,6 +7,8 @@ import BakeryDiningIcon from '@mui/icons-material/BakeryDining';
 import CoffeeIcon from '@mui/icons-material/Coffee';
 import IcecreamIcon from '@mui/icons-material/Icecream';
 import PersonIcon from '@mui/icons-material/Person';
+import { useAuth } from '../../hooks/useAuth';
+import type { User } from '../../features/auth/authSlice';
 
 const CATEGORIES = [
   { label: 'All Recipes', value: '', icon: null },
@@ -25,6 +27,13 @@ interface CategoryQuickBarProps {
 }
 
 const CategoryQuickBar = ({ selectedCategory, onSelect }: CategoryQuickBarProps) => {
+  const { user } = useAuth();
+  const isAdmin = (user as User | null)?.roles?.includes('ROLE_ADMIN');
+
+  const filteredCategories = isAdmin 
+    ? CATEGORIES.filter(cat => cat.value !== 'OWN')
+    : CATEGORIES;
+
   return (
     <Box 
       sx={{ 
@@ -39,7 +48,7 @@ const CategoryQuickBar = ({ selectedCategory, onSelect }: CategoryQuickBarProps)
         borderBottom: '1px solid #e2e8f0'
       }}
     >
-      {CATEGORIES.map((cat) => (
+      {filteredCategories.map((cat) => (
         <motion.div
           key={cat.label}
           whileHover={{ scale: 1.05 }}

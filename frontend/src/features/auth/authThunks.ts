@@ -18,8 +18,10 @@ export const loginThunk = (payload: LoginPayload) => async (dispatch: AppDispatc
       },
       token: data.token,
     }));
-  } catch (err: any) {
-    const message = err.response?.data?.message || err.response?.data?.error || err.response?.data || 'Login failed. Please try again.';
+  } catch (err: unknown) {
+    const error = err as { response?: { data?: { message?: string; error?: string } } };
+    const data = error.response?.data;
+    const message = data?.message || data?.error || 'Login failed. Please try again.';
     dispatch(loginFailure(typeof message === 'string' ? message : 'Login failed'));
   }
 };
@@ -29,9 +31,11 @@ export const registerThunk = (payload: RegisterPayload) => async (dispatch: AppD
   try {
     await authService.register(payload);
     // Auto-login after registration
-    await dispatch(loginThunk({ username: payload.username, password: payload.password }) as any);
-  } catch (err: any) {
-    const message = err.response?.data?.message || err.response?.data?.error || err.response?.data || 'Registration failed. Please try again.';
+    await dispatch(loginThunk({ username: payload.username, password: payload.password }));
+  } catch (err: unknown) {
+    const error = err as { response?: { data?: { message?: string; error?: string } } };
+    const data = error.response?.data;
+    const message = data?.message || data?.error || 'Registration failed. Please try again.';
     dispatch(loginFailure(typeof message === 'string' ? message : 'Registration failed'));
   }
 };

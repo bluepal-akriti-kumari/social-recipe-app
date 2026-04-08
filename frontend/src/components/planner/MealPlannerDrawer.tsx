@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Drawer, Box, Typography, Button, Stack, 
   IconButton, TextField, MenuItem, Avatar,
@@ -40,6 +40,18 @@ const MealPlannerDrawer = ({ open, onClose, onSuccess, initialDate, initialType 
     }
   }, [initialDate, initialType, open]);
 
+  const handleSearch = useCallback(async () => {
+    setSearching(true);
+    try {
+      const results = await recipeService.searchRecipes(searchQuery);
+      setRecipes(results);
+    } catch {
+      console.error('Search failed');
+    } finally {
+      setSearching(false);
+    }
+  }, [searchQuery]);
+
   useEffect(() => {
     // Prevent search if we just selected a recipe
     if (selectedRecipe && searchQuery === selectedRecipe.title) return;
@@ -53,19 +65,7 @@ const MealPlannerDrawer = ({ open, onClose, onSuccess, initialDate, initialType 
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, selectedRecipe]);
-
-  const handleSearch = async () => {
-    setSearching(true);
-    try {
-      const results = await recipeService.searchRecipes(searchQuery);
-      setRecipes(results);
-    } catch (err) {
-      console.error('Search failed', err);
-    } finally {
-      setSearching(false);
-    }
-  };
+  }, [searchQuery, selectedRecipe, handleSearch]);
 
   const handleAdd = async () => {
     if (!selectedRecipe) {
@@ -90,7 +90,7 @@ const MealPlannerDrawer = ({ open, onClose, onSuccess, initialDate, initialType 
       toast.success('Added to your plan!');
       onSuccess();
       onClose();
-    } catch (err) {
+    } catch {
       toast.error('Failed to add to calendar');
     } finally {
       setLoading(false);
